@@ -36,6 +36,7 @@ public class HomeConnectBindingConstants {
     public static final ThingTypeUID THING_TYPE_FRIDGE_FREEZER = new ThingTypeUID(BINDING_ID, "fridgefreezer");
     public static final ThingTypeUID THING_TYPE_DRYER = new ThingTypeUID(BINDING_ID, "dryer");
     public static final ThingTypeUID THING_TYPE_COFFEE_MAKER = new ThingTypeUID(BINDING_ID, "coffeemaker");
+    public static final ThingTypeUID THING_TYPE_HOB = new ThingTypeUID(BINDING_ID, "hob");
 
     // SSE Event types
     public static final String EVENT_ELAPSED_PROGRAM_TIME = "BSH.Common.Option.ElapsedProgramTime";
@@ -49,6 +50,7 @@ public class HomeConnectBindingConstants {
     public static final String EVENT_SELECTED_PROGRAM = "BSH.Common.Root.SelectedProgram";
     public static final String EVENT_REMOTE_CONTROL_START_ALLOWED = "BSH.Common.Status.RemoteControlStartAllowed";
     public static final String EVENT_REMOTE_CONTROL_ACTIVE = "BSH.Common.Status.RemoteControlActive";
+    public static final String EVENT_LOCAL_CONTROL_ACTIVE = "BSH.Common.Status.LocalControlActive";
     public static final String EVENT_REMAINING_PROGRAM_TIME = "BSH.Common.Option.RemainingProgramTime";
     public static final String EVENT_PROGRAM_PROGRESS = "BSH.Common.Option.ProgramProgress";
     public static final String EVENT_SETPOINT_TEMPERATURE = "Cooking.Oven.Option.SetpointTemperature";
@@ -60,6 +62,11 @@ public class HomeConnectBindingConstants {
     public static final String EVENT_FREEZER_SUPER_MODE = "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer";
     public static final String EVENT_FRIDGE_SUPER_MODE = "Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator";
     public static final String EVENT_DRYER_DRYING_TARGET = "LaundryCare.Dryer.Option.DryingTarget";
+    public static final String EVENT_PROGRAM_FINISHED = "BSH.Common.Event.ProgramFinished";
+    public static final String EVENT_ALARM_ELAPSED = "BSH.Common.Event.AlarmClockElapsed";
+    public static final String EVENT_PREHEAT_FINISHED = "Cooking.Oven.Event.PreheatFinished";
+    
+
 
     // Channel IDs
     public static final String CHANNEL_DOOR_STATE = "door_state";
@@ -70,6 +77,7 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_SELECTED_PROGRAM_STATE = "selected_program_state";
     public static final String CHANNEL_REMOTE_START_ALLOWANCE_STATE = "remote_start_allowance_state";
     public static final String CHANNEL_REMOTE_CONTROL_ACTIVE_STATE = "remote_control_active_state";
+    public static final String CHANNEL_LOCAL_CONTROL_ACTIVE_STATE = "local_control_active_state";
     public static final String CHANNEL_REMAINING_PROGRAM_TIME_STATE = "remaining_program_time_state";
     public static final String CHANNEL_PROGRAM_PROGRESS_STATE = "program_progress_state";
     public static final String CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE = "oven_current_cavity_temperature";
@@ -86,12 +94,13 @@ public class HomeConnectBindingConstants {
     // List of all supported devices
     public static final Set<ThingTypeUID> SUPPORTED_DEVICE_THING_TYPES_UIDS = Stream
             .of(THING_TYPE_API_BRIDGE, THING_TYPE_DISHWASHER, THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER,
-                    THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER)
+                    THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER, THING_TYPE_HOB)
             .collect(Collectors.toSet());
 
     // Discoverable devices
     public static final Set<ThingTypeUID> DISCOVERABLE_DEVICE_THING_TYPES_UIDS = Stream.of(THING_TYPE_DISHWASHER,
-            THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER, THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER)
+            THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER, THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER,
+            THING_TYPE_HOB)
             .collect(Collectors.toSet());
 
     // List of state values

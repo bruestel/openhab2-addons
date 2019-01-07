@@ -30,6 +30,7 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectCoffeeMakerHa
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDishwasherHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDryerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectFridgeFreezerHandler;
+import org.openhab.binding.homeconnect.internal.handler.HomeConnectHobHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectOvenHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherHandler;
 import org.osgi.framework.ServiceRegistration;
@@ -77,6 +78,8 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
             return new HomeConnectFridgeFreezerHandler(thing);
         } else if (THING_TYPE_COFFEE_MAKER.equals(thingTypeUID)) {
             return new HomeConnectCoffeeMakerHandler(thing);
+        }  else if (THING_TYPE_HOB.equals(thingTypeUID)) {
+            return new HomeConnectHobHandler(thing);
         }
 
         return null;

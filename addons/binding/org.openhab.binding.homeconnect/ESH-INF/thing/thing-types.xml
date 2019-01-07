@@ -184,6 +184,29 @@
 		</config-description>
 	</thing-type>
 
+	<!-- Hob -->
+	<thing-type id="hob">
+		<supported-bridge-type-refs>
+			<bridge-type-ref id="api_bridge" />
+		</supported-bridge-type-refs>
+		<label>Hob</label>
+		<description>Home Connect connected hob (e.g. Bosch or Siemens).</description>
+		<channels>
+			<channel id="selected_program_state" typeId="selected_program_state" />
+			<channel id="active_program_state" typeId="active_program_state" />
+			<channel id="power_state" typeId="power_state" />
+			<channel id="remote_control_active_state" typeId="remote_control_active_state" />
+			<channel id="local_control_active_state" typeId="local_control_active_state" />
+			<channel id="operation_state" typeId="operation_state" />
+		</channels>
+		<config-description>
+			<parameter name="haId" type="text" required="true">
+				<label>haId</label>
+				<description>Unique identifier representing a specific home appliance.</description>
+			</parameter>
+		</config-description>
+	</thing-type>
+
 	<!-- Channel types -->
 	<channel-type id="power_state">
 		<item-type>Switch</item-type>
@@ -218,6 +241,12 @@
 			change (only disabling), or manually by the user changing the flag locally on the home appliance, or automatically
 			after a certain duration - usually 24 hours.
 		</description>
+		<state readOnly="true" />
+	</channel-type>
+	<channel-type id="local_control_active_state">
+		<item-type>Switch</item-type>
+		<label>Local Control Activation State</label>
+		<description>This status indicates whether the allowance for local controlling is enabled.</description>
 		<state readOnly="true" />
 	</channel-type>
 	<channel-type id="remote_control_active_state">
