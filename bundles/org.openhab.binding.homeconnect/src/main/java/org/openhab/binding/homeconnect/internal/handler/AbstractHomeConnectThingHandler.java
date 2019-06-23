@@ -42,7 +42,6 @@ import org.eclipse.smarthome.core.types.RefreshType;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.exception.ConfigurationException;
 import org.openhab.binding.homeconnect.internal.client.listener.ServerSentEventListener;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
@@ -67,16 +66,16 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     @Nullable
     private HomeConnectApiClient client;
 
-    @NonNull
-    private ConcurrentHashMap<String, EventHandler> eventHandlers;
-
-    @NonNull
-    private ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
+    private final ConcurrentHashMap<String, EventHandler> eventHandlers;
+    private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
 
     public AbstractHomeConnectThingHandler(Thing thing) {
         super(thing);
         eventHandlers = new ConcurrentHashMap<>();
         channelUpdateHandlers = new ConcurrentHashMap<>();
+
+        configureEventHandlers(eventHandlers);
+        configureChannelUpdateHandlers(channelUpdateHandlers);
     }
 
     @Override
@@ -94,7 +93,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 hcac.unregisterEventListener(serverSentEventListener);
                 try {
                     hcac.registerEventListener(serverSentEventListener);
-                } catch (ConfigurationException | CommunicationException e) {
+                } catch (CommunicationException e) {
                     logger.error("API communication problem!", e);
                 }
             }
@@ -105,25 +104,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-        Bridge bridge = getBridge();
-        HomeConnectApiClient apiClient = client;
-        if (bridge == null) {
-            logger.error("BridgeHandler not found. Cannot handle command without bridge.");
-            return;
-        }
-        if (ThingStatus.OFFLINE.equals(bridge.getStatus())) {
-            logger.debug("Bridge is OFFLINE. Ignore command.");
-            return;
-        }
-        if (apiClient == null) {
-            logger.debug("No API client available.");
-            return;
-        }
-
-        if (command instanceof RefreshType) {
+        if (isThingReadyToHandleCommand() && command instanceof RefreshType) {
             updateChannel(channelUID);
         }
-
     }
 
     @Override
@@ -134,7 +117,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     @Override
-    public void refreshClient(@NonNull HomeConnectApiClient apiClient) {
+    public void refreshApiClient(@NonNull HomeConnectApiClient apiClient) {
         HomeConnectApiClient oldClient = client;
         client = apiClient;
 
@@ -155,6 +138,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     } else {
                         if (!ThingStatus.ONLINE.equals(getThing().getStatus())) {
                             updateStatus(ThingStatus.ONLINE);
+                            updateChannels();
                         }
                     }
 
@@ -178,26 +162,47 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             try {
                 apiClient.registerEventListener(serverSentEventListener);
                 updateChannels();
-            } catch (ConfigurationException | CommunicationException e) {
-                logger.error("API communication problem!", e);
+            } catch (CommunicationException e) {
+                logger.error("Home Connect service is not reachable or a problem occurred! {}", e.getMessage());
             }
         }
     }
 
+    protected boolean isThingReadyToHandleCommand() {
+        Bridge bridge = getBridge();
+        HomeConnectApiClient apiClient = client;
+        if (bridge == null) {
+            logger.warn("BridgeHandler not found. Cannot handle command without bridge.");
+            return false;
+        }
+        if (ThingStatus.OFFLINE.equals(bridge.getStatus())) {
+            logger.debug("Bridge is OFFLINE. Ignore command.");
+            return false;
+        }
+
+        if (ThingStatus.OFFLINE.equals(getThing().getStatus())) {
+            logger.debug("{} is OFFLINE. Ignore command.", getThing().getLabel());
+            return false;
+        }
+
+        if (apiClient == null) {
+            logger.debug("No API client available.");
+            return false;
+        }
+
+        return true;
+    }
+
+    @Deprecated
     protected void registerEventHandler(String eventId, EventHandler eventHandler) {
         eventHandlers.put(eventId, eventHandler);
+        // TODO remove
     }
 
-    protected void unregisterEventHandler(String eventId) {
-        eventHandlers.remove(eventId);
-    }
-
+    @Deprecated
     protected void registerChannelUpdateHandler(String channelId, ChannelUpdateHandler handler) {
         channelUpdateHandlers.put(channelId, handler);
-    }
-
-    protected void unregisterChannelUpdateHandler(String channelId) {
-        channelUpdateHandlers.remove(channelId);
+        // TODO remove
     }
 
     protected HomeConnectApiClient getClient() {
@@ -206,6 +211,15 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     protected Optional<Channel> getThingChannel(String channelId) {
         return Optional.ofNullable(getThing().getChannel(channelId));
+    }
+
+    protected void configureChannelUpdateHandlers(
+            final @NonNull ConcurrentHashMap<String, ChannelUpdateHandler> handlers) {
+        // TODO make abstract, so that all handler need to impl. this
+    }
+
+    protected void configureEventHandlers(final @NonNull ConcurrentHashMap<String, EventHandler> handlers) {
+        // TODO make abstract, so that all handler need to impl. this
     }
 
     /**
@@ -257,7 +271,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         if (channelUpdateHandlers.containsKey(channelUID.getId())) {
             try {
                 channelUpdateHandlers.get(channelUID.getId()).handle(channelUID, apiClient);
-            } catch (ConfigurationException | CommunicationException e) {
+            } catch (CommunicationException e) {
                 logger.error("API communication problem while trying to update {}!", getThingHaId(), e);
             }
         }
@@ -310,10 +324,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 } else {
                     updateStatus(ThingStatus.ONLINE);
                 }
-            } catch (ConfigurationException e) {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR);
-            } catch (CommunicationException e) {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
+            } catch (CommunicationException | RuntimeException e) {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                        "Home Connect service is not reachable or a problem occurred! (" + e.getMessage() + ").");
             }
         } else {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED);
@@ -359,6 +372,15 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         };
     }
 
+    protected EventHandler defaultActiveProgramEventHandler() {
+        return event -> {
+            getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(channel -> {
+                updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(mapStringType(event.getValue())));
+            });
+        };
+    }
+
     protected EventHandler defaultBooleanEventHandler(String channelId) {
         return event -> {
             getThingChannel(channelId).ifPresent(
@@ -368,8 +390,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     protected EventHandler defaultRemainingProgramTimeEventHandler() {
         return event -> {
-            getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(channel -> updateState(channel.getUID(),
-                    event.getValueAsInt() == 0 ? UnDefType.NULL : new QuantityType<>(event.getValueAsInt(), SECOND)));
+            getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(
+                    channel -> updateState(channel.getUID(), new QuantityType<>(event.getValueAsInt(), SECOND)));
         };
     }
 
@@ -384,9 +406,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     protected EventHandler defaultProgramProgressEventHandler() {
         return event -> {
-            getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
-                    .ifPresent(channel -> updateState(channel.getUID(), event.getValueAsInt() == 100 ? UnDefType.NULL
-                            : new QuantityType<>(event.getValueAsInt(), PERCENT)));
+            getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(
+                    channel -> updateState(channel.getUID(), new QuantityType<>(event.getValueAsInt(), PERCENT)));
         };
     }
 
@@ -410,6 +431,12 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             } else {
                 updateState(channelUID, UnDefType.NULL);
             }
+        };
+    }
+
+    protected ChannelUpdateHandler defaultNoOpUpdateHandler() {
+        return (channelUID, client) -> {
+            updateState(channelUID, UnDefType.NULL);
         };
     }
 
@@ -452,8 +479,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected interface ChannelUpdateHandler {
-        void handle(ChannelUID channelUID, HomeConnectApiClient client)
-                throws ConfigurationException, CommunicationException;
+        void handle(ChannelUID channelUID, HomeConnectApiClient client) throws CommunicationException;
     }
 
 }

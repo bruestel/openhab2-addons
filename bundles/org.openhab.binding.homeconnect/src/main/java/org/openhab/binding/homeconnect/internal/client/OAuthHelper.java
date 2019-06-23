@@ -83,7 +83,7 @@ public class OAuthHelper {
 
     public static Token refreshToken(String clientId, String clientSecret, String refreshToken, boolean simulator)
             throws CommunicationException {
-        LOG.debug("[oAuth] Refreshing token (Device Flow). client_id: {}, refresh_token: {}", clientId, refreshToken);
+        LOG.debug("[oAuth] Refreshing access token. client_id: {}, refresh_token: {}", clientId, refreshToken);
 
         OkHttpClient client = new OkHttpClient().newBuilder().followRedirects(false).followSslRedirects(false).build();
 
@@ -107,6 +107,7 @@ public class OAuthHelper {
             long expireDate = responseObject.get("expires_in").getAsLong() * 1000;
             LOG.debug("[oAuth] Refresh Token Request.  access_token: {} refresh_token: {}", accessToken,
                     newRefreshToken);
+
             return new Token(accessToken, newRefreshToken, expireDate + System.currentTimeMillis());
 
         } catch (IOException e) {

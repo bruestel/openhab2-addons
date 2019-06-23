@@ -243,4 +243,26 @@ String                 BOSCHCoffeeMakerSimulatorBOSCHHCS06COM12140A8821AE7AB_Act
 Number:Dimensionless   BOSCHCoffeeMakerSimulatorBOSCHHCS06COM12140A8821AE7AB_ProgramProgressState        "Progress State"                 {channel="homeconnect:CoffeeMaker:BOSCH-HCS06COM1-2140A8821AE7AB:program_progress_state"}
 ```
 
+## Misc
+Refresh token does not work in simulated environment. Please redo authentication via :8080/homeconnect
+
+## Logging
+
+```
+<!-- Home Connect appender that logs into a file -->
+<appender name="HOMECONNECTFILE" class="ch.qos.logback.core.FileAppender">
+    <file>${openhab.logdir:-userdata/logs}/homeconnect.log</file>
+    <encoder>
+        <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%-30.30logger{36}:%-5line] - %msg%ex{10}%n</pattern>
+    </encoder>
+</appender>
+```
+
+```
+<logger name="org.openhab.binding.homeconnect" level="ALL" additivity="false">
+    <appender-ref ref="HOMECONNECTFILE" />
+    <appender-ref ref="STDOUT" />
+</logger>
+```
+
 

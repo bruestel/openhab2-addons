@@ -41,7 +41,12 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
         registerEventHandler(EVENT_REMOTE_CONTROL_START_ALLOWED,
                 defaultBooleanEventHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE));
         registerEventHandler(EVENT_DOOR_STATE, defaultDoorStateEventHandler());
-        registerEventHandler(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
+        registerEventHandler(EVENT_OPERATION_STATE, event -> {
+            defaultOperationStateEventHandler().handle(event);
+            if ("BSH.Common.EnumType.OperationState.Finished".equals(event.getValue())) {
+                resetProgramStateChannels();
+            }
+        });
         registerEventHandler(EVENT_REMOTE_CONTROL_ACTIVE,
                 defaultBooleanEventHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE));
         registerEventHandler(EVENT_ACTIVE_PROGRAM, event -> {

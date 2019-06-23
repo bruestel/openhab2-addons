@@ -29,7 +29,6 @@ import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.binding.BridgeHandler;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
-import org.openhab.binding.homeconnect.internal.client.exception.ConfigurationException;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler;
 import org.slf4j.Logger;
@@ -115,8 +114,6 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
                     }
                 }
             }
-        } catch (ConfigurationException e) {
-            logger.debug("Configuration exception. Stopping scan.", e);
         } catch (Exception e) {
             logger.error("Exception during scan.", e);
         }

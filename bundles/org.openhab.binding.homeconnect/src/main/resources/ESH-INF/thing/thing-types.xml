@@ -17,11 +17,11 @@
 				<label>Client secret</label>
 				<description>Application client secret</description>
 			</parameter>
-            <parameter name="simulator" type="boolean" required="true">
-                <label>Use simulator environment</label>
-                <description>Use simulated environment at https://developer.home-connect.com/simulator/</description>
-                <default>false</default>
-            </parameter>
+			<parameter name="simulator" type="boolean" required="true">
+				<label>Use simulator environment</label>
+				<description>Use simulated environment at https://developer.home-connect.com/simulator/</description>
+				<default>false</default>
+			</parameter>
 		</config-description>
 	</bridge-type>
 
@@ -39,6 +39,7 @@
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
 			<channel id="remote_control_active_state" typeId="remote_control_active_state" />
 			<channel id="selected_program_state" typeId="selected_program_state" />
+			<channel id="basic_actions_state" typeId="basic_actions_state" />
 			<channel id="active_program_state" typeId="active_program_state" />
 			<channel id="remaining_program_time_state" typeId="remaining_program_time_state" />
 			<channel id="program_progress_state" typeId="program_progress_state" />
@@ -180,6 +181,16 @@
 	</thing-type>
 
 	<!-- Channel types -->
+	<channel-type id="basic_actions_state">
+		<item-type>String</item-type>
+		<label>Program actions</label>
+		<state>
+			<options>
+				<option value="start">Start program</option>
+				<option value="stop">Stop program</option>
+			</options>
+		</state>
+	</channel-type>
 	<channel-type id="power_state">
 		<item-type>Switch</item-type>
 		<label>Power State</label>
@@ -231,7 +242,6 @@
 		<item-type>String</item-type>
 		<label>Selected Program</label>
 		<description>This status describes the selected program of the home appliance.</description>
-		<state readOnly="true" />
 	</channel-type>
 	<channel-type id="remaining_program_time_state">
 		<item-type>Number:Time</item-type>

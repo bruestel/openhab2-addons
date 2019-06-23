@@ -34,6 +34,7 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectCoffeeMakerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDishwasherHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDryerHandler;
+import org.openhab.binding.homeconnect.internal.handler.HomeConnectDynamicStateDescriptionProvider;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectFridgeFreezerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectOvenHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherHandler;
@@ -64,6 +65,7 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
 
     private @NonNullByDefault({}) HttpService httpService;
     private @NonNullByDefault({}) BridgeConfigurationServlet bridgeConfigurationServlet;
+    private @NonNullByDefault({}) HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
 
     private final ArrayList<HomeConnectBridgeHandler> bridgeHandlers = new ArrayList<HomeConnectBridgeHandler>();
 
@@ -104,7 +106,7 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
                 logger.error("No HttpService available! Cannot initiate bridge handler.");
             }
         } else if (THING_TYPE_DISHWASHER.equals(thingTypeUID)) {
-            return new HomeConnectDishwasherHandler(thing);
+            return new HomeConnectDishwasherHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_OVEN.equals(thingTypeUID)) {
             return new HomeConnectOvenHandler(thing);
         } else if (THING_TYPE_WASHER.equals(thingTypeUID)) {
@@ -151,6 +153,15 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
 
     protected void unsetHttpService(HttpService httpService) {
         this.httpService = null;
+    }
+
+    @Reference
+    protected void setDynamicStateDescriptionProvider(HomeConnectDynamicStateDescriptionProvider provider) {
+        this.dynamicStateDescriptionProvider = provider;
+    }
+
+    protected void unsetDynamicStateDescriptionProvider(HomeConnectDynamicStateDescriptionProvider provider) {
+        this.dynamicStateDescriptionProvider = null;
     }
 
 }

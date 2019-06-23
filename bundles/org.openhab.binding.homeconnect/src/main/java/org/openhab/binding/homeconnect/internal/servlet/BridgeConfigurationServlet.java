@@ -70,7 +70,14 @@ public class BridgeConfigurationServlet extends AbstractServlet {
         try {
             logger.debug("Initialize bridge configuration servlet... ({})", SERVLET_BASE_PATH);
             httpService.registerServlet(SERVLET_BASE_PATH, this, null, httpService.createDefaultHttpContext());
-        } catch (ServletException | NamespaceException e) {
+        } catch (NamespaceException e) {
+            try {
+                httpService.unregister(SERVLET_BASE_PATH);
+                httpService.registerServlet(SERVLET_BASE_PATH, this, null, httpService.createDefaultHttpContext());
+            } catch (ServletException | NamespaceException ex) {
+                logger.error("Could not register bridge configuration servlet! ({})", SERVLET_BASE_PATH, ex);
+            }
+        } catch (ServletException e) {
             logger.error("Could not register bridge configuration servlet! ({})", SERVLET_BASE_PATH, e);
         }
 

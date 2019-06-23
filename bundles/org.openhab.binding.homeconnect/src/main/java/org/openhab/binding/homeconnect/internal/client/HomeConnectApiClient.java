@@ -26,9 +26,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.exception.ConfigurationException;
 import org.openhab.binding.homeconnect.internal.client.exception.InvalidTokenException;
 import org.openhab.binding.homeconnect.internal.client.listener.ServerSentEventListener;
+import org.openhab.binding.homeconnect.internal.client.model.AvailableProgram;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
@@ -37,6 +37,8 @@ import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -59,7 +61,9 @@ public class HomeConnectApiClient {
     private final static String API_URL = "https://api.home-connect.com";
     private final static String API_SIMULATOR_URL = "https://simulator.home-connect.com";
     private final static String ACCEPT = "Accept";
+    private final static String CONTENT_TYPE = "Content-Type";
     private final static String BSH_JSON_V1 = "application/vnd.bsh.sdk.v1+json";
+    private final static String TEXT_EVENT_STREAM = "text/event-stream";
     private final static String KEEP_ALIVE = "KEEP-ALIVE";
     private final static String EMPTY_EVENT = "\"\"";
     private final static String DISCONNECTED = "DISCONNECTED";
@@ -99,75 +103,74 @@ public class HomeConnectApiClient {
     /**
      * Get all home appliances
      *
-     * @return list of {@link HomeAppliance} or null in case of communication error
-     * @throws ConfigurationException
+     * @return list of {@link HomeAppliance}
      * @throws CommunicationException
      */
-    public synchronized List<HomeAppliance> getHomeAppliances() throws ConfigurationException, CommunicationException {
-        checkAccessToken();
+    public synchronized List<HomeAppliance> getHomeAppliances() throws CommunicationException {
+        checkOrRefreshAccessToken();
 
-        Request request = new Request.Builder().url(apiUrl + "/api/homeappliances").header(ACCEPT, BSH_JSON_V1).get()
-                .addHeader("Authorization", "Bearer " + getToken()).build();
+        Request request = createGetRequest("/api/homeappliances");
 
         try (Response response = client.newCall(request).execute()) {
 
             checkResponseCode(HTTP_OK, response);
 
             String body = response.body().string();
-            logger.debug("[getHomeAppliances()] Response code: {}, body: {}", response.code(), body);
+            if (logger.isDebugEnabled()) {
+                logger.debug("[getHomeAppliances()] Response code: {} \n{}", response.code(), toPrettyFormat(body));
+            }
 
             return mapToHomeAppliances(body);
 
-        } catch (IOException e) {
-            logger.error("Token does not work! {}", e.getMessage());
         } catch (InvalidTokenException e) {
+            setAccessToken(null);
             logger.debug("[getHomeAppliances()] Retrying method.");
             return getHomeAppliances();
+        } catch (IOException e) {
+            logger.error("IOException: {}", e.getMessage());
+            throw new CommunicationException(e);
         }
-
-        return null;
     }
 
     /**
      * Get home appliance by id
      *
      * @param haId home appliance id
-     * @return {@link HomeAppliance} or null in case of communication error
-     * @throws ConfigurationException
+     * @return {@link HomeAppliance}
      * @throws CommunicationException
      */
-    public synchronized HomeAppliance getHomeAppliance(String haId)
-            throws ConfigurationException, CommunicationException {
-        checkAccessToken();
+    public synchronized HomeAppliance getHomeAppliance(String haId) throws CommunicationException {
+        checkOrRefreshAccessToken();
 
-        Request request = new Request.Builder().url(apiUrl + "/api/homeappliances/" + haId).header(ACCEPT, BSH_JSON_V1)
-                .get().addHeader("Authorization", "Bearer " + getToken()).build();
+        Request request = createGetRequest("/api/homeappliances/" + haId);
 
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, response);
             String body = response.body().string();
-            logger.debug("[getHomeAppliance({})] Response code: {}, body: {}", haId, response.code(), body);
+            if (logger.isDebugEnabled()) {
+                logger.debug("[getHomeAppliance({})] Response code: {},\n{}", haId, response.code(),
+                        toPrettyFormat(body));
+            }
 
             return mapToHomeAppliance(body);
         } catch (IOException e) {
-            logger.error("Token does not work!", e);
+            logger.error("IOException: {}", e.getMessage());
+            throw new CommunicationException(e);
         } catch (InvalidTokenException e) {
+            setAccessToken(null);
             logger.debug("[getHomeAppliance({})] Retrying method.", haId);
             return getHomeAppliance(haId);
         }
-
-        return null;
     }
 
     /**
      * Get power state of device.
      *
      * @param haId home appliance id
-     * @return {@link Data} or null in case of communication error
+     * @return {@link Data}
      * @throws CommunicationException
-     * @throws ConfigurationException
      */
-    public Data getPowerState(String haId) throws ConfigurationException, CommunicationException {
+    public Data getPowerState(String haId) throws CommunicationException {
         return getSetting(haId, "BSH.Common.Setting.PowerState");
     }
 
@@ -177,9 +180,8 @@ public class HomeConnectApiClient {
      * @param haId  home appliance id
      * @param state target state
      * @throws CommunicationException
-     * @throws ConfigurationException
      */
-    public void setPowerState(String haId, String state) throws ConfigurationException, CommunicationException {
+    public void setPowerState(String haId, String state) throws CommunicationException {
         putSettings(haId, new Data("BSH.Common.Setting.PowerState", state, null));
     }
 
@@ -187,11 +189,10 @@ public class HomeConnectApiClient {
      * Get setpoint temperature of freezer
      *
      * @param haId home appliance id
-     * @return {@link Data} or null in case of communication error
-     * @throws ConfigurationException
+     * @return {@link Data}
      * @throws CommunicationException
      */
-    public Data getFreezerSetpointTemperature(String haId) throws ConfigurationException, CommunicationException {
+    public Data getFreezerSetpointTemperature(String haId) throws CommunicationException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer");
     }
 
@@ -200,11 +201,9 @@ public class HomeConnectApiClient {
      *
      * @param haId  home appliance id
      * @param state new temperature
-     * @throws ConfigurationException
      * @throws CommunicationException
      */
-    public void setFreezerSetpointTemperature(String haId, String state, String unit)
-            throws ConfigurationException, CommunicationException {
+    public void setFreezerSetpointTemperature(String haId, String state, String unit) throws CommunicationException {
         putSettings(haId, new Data("Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer", state, unit),
                 true);
     }
@@ -214,10 +213,9 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data} or null in case of communication error
-     * @throws ConfigurationException
      * @throws CommunicationException
      */
-    public Data getFridgeSetpointTemperature(String haId) throws ConfigurationException, CommunicationException {
+    public Data getFridgeSetpointTemperature(String haId) throws CommunicationException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator");
     }
 
@@ -226,11 +224,9 @@ public class HomeConnectApiClient {
      *
      * @param haId  home appliance id
      * @param state new temperature
-     * @throws ConfigurationException
      * @throws CommunicationException
      */
-    public void setFridgeSetpointTemperature(String haId, String state, String unit)
-            throws ConfigurationException, CommunicationException {
+    public void setFridgeSetpointTemperature(String haId, String state, String unit) throws CommunicationException {
         putSettings(haId, new Data("Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator", state, unit),
                 true);
     }
@@ -239,11 +235,10 @@ public class HomeConnectApiClient {
      * Get fridge super mode
      *
      * @param haId home appliance id
-     * @return {@link Data} or null in case of communication error
-     * @throws ConfigurationException
+     * @return {@link Data}
      * @throws CommunicationException
      */
-    public Data getFridgeSuperMode(String haId) throws ConfigurationException, CommunicationException {
+    public Data getFridgeSuperMode(String haId) throws CommunicationException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator");
     }
 
@@ -251,11 +246,10 @@ public class HomeConnectApiClient {
      * Get freezer super mode
      *
      * @param haId home appliance id
-     * @return {@link Data} or null in case of communication error
-     * @throws ConfigurationException
+     * @return {@link Data}
      * @throws CommunicationException
      */
-    public Data getFreezerSuperMode(String haId) throws ConfigurationException, CommunicationException {
+    public Data getFreezerSuperMode(String haId) throws CommunicationException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer");
     }
 
@@ -263,11 +257,10 @@ public class HomeConnectApiClient {
      * Get door state of device.
      *
      * @param haId home appliance id
-     * @return {@link Data} or null in case of communication error
+     * @return {@link Data}
      * @throws CommunicationException
-     * @throws ConfigurationException
      */
-    public Data getDoorState(String haId) throws ConfigurationException, CommunicationException {
+    public Data getDoorState(String haId) throws CommunicationException {
         return getStatus(haId, "BSH.Common.Status.DoorState");
     }
 
@@ -275,11 +268,10 @@ public class HomeConnectApiClient {
      * Get operation state of device.
      *
      * @param haId home appliance id
-     * @return {@link Data} or null in case of communication error
+     * @return {@link Data}
      * @throws CommunicationException
-     * @throws ConfigurationException
      */
-    public Data getOperationState(String haId) throws ConfigurationException, CommunicationException {
+    public Data getOperationState(String haId) throws CommunicationException {
         return getStatus(haId, "BSH.Common.Status.OperationState");
     }
 
@@ -289,9 +281,8 @@ public class HomeConnectApiClient {
      * @param haId haId home appliance id
      * @return
      * @throws CommunicationException
-     * @throws ConfigurationException
      */
-    public boolean isRemoteControlStartAllowed(String haId) throws ConfigurationException, CommunicationException {
+    public boolean isRemoteControlStartAllowed(String haId) throws CommunicationException {
         Data data = getStatus(haId, "BSH.Common.Status.RemoteControlStartAllowed");
         return data != null && "true".equalsIgnoreCase(data.getValue());
     }
@@ -302,9 +293,8 @@ public class HomeConnectApiClient {
      * @param haId haId home appliance id
      * @return
      * @throws CommunicationException
-     * @throws ConfigurationException
      */
-    public boolean isRemoteControlActive(String haId) throws ConfigurationException, CommunicationException {
+    public boolean isRemoteControlActive(String haId) throws CommunicationException {
         Data data = getStatus(haId, "BSH.Common.Status.RemoteControlActive");
         return data != null && "true".equalsIgnoreCase(data.getValue());
     }
@@ -313,11 +303,10 @@ public class HomeConnectApiClient {
      * Get active program of device.
      *
      * @param haId home appliance id
-     * @return {@link Data} or null in case of communication error or if there is no active program
+     * @return {@link Data} or null if there is no active program
      * @throws CommunicationException
-     * @throws ConfigurationException
      */
-    public Program getActiveProgram(String haId) throws ConfigurationException, CommunicationException {
+    public Program getActiveProgram(String haId) throws CommunicationException {
         return getProgram(haId, "/api/homeappliances/" + haId + "/programs/active");
     }
 
@@ -325,12 +314,31 @@ public class HomeConnectApiClient {
      * Get selected program of device.
      *
      * @param haId home appliance id
-     * @return {@link Data} or null in case of communication error or if there is no selected program
+     * @return {@link Data} or null if there is no selected program
      * @throws CommunicationException
-     * @throws ConfigurationException
      */
-    public Program getSelectedProgram(String haId) throws ConfigurationException, CommunicationException {
+    public Program getSelectedProgram(String haId) throws CommunicationException {
         return getProgram(haId, "/api/homeappliances/" + haId + "/programs/selected");
+    }
+
+    public void setSelectedProgram(String haId, String program) throws CommunicationException {
+        putData(haId, "/api/homeappliances/" + haId + "/programs/selected", new Data(program, null, null), false);
+    }
+
+    public void startProgram(String haId, String program) throws CommunicationException {
+        putData(haId, "/api/homeappliances/" + haId + "/programs/active", new Data(program, null, null), false);
+    }
+
+    public void stopProgram(String haId) throws CommunicationException {
+        sendDelete(haId, "/api/homeappliances/" + haId + "/programs/active");
+    }
+
+    public List<AvailableProgram> getPrograms(String haId) throws CommunicationException {
+        return getAvailablePrograms(haId, "/api/homeappliances/" + haId + "/programs");
+    }
+
+    public List<AvailableProgram> getAvailablePrograms(String haId) throws CommunicationException {
+        return getAvailablePrograms(haId, "/api/homeappliances/" + haId + "/programs/available");
     }
 
     /**
@@ -341,20 +349,20 @@ public class HomeConnectApiClient {
      *
      * @param eventListener
      * @throws CommunicationException
-     * @throws ConfigurationException
      */
     public synchronized void registerEventListener(ServerSentEventListener eventListener)
-            throws ConfigurationException, CommunicationException {
+            throws CommunicationException {
         String haId = eventListener.haId();
 
         logger.debug("Register event listener: {}", eventListener);
         eventListeners.add(eventListener);
 
         if (!serverSentEvent.containsKey(haId)) {
-            checkAccessToken();
+            checkOrRefreshAccessToken();
             Request request = new Request.Builder().url(apiUrl + "/api/homeappliances/" + haId + "/events")
-                    .addHeader("Authorization", "Bearer " + getToken()).build();
+                    .header(ACCEPT, TEXT_EVENT_STREAM).addHeader("Authorization", "Bearer " + getAccessToken()).build();
 
+            logger.debug("Create new SSE listener");
             ServerSentEvent sse = oksse.newServerSentEvent(request, new ServerSentEvent.Listener() {
 
                 @Override
@@ -368,15 +376,15 @@ public class HomeConnectApiClient {
                         if (KEEP_ALIVE.equals(event)) {
                             logger.debug("[{}] SSE KEEP-ALIVE", haId);
                         } else {
-                            logger.debug("[{}] SSE received id: {} event: {} message:{}", haId, id, event, message);
+                            logger.debug("[{}] SSE received id: {}, event: {}, message:\n{}", haId, id, event,
+                                    toPrettyFormat(message));
                         }
                     }
 
                     if (!isEmpty(message) && !EMPTY_EVENT.equals(message)) {
-                        logger.debug("{}", message.getBytes());
                         ArrayList<Event> events = mapToEvents(message);
                         events.forEach(e -> eventListeners.forEach(listener -> {
-                            if (listener.haId().equals(haId)) {
+                            if (listener.haId().equalsIgnoreCase(haId)) {
                                 listener.onEvent(e);
                             }
                         }));
@@ -405,36 +413,52 @@ public class HomeConnectApiClient {
                 @Override
                 public boolean onRetryError(ServerSentEvent sse, Throwable throwable, Response response) {
                     boolean ret = true;
-                    if (logger.isDebugEnabled() && throwable != null) {
-                        logger.debug("[{}] SSE error.", haId, throwable);
+                    if (logger.isWarnEnabled() && throwable != null) {
+                        logger.warn("[{}] SSE error: {}", haId, throwable.getMessage());
                     }
 
                     if (response != null && response.code() == HTTP_FORBIDDEN) {
                         logger.warn(
                                 "[{}] Stopping SSE listener! Got FORBIDDEN response from server. Please check if you allowed to access this device.",
                                 haId);
+
+                        serverSentEvent.remove(haId);
+                        eventListeners.remove(eventListener);
                         ret = false;
                     }
 
                     if (response != null && response.code() == HTTP_UNAUTHORIZED) {
-                        logger.error("SSE token became invalid --> close SSE");
+                        logger.error("SSE access token became invalid.");
 
-                        // invalidate old token
+                        // invalidate old access token and create new one
                         synchronized (HomeConnectApiClient.this) {
-                            setAccessToken(null);
+
                             try {
-                                checkAccessToken();
+                                setAccessToken(null);
+                                checkOrRefreshAccessToken();
+                                ret = true;
+                            } catch (CommunicationException e) {
+                                logger.error("Could not create new SSE!", e);
+
                                 serverSentEvent.remove(haId);
                                 eventListeners.remove(eventListener);
-                                registerEventListener(eventListener);
-                                sse.close();
-
-                            } catch (ConfigurationException | CommunicationException e) {
-                                logger.error("Could not refresh token!", e);
+                                ret = false;
                             }
+
+                            // serverSentEvent.remove(haId);
+                            // eventListeners.remove(eventListener);
+                            // sse.close();
+                            //
+                            // // re-register
+                            // try {
+                            // checkOrRefreshAccessToken();
+                            // registerEventListener(eventListener);
+                            // } catch (CommunicationException e) {
+                            // logger.error("Could not create new SSE!", e);
+                            // }
                         }
 
-                        ret = false;
+                        // ret = false;
                     }
 
                     if (response != null) {
@@ -494,41 +518,43 @@ public class HomeConnectApiClient {
         serverSentEvent.clear();
     }
 
-    private Data getSetting(String haId, String setting) throws ConfigurationException, CommunicationException {
+    private Data getSetting(String haId, String setting) throws CommunicationException {
         return getData(haId, "/api/homeappliances/" + haId + "/settings/" + setting);
     }
 
-    private void putSettings(String haId, Data data) throws ConfigurationException, CommunicationException {
+    private void putSettings(String haId, Data data) throws CommunicationException {
         putSettings(haId, data, false);
     }
 
-    private void putSettings(String haId, Data data, boolean asInt)
-            throws ConfigurationException, CommunicationException {
+    private void putSettings(String haId, Data data, boolean asInt) throws CommunicationException {
         putData(haId, "/api/homeappliances/" + haId + "/settings/" + data.getName(), data, asInt);
     }
 
-    private Data getStatus(String haId, String status) throws ConfigurationException, CommunicationException {
+    private Data getStatus(String haId, String status) throws CommunicationException {
         return getData(haId, "/api/homeappliances/" + haId + "/status/" + status);
     }
 
-    private synchronized Program getProgram(String haId, String path)
-            throws ConfigurationException, CommunicationException {
-        checkAccessToken();
+    private synchronized Program getProgram(String haId, String path) throws CommunicationException {
+        checkOrRefreshAccessToken();
 
-        Request request = new Request.Builder().url(apiUrl + path).header(ACCEPT, BSH_JSON_V1).get()
-                .addHeader("Authorization", "Bearer " + getToken()).build();
+        Request request = createGetRequest(path);
 
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(Arrays.asList(HTTP_OK, HTTP_NOT_FOUND), response);
             String body = response.body().string();
-            logger.debug("[getProgram({}, {})] Response code: {}, body: {}", haId, path, response.code(), body);
+            if (logger.isDebugEnabled()) {
+                logger.debug("[getProgram({}, {})] Response code: {}, \n{}", haId, path, response.code(),
+                        toPrettyFormat(body));
+            }
 
             if (response.code() == HTTP_OK) {
                 return mapToProgram(body);
             }
         } catch (IOException e) {
-            logger.error("Token does not work!", e);
+            logger.error("IOException: {}", e.getMessage());
+            throw new CommunicationException(e);
         } catch (InvalidTokenException e) {
+            setAccessToken(null);
             logger.debug("[getProgram({}, {})] Retrying method.", haId, path);
             return getProgram(haId, path);
         }
@@ -536,36 +562,88 @@ public class HomeConnectApiClient {
         return null;
     }
 
-    private synchronized Data getData(String haId, String path) throws ConfigurationException, CommunicationException {
-        checkAccessToken();
+    private synchronized List<AvailableProgram> getAvailablePrograms(String haId, String path)
+            throws CommunicationException {
+        checkOrRefreshAccessToken();
 
-        Request request = new Request.Builder().url(apiUrl + path).header(ACCEPT, BSH_JSON_V1).get()
-                .addHeader("Authorization", "Bearer " + getToken()).build();
+        Request request = createGetRequest(path);
+
+        try (Response response = client.newCall(request).execute()) {
+            checkResponseCode(Arrays.asList(HTTP_OK), response);
+            String body = response.body().string();
+            if (logger.isDebugEnabled()) {
+                logger.debug("[getProgram({}, {})] Response code: {}, \n{}", haId, path, response.code(),
+                        toPrettyFormat(body));
+            }
+
+            return mapToAvailablePrograms(body);
+        } catch (IOException e) {
+            logger.error("IOException: {}", e.getMessage());
+            throw new CommunicationException(e);
+        } catch (InvalidTokenException e) {
+            setAccessToken(null);
+            logger.debug("[getAvailablePrograms({}, {})] Retrying method.", haId, path);
+            return getAvailablePrograms(haId, path);
+        }
+    }
+
+    private synchronized void sendDelete(String haId, String path) throws CommunicationException {
+        checkOrRefreshAccessToken();
+
+        Request request = new Request.Builder().url(apiUrl + path).header(ACCEPT, BSH_JSON_V1).delete()
+                .addHeader("Authorization", "Bearer " + getAccessToken()).build();
+
+        try (Response response = client.newCall(request).execute()) {
+            checkResponseCode(HTTP_NO_CONTENT, response);
+            if (logger.isDebugEnabled()) {
+                logger.debug("[sendDelete({}, {})] Response code: {}", haId, path, response.code());
+            }
+
+        } catch (IOException e) {
+            logger.error("IOException: {}", e.getMessage());
+            throw new CommunicationException(e);
+        } catch (InvalidTokenException e) {
+            setAccessToken(null);
+            logger.debug("[sendDelete({}, {})] Retrying method.", haId, path);
+            sendDelete(haId, path);
+        }
+    }
+
+    private synchronized Data getData(String haId, String path) throws CommunicationException {
+        checkOrRefreshAccessToken();
+
+        Request request = createGetRequest(path);
 
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, response);
             String body = response.body().string();
-            logger.debug("[getData({}, {})] Response code: {}, body: {}", haId, path, response.code(), body);
+            if (logger.isDebugEnabled()) {
+                logger.debug("[getData({}, {})] Response code: {}, \n{}", haId, path, response.code(),
+                        toPrettyFormat(body));
+            }
 
             return mapToState(body);
         } catch (IOException e) {
-            logger.error("Token does not work!", e);
+            logger.error("IOException: {}", e.getMessage());
+            throw new CommunicationException(e);
         } catch (InvalidTokenException e) {
+            setAccessToken(null);
             logger.debug("[getData({}, {})] Retrying method.", haId, path);
             return getData(haId, path);
         }
-
-        return null;
     }
 
     private synchronized void putData(String haId, String path, Data data, boolean asInt)
-            throws ConfigurationException, CommunicationException {
+            throws CommunicationException {
         JsonObject innerObject = new JsonObject();
         innerObject.addProperty("key", data.getName());
-        if (asInt) {
-            innerObject.addProperty("value", Integer.valueOf(data.getValue()));
-        } else {
-            innerObject.addProperty("value", data.getValue());
+
+        if (data.getValue() != null) {
+            if (asInt) {
+                innerObject.addProperty("value", Integer.valueOf(data.getValue()));
+            } else {
+                innerObject.addProperty("value", data.getValue());
+            }
         }
 
         if (data.getUnit() != null) {
@@ -578,24 +656,30 @@ public class HomeConnectApiClient {
         MediaType JSON = MediaType.parse(BSH_JSON_V1);
         RequestBody requestBody = RequestBody.create(JSON, dataObject.toString());
 
-        checkAccessToken();
-        Request request = new Request.Builder().url(apiUrl + path).header(ACCEPT, BSH_JSON_V1).put(requestBody)
-                .addHeader("Authorization", "Bearer " + getToken()).build();
+        checkOrRefreshAccessToken();
+        Request request = new Request.Builder().url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
+                .header(ACCEPT, BSH_JSON_V1).put(requestBody).addHeader("Authorization", "Bearer " + getAccessToken())
+                .build();
 
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_NO_CONTENT, response);
             String body = response.body().string();
-            logger.debug("[putData({}, {}, {})] Response code: {} body: {}", haId, path, data, response.code(), body);
+            if (logger.isDebugEnabled()) {
+                logger.debug("[putData({}, {}, {})] Response code: {} \n{}", haId, path, data, response.code(),
+                        toPrettyFormat(body));
+            }
 
         } catch (IOException e) {
-            logger.error("Token does not work!", e);
+            logger.error("IOException: {}", e.getMessage());
+            throw new CommunicationException(e);
         } catch (InvalidTokenException e) {
+            setAccessToken(null);
             logger.debug("[putData({}, {}, {})] Retrying method.", haId, path, data);
             putData(haId, path, data, asInt);
         }
     }
 
-    private String getToken() {
+    private String getAccessToken() {
         return accessToken;
     }
 
@@ -603,36 +687,40 @@ public class HomeConnectApiClient {
         return this.accessToken = token;
     }
 
-    private void checkAccessToken() throws CommunicationException {
-        if (isEmpty(accessToken)) {
+    private void checkOrRefreshAccessToken() throws CommunicationException {
+        if (isEmpty(getAccessToken())) {
             String newAccessToken = newAccessTokenFunction.get();
             if (isEmpty(newAccessToken)) {
-                accessToken = null;
                 throw new CommunicationException("Could not get access token!");
             }
+            setAccessToken(newAccessToken);
         }
     }
 
     private void checkResponseCode(int desiredCode, Response response)
-            throws CommunicationException, IOException, InvalidTokenException, ConfigurationException {
+            throws CommunicationException, InvalidTokenException {
         checkResponseCode(Arrays.asList(desiredCode), response);
     }
 
     private void checkResponseCode(List<Integer> desiredCodes, Response response)
-            throws CommunicationException, IOException, InvalidTokenException, ConfigurationException {
+            throws CommunicationException, InvalidTokenException {
 
         if (!desiredCodes.contains(HTTP_UNAUTHORIZED) && response.code() == HTTP_UNAUTHORIZED) {
-            logger.debug("[oAuth] Current token is invalid --> need to refresh!");
-            setAccessToken(null);
-
+            logger.debug("[oAuth] Current access token is invalid --> need to refresh!");
             throw new InvalidTokenException("Token invalid!");
         }
 
         if (!desiredCodes.contains(response.code())) {
             int code = response.code();
             String message = response.message();
+            String body = "";
+            try {
+                body = response.body().string();
+            } catch (IOException e) {
+                logger.error("Could not get HTTP response body as string", e);
+            }
 
-            throw new CommunicationException(code, message, response.body().string());
+            throw new CommunicationException(code, message, body);
         }
     }
 
@@ -656,6 +744,31 @@ public class HomeConnectApiClient {
 
             optionList.add(new Option(key, value, unit));
         });
+
+        return result;
+    }
+
+    private List<AvailableProgram> mapToAvailablePrograms(String json) {
+        ArrayList<AvailableProgram> result = new ArrayList<>();
+
+        try {
+            JsonObject responseObject = new JsonParser().parse(json).getAsJsonObject();
+
+            JsonArray programs = responseObject.getAsJsonObject("data").getAsJsonArray("programs");
+            programs.forEach(program -> {
+                JsonObject obj = (JsonObject) program;
+                String key = obj.get("key") != null ? obj.get("key").getAsString() : null;
+                JsonObject constraints = obj.getAsJsonObject("constraints");
+                boolean available = constraints.get("available") != null ? constraints.get("available").getAsBoolean()
+                        : false;
+                String execution = constraints.get("execution") != null ? constraints.get("execution").getAsString()
+                        : null;
+
+                result.add(new AvailableProgram(key, available, execution));
+            });
+        } catch (Exception e) {
+            logger.error("Could not parse available programs response!", e.getMessage());
+        }
 
         return result;
     }
@@ -720,6 +833,24 @@ public class HomeConnectApiClient {
             logger.error("Could not parse event! {}", e.getMessage());
         }
         return events;
+    }
+
+    private Request createGetRequest(String path) {
+        return new Request.Builder().url(apiUrl + path).header(ACCEPT, BSH_JSON_V1).get()
+                .addHeader("Authorization", "Bearer " + getAccessToken()).build();
+    }
+
+    private String toPrettyFormat(String jsonString) {
+        try {
+            JsonParser parser = new JsonParser();
+            JsonObject json = parser.parse(jsonString).getAsJsonObject();
+
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            String prettyJson = gson.toJson(json);
+            return prettyJson;
+        } catch (Exception e) {
+            return jsonString;
+        }
     }
 
 }

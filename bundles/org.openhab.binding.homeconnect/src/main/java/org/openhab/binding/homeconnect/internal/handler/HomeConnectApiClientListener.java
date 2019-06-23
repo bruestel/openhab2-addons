@@ -25,6 +25,6 @@ import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
  */
 public interface HomeConnectApiClientListener {
 
-    void refreshClient(@NonNull HomeConnectApiClient apiClient);
+    void refreshApiClient(@NonNull HomeConnectApiClient apiClient);
 
 }

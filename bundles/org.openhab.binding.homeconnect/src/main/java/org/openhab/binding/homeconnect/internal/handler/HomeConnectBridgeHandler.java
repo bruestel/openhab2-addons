@@ -12,6 +12,8 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
+import static org.apache.commons.lang.StringUtils.isEmpty;
+
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -31,7 +33,6 @@ import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.OAuthHelper;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.exception.ConfigurationException;
 import org.openhab.binding.homeconnect.internal.client.model.Token;
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
 import org.slf4j.Logger;
@@ -87,13 +88,13 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
         ApiBridgeConfiguration config = getConfiguration();
         if (StringUtils.isEmpty(config.getRefreshToken())) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING,
-                    "Please login in through web site: http(s)://<YOUROPENHAB>:<YOURPORT>/homeconnect");
+                    "Please authenticate your account at http(s)://<YOUROPENHAB>:<YOURPORT>/homeconnect (e.g. http://192.168.178.100:8080/homeconnect).");
         } else {
             // check token
             String refreshToken = config.getRefreshToken();
             String accessToken = config.getAccessToken();
             try {
-                if (StringUtils.isEmpty(accessToken)) {
+                if (isEmpty(accessToken)) {
                     Token token = OAuthHelper.refreshToken(config.getClientId(), config.getClientSecret(), refreshToken,
                             config.isSimulator());
                     updateToken(token.getAccessToken(), token.getRefreshToken());
@@ -116,30 +117,29 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
                 });
                 setApiClient(apiClient);
 
-                if (apiClient.getHomeAppliances() != null) {
-                    updateStatus(ThingStatus.ONLINE);
+                // check if client works
+                apiClient.getHomeAppliances();
+                updateStatus(ThingStatus.ONLINE);
 
-                    // update API clients of bridge children
-                    logger.debug("Refresh client handlers.");
-                    List<Thing> children = getThing().getThings();
-                    for (Thing thing : children) {
-                        ThingHandler childHandler = thing.getHandler();
-                        HomeConnectApiClient client = apiClient;
-                        if (childHandler instanceof HomeConnectApiClientListener && client != null) {
-                            ((HomeConnectApiClientListener) childHandler).refreshClient(client);
-                        }
+                // update API clients of bridge children
+                logger.debug("Bridge finished initializing process --> refresh client handlers");
+                List<Thing> children = getThing().getThings();
+                for (Thing thing : children) {
+                    ThingHandler childHandler = thing.getHandler();
+                    HomeConnectApiClient client = apiClient;
+                    if (childHandler instanceof HomeConnectApiClientListener && client != null) {
+                        ((HomeConnectApiClientListener) childHandler).refreshApiClient(client);
                     }
-
-                } else {
-                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                            "Token seems to be invalid!");
-                    scheduleReinitialize(REINITIALIZATION_LONG_DELAY);
                 }
-            } catch (ConfigurationException e) {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
+            } catch (RuntimeException e) {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                        "Home Connect service is not reachable or a problem occurred! Retrying in a couple of seconds ("
+                                + e.getMessage() + ").");
                 scheduleReinitialize(REINITIALIZATION_LONG_DELAY);
             } catch (CommunicationException e) {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                        "Home Connect service is not reachable or a problem occurred! Retrying in a couple of seconds ("
+                                + e.getMessage() + ").");
                 scheduleReinitialize(REINITIALIZATION_MEDIUM_DELAY);
             }
         }
@@ -149,13 +149,13 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     public void childHandlerInitialized(ThingHandler childHandler, Thing childThing) {
         HomeConnectApiClient client = apiClient;
         if (childHandler instanceof HomeConnectApiClientListener && client != null) {
-            ((HomeConnectApiClientListener) childHandler).refreshClient(client);
+            ((HomeConnectApiClientListener) childHandler).refreshApiClient(client);
         }
     }
 
-    @SuppressWarnings("null")
     @Override
     public void dispose() {
+        ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture;
         if (reinitializationFuture != null && !reinitializationFuture.isDone()) {
             reinitializationFuture.cancel(true);
         }
@@ -189,8 +189,8 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
         initialize();
     }
 
-    @SuppressWarnings("null")
     private synchronized void scheduleReinitialize(int seconds) {
+        ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture;
         if (reinitializationFuture != null && !reinitializationFuture.isDone()) {
             logger.debug("Reinitialization is already scheduled. Starting in {} seconds.",
                     reinitializationFuture.getDelay(TimeUnit.SECONDS));

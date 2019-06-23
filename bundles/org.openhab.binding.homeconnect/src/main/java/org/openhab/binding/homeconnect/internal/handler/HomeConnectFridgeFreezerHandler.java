@@ -24,7 +24,6 @@ import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.exception.ConfigurationException;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,7 +112,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                 }
 
             }
-        } catch (ConfigurationException | CommunicationException e) {
+        } catch (CommunicationException e) {
             logger.error("API communication problem while trying to update {}!", getThingHaId(), e);
         }
     }

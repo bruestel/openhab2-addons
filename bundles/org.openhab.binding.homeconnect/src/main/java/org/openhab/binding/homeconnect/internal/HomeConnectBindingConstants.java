@@ -72,6 +72,7 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_OPERATION_STATE = "operation_state";
     public static final String CHANNEL_ACTIVE_PROGRAM_STATE = "active_program_state";
     public static final String CHANNEL_SELECTED_PROGRAM_STATE = "selected_program_state";
+    public static final String CHANNEL_BASIC_ACTIONS_STATE = "basic_actions_state";
     public static final String CHANNEL_REMOTE_START_ALLOWANCE_STATE = "remote_start_allowance_state";
     public static final String CHANNEL_REMOTE_CONTROL_ACTIVE_STATE = "remote_control_active_state";
     public static final String CHANNEL_REMAINING_PROGRAM_TIME_STATE = "remaining_program_time_state";
@@ -105,6 +106,9 @@ public class HomeConnectBindingConstants {
     public static final String STATE_DOOR_OPEN = "BSH.Common.EnumType.DoorState.Open";
     public static final String STATE_DOOR_LOCKED = "BSH.Common.EnumType.DoorState.Locked";
     public static final String STATE_DOOR_CLOSED = "BSH.Common.EnumType.DoorState.Closed";
+    public static final String STATE_OPERATION_READY = "BSH.Common.EnumType.OperationState.Ready";
+    public static final String STATE_OPERATION_FINISHED = "BSH.Common.EnumType.OperationState.Finished";
+    public static final String STATE_OPERATION_RUN = "BSH.Common.EnumType.OperationState.Run";
 
     // List of program options
     public static final String OPTION_REMAINING_PROGRAM_TIME = "BSH.Common.Option.RemainingProgramTime";
@@ -121,6 +125,6 @@ public class HomeConnectBindingConstants {
     public static final String API_SIMULATOR_BASE_URL = "https://simulator.home-connect.com/";
     public static final String OAUTH_TOKEN_PATH = "security/oauth/token";
     public static final String OAUTH_AUTHORIZE_PATH = "security/oauth/authorize";
-    public static final String OAUTH_SCOPE = "IdentifyAppliance Monitor Settings";
+    public static final String OAUTH_SCOPE = "IdentifyAppliance Monitor Settings Dishwasher-Control Washer-Control Dryer-Control WasherDryer-Control CoffeeMaker-Control Hood-Control CleaningRobot-Control";
 
 }
