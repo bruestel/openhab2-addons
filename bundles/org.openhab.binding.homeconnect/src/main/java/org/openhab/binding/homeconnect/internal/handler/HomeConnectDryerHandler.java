@@ -35,8 +35,9 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
 
     private final Logger logger = LoggerFactory.getLogger(HomeConnectDryerHandler.class);
 
-    public HomeConnectDryerHandler(Thing thing) {
-        super(thing);
+    public HomeConnectDryerHandler(Thing thing,
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
+        super(thing, dynamicStateDescriptionProvider);
         // event handler
         registerEventHandler(EVENT_DOOR_STATE, defaultDoorStateEventHandler());
         registerEventHandler(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());

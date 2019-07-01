@@ -15,10 +15,8 @@ package org.openhab.binding.homeconnect.internal.handler;
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.*;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
-import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.QuantityType;
@@ -26,11 +24,7 @@ import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.StateDescription;
-import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
-import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
-import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.slf4j.Logger;
@@ -46,13 +40,11 @@ import org.slf4j.LoggerFactory;
 public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandler {
 
     private final Logger logger = LoggerFactory.getLogger(HomeConnectDishwasherHandler.class);
-    private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
 
     public HomeConnectDishwasherHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
-        super(thing);
+        super(thing, dynamicStateDescriptionProvider);
         resetProgramStateChannels();
-        this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
     }
 
     @Override
@@ -63,15 +55,7 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
         handlers.put(CHANNEL_OPERATION_STATE, defaultOperationStateChannelUpdateHandler());
         handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
-        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, (channelUID, client) -> {
-            // TODO can we use default impl.?
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                updateState(channelUID, new StringType(program.getKey()));
-            } else {
-                updateState(channelUID, UnDefType.NULL);
-            }
-        });
+        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, defaultSelectedProgramStateUpdateHandler());
 
         // register dishwasher specific update handlers
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
@@ -109,13 +93,7 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
                 defaultBooleanEventHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE));
         handlers.put(EVENT_REMAINING_PROGRAM_TIME, defaultRemainingProgramTimeEventHandler());
         handlers.put(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
-        handlers.put(EVENT_SELECTED_PROGRAM, event -> {
-            // TODO can we use default impl.?
-            getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
-            });
-        });
+        handlers.put(EVENT_SELECTED_PROGRAM, defaultSelectedProgramStateEventHandler());
 
         // register dishwasher specific SSE event handlers
         handlers.put(EVENT_ACTIVE_PROGRAM, event -> {
@@ -204,29 +182,6 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
     @Override
     public String toString() {
         return "HomeConnectDishwasherHandler [haId: " + getThingHaId() + "]";
-    }
-
-    @Override
-    public void refreshApiClient(@NonNull HomeConnectApiClient apiClient) {
-        super.refreshApiClient(apiClient);
-
-        // update available selectable programs (dynamic program list)
-        try {
-            ArrayList<StateOption> stateOptions = new ArrayList<>();
-            apiClient.getPrograms(getThingHaId()).stream().filter(p -> p.isAvailable()).forEach(p -> {
-                stateOptions.add(new StateOption(p.getKey(), mapStringType(p.getKey())));
-            });
-
-            StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                    .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
-
-            if (stateDescription != null) {
-                dynamicStateDescriptionProvider.addStateDescriptions(
-                        getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).get().getUID().getAsString(), stateDescription);
-            }
-        } catch (CommunicationException e) {
-            logger.error("Could not fetch available programs. {}", e.getMessage());
-        }
     }
 
     private void resetProgramStateChannels() {

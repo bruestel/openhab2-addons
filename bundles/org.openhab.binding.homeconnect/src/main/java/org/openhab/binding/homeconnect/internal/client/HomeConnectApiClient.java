@@ -300,6 +300,18 @@ public class HomeConnectApiClient {
     }
 
     /**
+     * Is local control allowed?
+     *
+     * @param haId haId home appliance id
+     * @return
+     * @throws CommunicationException
+     */
+    public boolean isLocalControlActive(String haId) throws CommunicationException {
+        Data data = getStatus(haId, "BSH.Common.Status.LocalControlActive");
+        return data != null && "true".equalsIgnoreCase(data.getValue());
+    }
+
+    /**
      * Get active program of device.
      *
      * @param haId home appliance id
@@ -433,32 +445,32 @@ public class HomeConnectApiClient {
                         // invalidate old access token and create new one
                         synchronized (HomeConnectApiClient.this) {
 
-                            try {
-                                setAccessToken(null);
-                                checkOrRefreshAccessToken();
-                                ret = true;
-                            } catch (CommunicationException e) {
-                                logger.error("Could not create new SSE!", e);
-
-                                serverSentEvent.remove(haId);
-                                eventListeners.remove(eventListener);
-                                ret = false;
-                            }
-
-                            // serverSentEvent.remove(haId);
-                            // eventListeners.remove(eventListener);
-                            // sse.close();
-                            //
-                            // // re-register
                             // try {
+                            // setAccessToken(null);
                             // checkOrRefreshAccessToken();
-                            // registerEventListener(eventListener);
+                            // ret = true;
                             // } catch (CommunicationException e) {
                             // logger.error("Could not create new SSE!", e);
+                            //
+                            // serverSentEvent.remove(haId);
+                            // eventListeners.remove(eventListener);
+                            // ret = false;
                             // }
+
+                            setAccessToken(null);
+                            serverSentEvent.remove(haId);
+                            eventListeners.remove(eventListener);
+                            sse.close();
+
+                            // register
+                            try {
+                                registerEventListener(eventListener);
+                            } catch (CommunicationException e) {
+                                logger.error("Could not create new SSE!", e);
+                            }
                         }
 
-                        // ret = false;
+                        ret = false;
                     }
 
                     if (response != null) {

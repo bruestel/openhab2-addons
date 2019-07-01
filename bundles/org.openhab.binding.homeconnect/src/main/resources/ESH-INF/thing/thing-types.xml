@@ -165,12 +165,17 @@
 		<label>Coffee Machine</label>
 		<description>Home Connect connected coffee machine (e.g. Bosch or Siemens).</description>
 		<channels>
-			<channel id="door_state" typeId="door_state" />
+			<channel id="power_state" typeId="power_state" />
+			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
 			<channel id="operation_state" typeId="operation_state" />
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
 			<channel id="selected_program_state" typeId="selected_program_state" />
+			<channel id="basic_actions_state" typeId="basic_actions_state" />
 			<channel id="active_program_state" typeId="active_program_state" />
 			<channel id="program_progress_state" typeId="program_progress_state" />
+			<channel id="coffeemaker_drip_tray_full_state" typeId="coffeemaker_drip_tray_full_state" />
+			<channel id="coffeemaker_water_tank_empty_state" typeId="coffeemaker_water_tank_empty_state" />
+			<channel id="coffeemaker_bean_container_empty_state" typeId="coffeemaker_bean_container_empty_state" />
 		</channels>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
@@ -196,6 +201,30 @@
 		<label>Power State</label>
 		<description>This setting describes the current power state of the home appliance.</description>
 	</channel-type>
+    <channel-type id="local_control_active_state">
+        <item-type>Switch</item-type>
+        <label>Local Control State</label>
+        <description>This status indicates whether the home appliance is currently manually controlled by the user operating the home appliance, e.g. opening the door or pressing a button.</description>
+        <state readOnly="true" />
+    </channel-type>
+        <channel-type id="coffeemaker_drip_tray_full_state">
+        <item-type>Switch</item-type>
+        <label>Drip Tray Full</label>
+        <description>Is coffee maker drip tray full?</description>
+        <state readOnly="true" />
+    </channel-type>
+        <channel-type id="coffeemaker_water_tank_empty_state">
+        <item-type>Switch</item-type>
+        <label>Water Tank Empty</label>
+        <description>Is coffee maker water tank empty?</description>
+        <state readOnly="true" />
+    </channel-type>
+        <channel-type id="coffeemaker_bean_container_empty_state">
+        <item-type>Switch</item-type>
+        <label>Bean Container Empty</label>
+        <description>Is coffee maker bean container is empty?</description>
+        <state readOnly="true" />
+    </channel-type>
 	<channel-type id="power_state_read_only">
 		<item-type>Switch</item-type>
 		<label>Power State</label>

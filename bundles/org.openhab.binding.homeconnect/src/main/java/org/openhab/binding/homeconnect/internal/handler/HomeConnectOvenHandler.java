@@ -39,8 +39,9 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
 
     private final Logger logger = LoggerFactory.getLogger(HomeConnectOvenHandler.class);
 
-    public HomeConnectOvenHandler(Thing thing) {
-        super(thing);
+    public HomeConnectOvenHandler(Thing thing,
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
+        super(thing, dynamicStateDescriptionProvider);
 
         // register default SSE event handlers
         registerEventHandler(EVENT_ELAPSED_PROGRAM_TIME, defaultElapsedProgramTimeEventHandler());

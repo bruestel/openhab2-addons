@@ -53,6 +53,7 @@ public class HomeConnectBindingConstants {
     public static final String EVENT_SELECTED_PROGRAM = "BSH.Common.Root.SelectedProgram";
     public static final String EVENT_REMOTE_CONTROL_START_ALLOWED = "BSH.Common.Status.RemoteControlStartAllowed";
     public static final String EVENT_REMOTE_CONTROL_ACTIVE = "BSH.Common.Status.RemoteControlActive";
+    public static final String EVENT_LOCAL_CONTROL_ACTIVE = "BSH.Common.Status.LocalControlActive";
     public static final String EVENT_REMAINING_PROGRAM_TIME = "BSH.Common.Option.RemainingProgramTime";
     public static final String EVENT_PROGRAM_PROGRESS = "BSH.Common.Option.ProgramProgress";
     public static final String EVENT_SETPOINT_TEMPERATURE = "Cooking.Oven.Option.SetpointTemperature";
@@ -64,6 +65,9 @@ public class HomeConnectBindingConstants {
     public static final String EVENT_FREEZER_SUPER_MODE = "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer";
     public static final String EVENT_FRIDGE_SUPER_MODE = "Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator";
     public static final String EVENT_DRYER_DRYING_TARGET = "LaundryCare.Dryer.Option.DryingTarget";
+    public static final String EVENT_COFFEEMAKER_BEAN_CONTAINER_EMPTY = "ConsumerProducts.CoffeeMaker.Event.BeanContainerEmpty";
+    public static final String EVENT_COFFEEMAKER_WATER_TANK_EMPTY = "ConsumerProducts.CoffeeMaker.Event.WaterTankEmpty";
+    public static final String EVENT_COFFEEMAKER_DRIP_TRAY_FULL = "ConsumerProducts.CoffeeMaker.Event.DripTrayFull";
 
     // Channel IDs
     public static final String CHANNEL_DOOR_STATE = "door_state";
@@ -75,6 +79,7 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_BASIC_ACTIONS_STATE = "basic_actions_state";
     public static final String CHANNEL_REMOTE_START_ALLOWANCE_STATE = "remote_start_allowance_state";
     public static final String CHANNEL_REMOTE_CONTROL_ACTIVE_STATE = "remote_control_active_state";
+    public static final String CHANNEL_LOCAL_CONTROL_ACTIVE_STATE = "local_control_active_state";
     public static final String CHANNEL_REMAINING_PROGRAM_TIME_STATE = "remaining_program_time_state";
     public static final String CHANNEL_PROGRAM_PROGRESS_STATE = "program_progress_state";
     public static final String CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE = "oven_current_cavity_temperature";
@@ -87,6 +92,9 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_FREEZER_SETPOINT_TEMPERATURE = "setpoint_temperature_freezer";
     public static final String CHANNEL_FREEZER_SUPER_MODE = "super_mode_freezer";
     public static final String CHANNEL_DRYER_DRYING_TARGET = "dryer_drying_target";
+    public static final String CHANNEL_COFFEEMAKER_DRIP_TRAY_FULL_STATE = "coffeemaker_drip_tray_full_state";
+    public static final String CHANNEL_COFFEEMAKER_WATER_TANK_EMPTY_STATE = "coffeemaker_water_tank_empty_state";
+    public static final String CHANNEL_COFFEEMAKER_BEAN_CONTAINER_EMPTY_STATE = "coffeemaker_bean_container_empty_state";
 
     // List of all supported devices
     public static final Set<ThingTypeUID> SUPPORTED_DEVICE_THING_TYPES_UIDS = Stream
@@ -109,6 +117,7 @@ public class HomeConnectBindingConstants {
     public static final String STATE_OPERATION_READY = "BSH.Common.EnumType.OperationState.Ready";
     public static final String STATE_OPERATION_FINISHED = "BSH.Common.EnumType.OperationState.Finished";
     public static final String STATE_OPERATION_RUN = "BSH.Common.EnumType.OperationState.Run";
+    public static final String STATE_EVENT_PRESENT_STATE_OFF = "BSH.Common.EnumType.EventPresentState.Off";
 
     // List of program options
     public static final String OPTION_REMAINING_PROGRAM_TIME = "BSH.Common.Option.RemainingProgramTime";

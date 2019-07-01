@@ -108,15 +108,15 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
         } else if (THING_TYPE_DISHWASHER.equals(thingTypeUID)) {
             return new HomeConnectDishwasherHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_OVEN.equals(thingTypeUID)) {
-            return new HomeConnectOvenHandler(thing);
+            return new HomeConnectOvenHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_WASHER.equals(thingTypeUID)) {
-            return new HomeConnectWasherHandler(thing);
+            return new HomeConnectWasherHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_DRYER.equals(thingTypeUID)) {
-            return new HomeConnectDryerHandler(thing);
+            return new HomeConnectDryerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_FRIDGE_FREEZER.equals(thingTypeUID)) {
-            return new HomeConnectFridgeFreezerHandler(thing);
+            return new HomeConnectFridgeFreezerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_COFFEE_MAKER.equals(thingTypeUID)) {
-            return new HomeConnectCoffeeMakerHandler(thing);
+            return new HomeConnectCoffeeMakerHandler(thing, dynamicStateDescriptionProvider);
         }
 
         return null;

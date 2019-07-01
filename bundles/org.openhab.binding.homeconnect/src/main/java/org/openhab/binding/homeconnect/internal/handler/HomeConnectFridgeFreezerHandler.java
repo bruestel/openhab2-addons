@@ -39,8 +39,9 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
 
     private final Logger logger = LoggerFactory.getLogger(HomeConnectFridgeFreezerHandler.class);
 
-    public HomeConnectFridgeFreezerHandler(Thing thing) {
-        super(thing);
+    public HomeConnectFridgeFreezerHandler(Thing thing,
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
+        super(thing, dynamicStateDescriptionProvider);
 
         // register SSE event handlers
         registerEventHandler(EVENT_DOOR_STATE, defaultDoorStateEventHandler());

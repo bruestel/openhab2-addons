@@ -17,6 +17,7 @@ import static org.eclipse.smarthome.core.library.unit.SIUnits.CELSIUS;
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.*;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,6 +40,9 @@ import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.RefreshType;
+import org.eclipse.smarthome.core.types.StateDescription;
+import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
+import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
@@ -68,11 +72,14 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     private final ConcurrentHashMap<String, EventHandler> eventHandlers;
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
+    private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
 
-    public AbstractHomeConnectThingHandler(Thing thing) {
+    public AbstractHomeConnectThingHandler(Thing thing,
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
         super(thing);
         eventHandlers = new ConcurrentHashMap<>();
         channelUpdateHandlers = new ConcurrentHashMap<>();
+        this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
 
         configureEventHandlers(eventHandlers);
         configureChannelUpdateHandlers(channelUpdateHandlers);
@@ -165,6 +172,24 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             } catch (CommunicationException e) {
                 logger.error("Home Connect service is not reachable or a problem occurred! {}", e.getMessage());
             }
+        }
+
+        // update available selectable programs (dynamic program list)
+        try {
+            ArrayList<StateOption> stateOptions = new ArrayList<>();
+            apiClient.getPrograms(getThingHaId()).stream().filter(p -> p.isAvailable()).forEach(p -> {
+                stateOptions.add(new StateOption(p.getKey(), mapStringType(p.getKey())));
+            });
+
+            StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                    .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
+
+            if (stateDescription != null) {
+                dynamicStateDescriptionProvider.addStateDescriptions(
+                        getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).get().getUID().getAsString(), stateDescription);
+            }
+        } catch (CommunicationException e) {
+            logger.error("Could not fetch available programs. {}", e.getMessage());
         }
     }
 
@@ -381,6 +406,13 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         };
     }
 
+    protected EventHandler defaultEventPresentStateEventHandler(String channelId) {
+        return event -> {
+            getThingChannel(channelId).ifPresent(channel -> updateState(channel.getUID(),
+                    STATE_EVENT_PRESENT_STATE_OFF.equals(event.getValue()) ? OnOffType.OFF : OnOffType.ON));
+        };
+    }
+
     protected EventHandler defaultBooleanEventHandler(String channelId) {
         return event -> {
             getThingChannel(channelId).ifPresent(
@@ -399,7 +431,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         return event -> {
             getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(channel -> {
                 updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(mapStringType(event.getValue())));
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
             });
         };
     }
@@ -457,6 +489,12 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         };
     }
 
+    protected ChannelUpdateHandler defaultLocalControlActiveStateChannelUpdateHandler() {
+        return (channelUID, client) -> {
+            updateState(channelUID, client.isLocalControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF);
+        };
+    }
+
     protected ChannelUpdateHandler defaultRemoteStartAllowanceChannelUpdateHandler() {
         return (channelUID, client) -> {
             updateState(channelUID, client.isRemoteControlStartAllowed(getThingHaId()) ? OnOffType.ON : OnOffType.OFF);
@@ -467,7 +505,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         return (channelUID, client) -> {
             Program program = client.getSelectedProgram(getThingHaId());
             if (program != null && program.getKey() != null) {
-                updateState(channelUID, new StringType(mapStringType(program.getKey())));
+                updateState(channelUID, new StringType(program.getKey()));
             } else {
                 updateState(channelUID, UnDefType.NULL);
             }
