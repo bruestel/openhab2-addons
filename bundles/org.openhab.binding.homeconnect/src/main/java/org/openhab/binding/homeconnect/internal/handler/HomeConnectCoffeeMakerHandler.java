@@ -57,7 +57,7 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, defaultSelectedProgramStateUpdateHandler());
 
-        // register coffeemaker specific update handlers
+        // register coffee maker specific update handlers
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
             Program program = client.getActiveProgram(getThingHaId());
             if (program != null && program.getKey() != null) {
@@ -92,7 +92,7 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
         handlers.put(EVENT_COFFEEMAKER_WATER_TANK_EMPTY,
                 defaultEventPresentStateEventHandler(CHANNEL_COFFEEMAKER_WATER_TANK_EMPTY_STATE));
 
-        // register coffeemaker specific SSE event handlers
+        // register coffee maker specific SSE event handlers
         handlers.put(EVENT_PROGRAM_PROGRESS, event -> {
             if (event.getValue() == null || event.getValueAsInt() == 0) {
                 getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
@@ -150,7 +150,6 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
             }
 
             try {
-
                 // start or stop program
                 if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
                     updateState(channelUID, new StringType(""));

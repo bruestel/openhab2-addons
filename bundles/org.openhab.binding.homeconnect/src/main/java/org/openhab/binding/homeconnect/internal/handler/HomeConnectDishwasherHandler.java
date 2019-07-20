@@ -149,7 +149,6 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
             }
 
             try {
-
                 // start or stop program
                 if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
                     updateState(channelUID, new StringType(""));

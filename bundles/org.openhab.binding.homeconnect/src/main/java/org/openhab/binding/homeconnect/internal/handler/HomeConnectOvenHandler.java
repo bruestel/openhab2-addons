@@ -16,6 +16,7 @@ import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.*;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.OnOffType;
@@ -174,6 +175,14 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                 }
             }
         });
+    }
+
+    @Override
+    protected void configureChannelUpdateHandlers(ConcurrentHashMap<String, ChannelUpdateHandler> handlers) {
+    }
+
+    @Override
+    protected void configureEventHandlers(ConcurrentHashMap<String, EventHandler> handlers) {
     }
 
     @Override
