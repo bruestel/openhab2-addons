@@ -60,19 +60,21 @@
 		<label>Oven</label>
 		<description>Home Connect connected oven (e.g. Bosch or Siemens).</description>
 		<channels>
-			<channel id="power_state" typeId="power_state_read_only" />
+			<channel id="power_state" typeId="power_state" />
 			<channel id="door_state" typeId="door_state" />
 			<channel id="operation_state" typeId="operation_state" />
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
 			<channel id="remote_control_active_state" typeId="remote_control_active_state" />
 			<channel id="active_program_state" typeId="active_program_state" />
 			<channel id="selected_program_state" typeId="selected_program_state" />
+            <channel id="setpoint_temperature" typeId="setpoint_temperature" />
+            <channel id="duration" typeId="duration" />
+            <channel id="basic_actions_state" typeId="basic_actions_state" />
 			<channel id="remaining_program_time_state" typeId="remaining_program_time_state" />
 			<channel id="program_progress_state" typeId="program_progress_state" />
 			<channel id="oven_current_cavity_temperature" typeId="current_cavity_temperature" />
 			<channel id="elapsed_program_time" typeId="elapsed_program_time" />
-			<channel id="setpoint_temperature" typeId="setpoint_temperature" />
-			<channel id="duration" typeId="duration" />
+
 		</channels>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
@@ -300,13 +302,13 @@
 		<item-type>Number:Temperature</item-type>
 		<label>Setpoint Temperature</label>
 		<description>This status describes the intended cooking compartment temperature of the home appliance.</description>
-		<state readOnly="true" pattern="%.0f %unit%" />
+		<state pattern="%.0f %unit%" step="1" />
 	</channel-type>
 	<channel-type id="duration">
 		<item-type>Number:Time</item-type>
 		<label>Selected duration</label>
 		<description>This status describes the duration of the program of the home appliance.</description>
-		<state pattern="%d %unit%" readOnly="true"></state>
+		<state pattern="%d %unit%" step="60" min="60"></state>
 	</channel-type>
 	<channel-type id="laundry_care_washer_temperature">
 		<item-type>String</item-type>

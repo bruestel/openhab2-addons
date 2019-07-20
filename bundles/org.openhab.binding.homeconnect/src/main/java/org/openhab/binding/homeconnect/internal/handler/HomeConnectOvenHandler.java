@@ -18,12 +18,23 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.measure.IncommensurableException;
+import javax.measure.UnconvertibleException;
+import javax.measure.quantity.Temperature;
+import javax.measure.quantity.Time;
+
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.QuantityType;
 import org.eclipse.smarthome.core.library.types.StringType;
+import org.eclipse.smarthome.core.library.unit.ImperialUnits;
+import org.eclipse.smarthome.core.library.unit.SIUnits;
+import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
+import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Option;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.slf4j.Logger;
@@ -43,84 +54,45 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
     public HomeConnectOvenHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
         super(thing, dynamicStateDescriptionProvider);
+    }
 
-        // register default SSE event handlers
-        registerEventHandler(EVENT_ELAPSED_PROGRAM_TIME, defaultElapsedProgramTimeEventHandler());
-        registerEventHandler(EVENT_DOOR_STATE, defaultDoorStateEventHandler());
-        registerEventHandler(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
-        registerEventHandler(EVENT_REMOTE_CONTROL_ACTIVE,
-                defaultBooleanEventHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE));
-        registerEventHandler(EVENT_REMOTE_CONTROL_START_ALLOWED,
-                defaultBooleanEventHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE));
-        registerEventHandler(EVENT_REMAINING_PROGRAM_TIME, defaultRemainingProgramTimeEventHandler());
-        registerEventHandler(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
-        registerEventHandler(EVENT_SELECTED_PROGRAM, defaultSelectedProgramStateEventHandler());
-
-        // register oven specific SSE event handlers
-        registerEventHandler(EVENT_OVEN_CAVITY_TEMPERATURE, event -> {
-            getThingChannel(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
-                    new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
-        });
-        registerEventHandler(EVENT_DISCONNECTED, event -> {
-            getThingChannel(CHANNEL_POWER_STATE).ifPresent(channel -> updateState(channel.getUID(), OnOffType.OFF));
-            resetAllChannels();
-        });
-        registerEventHandler(EVENT_CONNECTED, event -> {
-            getThingChannel(CHANNEL_POWER_STATE).ifPresent(channel -> updateState(channel.getUID(), OnOffType.ON));
-
-            // revert active program states
-            resetProgramStateChannels();
-
-            // refresh all channels
-            updateChannels();
-        });
-        registerEventHandler(EVENT_POWER_STATE, event -> {
-            getThingChannel(CHANNEL_POWER_STATE).ifPresent(channel -> updateState(channel.getUID(),
-                    STATE_POWER_ON.equals(event.getValue()) ? OnOffType.ON : OnOffType.OFF));
-
-            if (STATE_POWER_ON.equals(event.getValue())) {
-                // revert active program states
-                resetProgramStateChannels();
-
-                // refresh all channels
-                updateChannels();
-            } else {
-                resetAllChannels();
-            }
-
-        });
-        registerEventHandler(EVENT_ACTIVE_PROGRAM, event -> {
-            getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(mapStringType(event.getValue())));
-
-                // revert other channels
-                if (event.getValue() == null) {
-                    resetProgramStateChannels();
-                }
-            });
-        });
-        registerEventHandler(EVENT_SETPOINT_TEMPERATURE, event -> {
-            getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
-                    new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
-        });
-        registerEventHandler(EVENT_DURATION, event -> {
-            getThingChannel(CHANNEL_DURATION).ifPresent(
-                    channel -> updateState(channel.getUID(), new QuantityType<>(event.getValueAsInt(), SECOND)));
-        });
-
+    @Override
+    protected void configureChannelUpdateHandlers(ConcurrentHashMap<String, ChannelUpdateHandler> handlers) {
         // register default update handlers
-        registerChannelUpdateHandler(CHANNEL_DOOR_STATE, defaultDoorStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_POWER_STATE, defaultPowerStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_OPERATION_STATE, defaultOperationStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE,
-                defaultRemoteControlActiveStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE,
-                defaultRemoteStartAllowanceChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_SELECTED_PROGRAM_STATE, defaultSelectedProgramStateUpdateHandler());
+        handlers.put(CHANNEL_OPERATION_STATE, defaultOperationStateChannelUpdateHandler());
+        handlers.put(CHANNEL_POWER_STATE, defaultPowerStateChannelUpdateHandler());
+        handlers.put(CHANNEL_DOOR_STATE, defaultDoorStateChannelUpdateHandler());
+        handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
+        handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
+        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, defaultSelectedProgramStateUpdateHandler());
 
         // register oven specific update handlers
-        registerChannelUpdateHandler(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
+        handlers.put(CHANNEL_SETPOINT_TEMPERATURE, (channelUID, client) -> {
+            Program program = client.getSelectedProgram(getThingHaId());
+            if (program != null && program.getKey() != null) {
+                Optional<Option> option = program.getOptions().stream()
+                        .filter(o -> o.getKey().equals(OPTION_SETPOINT_TEMPERATURE)).findFirst();
+                if (option.isPresent()) {
+                    updateState(channelUID,
+                            new QuantityType<>(option.get().getValueAsInt(), mapTemperature(option.get().getUnit())));
+                } else {
+                    updateState(channelUID, UnDefType.NULL);
+                }
+            }
+        });
+        handlers.put(CHANNEL_DURATION, (channelUID, client) -> {
+            Program program = client.getSelectedProgram(getThingHaId());
+            if (program != null && program.getKey() != null) {
+                Optional<Option> option = program.getOptions().stream().filter(o -> o.getKey().equals(OPTION_DURATION))
+                        .findFirst();
+                if (option.isPresent()) {
+                    updateState(channelUID, new QuantityType<>(option.get().getValueAsInt(), SECOND));
+                } else {
+                    updateState(channelUID, UnDefType.NULL);
+                }
+            }
+        });
+        handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
             Program program = client.getActiveProgram(getThingHaId());
             if (program != null && program.getKey() != null) {
                 updateState(channelUID, new StringType(mapStringType(program.getKey())));
@@ -150,39 +122,164 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                 resetProgramStateChannels();
             }
         });
-        registerChannelUpdateHandler(CHANNEL_SETPOINT_TEMPERATURE, (channelUID, client) -> {
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                Optional<Option> option = program.getOptions().stream()
-                        .filter(o -> o.getKey().equals(OPTION_SETPOINT_TEMPERATURE)).findFirst();
-                if (option.isPresent()) {
-                    updateState(channelUID,
-                            new QuantityType<>(option.get().getValueAsInt(), mapTemperature(option.get().getUnit())));
-                } else {
-                    updateState(channelUID, UnDefType.NULL);
-                }
-            }
-        });
-        registerChannelUpdateHandler(CHANNEL_DURATION, (channelUID, client) -> {
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                Optional<Option> option = program.getOptions().stream().filter(o -> o.getKey().equals(OPTION_DURATION))
-                        .findFirst();
-                if (option.isPresent()) {
-                    updateState(channelUID, new QuantityType<>(option.get().getValueAsInt(), SECOND));
-                } else {
-                    updateState(channelUID, UnDefType.NULL);
-                }
-            }
-        });
-    }
-
-    @Override
-    protected void configureChannelUpdateHandlers(ConcurrentHashMap<String, ChannelUpdateHandler> handlers) {
     }
 
     @Override
     protected void configureEventHandlers(ConcurrentHashMap<String, EventHandler> handlers) {
+        // register default SSE event handlers
+        handlers.put(EVENT_DOOR_STATE, defaultDoorStateEventHandler());
+        handlers.put(EVENT_REMOTE_CONTROL_ACTIVE, defaultBooleanEventHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE));
+        handlers.put(EVENT_REMOTE_CONTROL_START_ALLOWED,
+                defaultBooleanEventHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE));
+        handlers.put(EVENT_SELECTED_PROGRAM, defaultSelectedProgramStateEventHandler());
+        handlers.put(EVENT_REMAINING_PROGRAM_TIME, defaultRemainingProgramTimeEventHandler());
+        handlers.put(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
+        handlers.put(EVENT_ELAPSED_PROGRAM_TIME, defaultElapsedProgramTimeEventHandler());
+
+        // register oven specific SSE event handlers
+        handlers.put(EVENT_OPERATION_STATE, event -> {
+            defaultOperationStateEventHandler().handle(event);
+
+            if (STATE_OPERATION_FINISHED.equals(event.getValue())) {
+                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(100, PERCENT)));
+            }
+
+            if (STATE_OPERATION_RUN.equals(event.getValue())) {
+                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(0, PERCENT)));
+                getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateChannel(c.getUID()));
+            }
+
+            if (STATE_OPERATION_READY.equals(event.getValue())) {
+                resetProgramStateChannels();
+            }
+        });
+        handlers.put(EVENT_POWER_STATE, event -> {
+            defaultPowerStateEventHandler().handle(event);
+
+            if (!STATE_POWER_ON.equals(event.getValue())) {
+                resetProgramStateChannels();
+                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+                getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+                getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+                getThingChannel(CHANNEL_DURATION).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+            }
+            if (STATE_POWER_ON.equals(event.getValue())) {
+                updateChannels();
+            }
+        });
+        handlers.put(EVENT_ACTIVE_PROGRAM, event -> {
+            defaultActiveProgramEventHandler().handle(event);
+
+            if (event.getValue() == null) {
+                resetProgramStateChannels();
+            }
+        });
+        handlers.put(EVENT_OVEN_CAVITY_TEMPERATURE, event -> {
+            getThingChannel(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
+                    new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
+        });
+
+        handlers.put(EVENT_SETPOINT_TEMPERATURE, event -> {
+            getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
+                    new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
+        });
+        handlers.put(EVENT_DURATION, event -> {
+            getThingChannel(CHANNEL_DURATION).ifPresent(
+                    channel -> updateState(channel.getUID(), new QuantityType<>(event.getValueAsInt(), SECOND)));
+        });
+    }
+
+    @Override
+    public void handleCommand(@NonNull ChannelUID channelUID, @NonNull Command command) {
+        if (isThingReadyToHandleCommand()) {
+            super.handleCommand(channelUID, command);
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("{}: {}", channelUID, command);
+            }
+
+            try {
+                // start or stop program
+                if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
+                    updateState(channelUID, new StringType(""));
+
+                    if ("start".equalsIgnoreCase(command.toFullString())) {
+                        String program = getClient().getSelectedProgram(getThingHaId()).getKey();
+                        getClient().startProgram(getThingHaId(), program);
+                    } else {
+                        getClient().stopProgram(getThingHaId());
+                    }
+                }
+
+                // set selected program of coffee maker
+                if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
+                    getClient().setSelectedProgram(getThingHaId(), command.toFullString());
+                }
+
+                // turn coffee maker on and standby
+                if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())) {
+                    getClient().setPowerState(getThingHaId(),
+                            OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_STANDBY);
+                }
+
+                // set setpoint temperature
+                if (command instanceof QuantityType && CHANNEL_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
+                    @SuppressWarnings("unchecked")
+                    QuantityType<Temperature> quantity = ((QuantityType<Temperature>) command);
+
+                    try {
+                        String value;
+                        String unit;
+
+                        if (quantity.getUnit().equals(SIUnits.CELSIUS)
+                                || quantity.getUnit().equals(ImperialUnits.FAHRENHEIT)) {
+                            unit = quantity.getUnit().toString();
+                            value = String.valueOf(quantity.intValue());
+                        } else {
+                            logger.info("Converting target setpoint temperture from {}{} to °C value.",
+                                    quantity.intValue(), quantity.getUnit().toString());
+                            unit = "°C";
+                            value = String.valueOf(
+                                    quantity.getUnit().getConverterToAny(SIUnits.CELSIUS).convert(quantity).intValue());
+                            logger.info("{}{}", value, unit);
+                        }
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Set setpoint temperature to {} {}.", value, unit);
+                        }
+
+                        getClient().setProgramOptions(getThingHaId(), OPTION_SETPOINT_TEMPERATURE, value, unit);
+
+                    } catch (IncommensurableException | UnconvertibleException e) {
+                        logger.error("Could not set setpoint!", e.getMessage());
+                    }
+                }
+
+                // set duration
+                if (command instanceof QuantityType && CHANNEL_DURATION.equals(channelUID.getId())) {
+                    @SuppressWarnings("unchecked")
+                    QuantityType<Time> quantity = ((QuantityType<Time>) command);
+
+                    try {
+                        String value = String
+                                .valueOf(quantity.getUnit().getConverterToAny(SECOND).convert(quantity).intValue());
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Set duration to {} seconds.", value);
+                        }
+
+                        getClient().setProgramOptions(getThingHaId(), OPTION_DURATION, value, "seconds");
+                    } catch (IncommensurableException | UnconvertibleException e) {
+                        logger.error("Could not set duration!", e.getMessage());
+                    }
+                }
+            } catch (CommunicationException e) {
+                logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
+                        e.getMessage());
+            }
+        }
     }
 
     @Override
@@ -195,14 +292,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
         getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_ELAPSED_PROGRAM_TIME).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-    }
-
-    private void resetAllChannels() {
-        logger.debug("Resetting all channels");
-        getThing().getChannels().forEach(channel -> {
-            if (!CHANNEL_POWER_STATE.equals(channel.getUID().getId())) {
-                updateState(channel.getUID(), UnDefType.NULL);
-            }
-        });
+        getThingChannel(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE)
+                .ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
     }
 }

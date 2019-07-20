@@ -177,7 +177,7 @@ public class HomeConnectApiClient {
     /**
      * Set power state of device.
      *
-     * @param haId  home appliance id
+     * @param haId home appliance id
      * @param state target state
      * @throws CommunicationException
      */
@@ -199,7 +199,7 @@ public class HomeConnectApiClient {
     /**
      * Set setpoint temperature of freezer
      *
-     * @param haId  home appliance id
+     * @param haId home appliance id
      * @param state new temperature
      * @throws CommunicationException
      */
@@ -222,7 +222,7 @@ public class HomeConnectApiClient {
     /**
      * Set setpoint temperature of fridge
      *
-     * @param haId  home appliance id
+     * @param haId home appliance id
      * @param state new temperature
      * @throws CommunicationException
      */
@@ -339,6 +339,10 @@ public class HomeConnectApiClient {
 
     public void startProgram(String haId, String program) throws CommunicationException {
         putData(haId, "/api/homeappliances/" + haId + "/programs/active", new Data(program, null, null), false);
+    }
+
+    public void setProgramOptions(String haId, String key, String value, String unit) throws CommunicationException {
+        putOption(haId, "/api/homeappliances/" + haId + "/programs/active/options", new Option(key, value, unit), true);
     }
 
     public void stopProgram(String haId) throws CommunicationException {
@@ -664,9 +668,14 @@ public class HomeConnectApiClient {
 
         JsonObject dataObject = new JsonObject();
         dataObject.add("data", innerObject);
+        String requestBodyPayload = dataObject.toString();
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("Send data \n{}", requestBodyPayload);
+        }
 
         MediaType JSON = MediaType.parse(BSH_JSON_V1);
-        RequestBody requestBody = RequestBody.create(JSON, dataObject.toString());
+        RequestBody requestBody = RequestBody.create(JSON, requestBodyPayload);
 
         checkOrRefreshAccessToken();
         Request request = new Request.Builder().url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
@@ -688,6 +697,64 @@ public class HomeConnectApiClient {
             setAccessToken(null);
             logger.debug("[putData({}, {}, {})] Retrying method.", haId, path, data);
             putData(haId, path, data, asInt);
+        }
+    }
+
+    private synchronized void putOption(String haId, String path, Option option, boolean asInt)
+            throws CommunicationException {
+        JsonObject innerObject = new JsonObject();
+        innerObject.addProperty("key", option.getKey());
+
+        if (option.getValue() != null) {
+            if (asInt) {
+                innerObject.addProperty("value", Integer.valueOf(option.getValue()));
+            } else {
+                innerObject.addProperty("value", option.getValue());
+            }
+        }
+
+        if (option.getUnit() != null) {
+            innerObject.addProperty("unit", option.getUnit());
+        }
+
+        JsonArray optionsArray = new JsonArray();
+        optionsArray.add(innerObject);
+
+        JsonObject optionsObject = new JsonObject();
+        optionsObject.add("options", optionsArray);
+
+        JsonObject dataObject = new JsonObject();
+        dataObject.add("data", optionsObject);
+
+        String requestBodyPayload = dataObject.toString();
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("Send data \n{}", requestBodyPayload);
+        }
+
+        MediaType JSON = MediaType.parse(BSH_JSON_V1);
+        RequestBody requestBody = RequestBody.create(JSON, requestBodyPayload);
+
+        checkOrRefreshAccessToken();
+        Request request = new Request.Builder().url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
+                .header(ACCEPT, BSH_JSON_V1).put(requestBody).addHeader("Authorization", "Bearer " + getAccessToken())
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            checkResponseCode(HTTP_NO_CONTENT, response);
+            String body = response.body().string();
+            if (logger.isDebugEnabled()) {
+                logger.debug("[putOption({}, {}, {})] Response code: {} \n{}", haId, path, option, response.code(),
+                        toPrettyFormat(body));
+            }
+
+        } catch (IOException e) {
+            logger.error("IOException: {}", e.getMessage());
+            throw new CommunicationException(e);
+        } catch (InvalidTokenException e) {
+            setAccessToken(null);
+            logger.debug("[putOption({}, {}, {})] Retrying method.", haId, path, option);
+            putOption(haId, path, option, asInt);
         }
     }
 
