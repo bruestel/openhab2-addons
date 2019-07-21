@@ -341,8 +341,10 @@ public class HomeConnectApiClient {
         putData(haId, "/api/homeappliances/" + haId + "/programs/active", new Data(program, null, null), false);
     }
 
-    public void setProgramOptions(String haId, String key, String value, String unit) throws CommunicationException {
-        putOption(haId, "/api/homeappliances/" + haId + "/programs/active/options", new Option(key, value, unit), true);
+    public void setProgramOptions(String haId, String key, String value, String unit, boolean valueAsInt)
+            throws CommunicationException {
+        putOption(haId, "/api/homeappliances/" + haId + "/programs/active/options", new Option(key, value, unit),
+                valueAsInt);
     }
 
     public void stopProgram(String haId) throws CommunicationException {

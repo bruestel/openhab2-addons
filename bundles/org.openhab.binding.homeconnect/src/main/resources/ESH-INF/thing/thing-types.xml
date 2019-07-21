@@ -67,9 +67,9 @@
 			<channel id="remote_control_active_state" typeId="remote_control_active_state" />
 			<channel id="active_program_state" typeId="active_program_state" />
 			<channel id="selected_program_state" typeId="selected_program_state" />
-            <channel id="setpoint_temperature" typeId="setpoint_temperature" />
-            <channel id="duration" typeId="duration" />
-            <channel id="basic_actions_state" typeId="basic_actions_state" />
+			<channel id="setpoint_temperature" typeId="setpoint_temperature" />
+			<channel id="duration" typeId="duration" />
+			<channel id="basic_actions_state" typeId="basic_actions_state" />
 			<channel id="remaining_program_time_state" typeId="remaining_program_time_state" />
 			<channel id="program_progress_state" typeId="program_progress_state" />
 			<channel id="oven_current_cavity_temperature" typeId="current_cavity_temperature" />
@@ -98,10 +98,13 @@
 			<channel id="remote_control_active_state" typeId="remote_control_active_state" />
 			<channel id="active_program_state" typeId="active_program_state" />
 			<channel id="selected_program_state" typeId="selected_program_state" />
-			<channel id="remaining_program_time_state" typeId="remaining_program_time_state" />
-			<channel id="program_progress_state" typeId="program_progress_state" />
 			<channel id="laundry_care_washer_temperature" typeId="laundry_care_washer_temperature" />
 			<channel id="laundry_care_washer_spin_speed" typeId="laundry_care_washer_spin_speed" />
+			<channel id="laundry_care_washer_idos1" typeId="laundry_care_washer_idos1" />
+			<channel id="laundry_care_washer_idos2" typeId="laundry_care_washer_idos2" />
+			<channel id="basic_actions_state" typeId="basic_actions_state" />
+			<channel id="remaining_program_time_state" typeId="remaining_program_time_state" />
+			<channel id="program_progress_state" typeId="program_progress_state" />
 		</channels>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
@@ -203,30 +206,30 @@
 		<label>Power State</label>
 		<description>This setting describes the current power state of the home appliance.</description>
 	</channel-type>
-    <channel-type id="local_control_active_state">
-        <item-type>Switch</item-type>
-        <label>Local Control State</label>
-        <description>This status indicates whether the home appliance is currently manually controlled by the user operating the home appliance, e.g. opening the door or pressing a button.</description>
-        <state readOnly="true" />
-    </channel-type>
-        <channel-type id="coffeemaker_drip_tray_full_state">
-        <item-type>Switch</item-type>
-        <label>Drip Tray Full</label>
-        <description>Is coffee maker drip tray full?</description>
-        <state readOnly="true" />
-    </channel-type>
-        <channel-type id="coffeemaker_water_tank_empty_state">
-        <item-type>Switch</item-type>
-        <label>Water Tank Empty</label>
-        <description>Is coffee maker water tank empty?</description>
-        <state readOnly="true" />
-    </channel-type>
-        <channel-type id="coffeemaker_bean_container_empty_state">
-        <item-type>Switch</item-type>
-        <label>Bean Container Empty</label>
-        <description>Is coffee maker bean container is empty?</description>
-        <state readOnly="true" />
-    </channel-type>
+	<channel-type id="local_control_active_state">
+		<item-type>Switch</item-type>
+		<label>Local Control State</label>
+		<description>This status indicates whether the home appliance is currently manually controlled by the user operating the home appliance, e.g. opening the door or pressing a button.</description>
+		<state readOnly="true" />
+	</channel-type>
+	<channel-type id="coffeemaker_drip_tray_full_state">
+		<item-type>Switch</item-type>
+		<label>Drip Tray Full</label>
+		<description>Is coffee maker drip tray full?</description>
+		<state readOnly="true" />
+	</channel-type>
+	<channel-type id="coffeemaker_water_tank_empty_state">
+		<item-type>Switch</item-type>
+		<label>Water Tank Empty</label>
+		<description>Is coffee maker water tank empty?</description>
+		<state readOnly="true" />
+	</channel-type>
+	<channel-type id="coffeemaker_bean_container_empty_state">
+		<item-type>Switch</item-type>
+		<label>Bean Container Empty</label>
+		<description>Is coffee maker bean container is empty?</description>
+		<state readOnly="true" />
+	</channel-type>
 	<channel-type id="power_state_read_only">
 		<item-type>Switch</item-type>
 		<label>Power State</label>
@@ -314,14 +317,73 @@
 		<item-type>String</item-type>
 		<label>Washing Program Temperature</label>
 		<description>This status describes the temperature of the washing program of the home appliance.</description>
-		<state readOnly="true" />
+		<state>
+			<options>
+				<option value="LaundryCare.Washer.EnumType.Temperature.Cold">Cold water</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.GC20">20 °C</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.GC30">30 °C</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.GC40">40 °C</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.GC50">50 °C</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.GC60">60 °C</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.GC70">70 °C</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.GC80">80 °C</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.GC90">90 °C</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.Auto">Auto</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.UlCold">Cold (US/CA)</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.UlWarm">Warm (US/CA)</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.UlHot">Hot (US/CA)</option>
+				<option value="LaundryCare.Washer.EnumType.Temperature.UlExtraHot">Extra hot (US/CA)</option>
+			</options>
+		</state>
 	</channel-type>
 	<channel-type id="laundry_care_washer_spin_speed">
 		<item-type>String</item-type>
 		<label>Spin Speed</label>
 		<description>This status defines the spin speed of a washer program of the home appliance.</description>
-		<state readOnly="true" />
+		<state>
+			<options>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.Off">No spinning</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.RPM400">400 rpm</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.RPM600">600 rpm</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.RPM800">800 rpm</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.RPM1000">1000 rpm</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.RPM1200">1200 rpm</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.RPM1400">1400 rpm</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.RPM1600">1600 rpm</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.Auto">Auto</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.UlNo">No spinning (US/CA)</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.UlLow">Low (US/CA)</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.UlMedium">Medium (US/CA)</option>
+				<option value="LaundryCare.Washer.EnumType.SpinSpeed.UlHigh">High (US/CA)</option>
+			</options>
+		</state>
 	</channel-type>
+	<channel-type id="laundry_care_washer_idos1">
+		<item-type>String</item-type>
+		<label>i-Dos 1 dosing level</label>
+		<description>This status defines the i-Dos dosing level of a washer program of the home appliance. (If appliance supports i-Dos)</description>
+		<state>
+			<options>
+				<option value="LaundryCare.Washer.EnumType.IDosingLevel.Off">Off</option>
+				<option value="LaundryCare.Washer.EnumType.IDosingLevel.Light">Light</option>
+				<option value="LaundryCare.Washer.EnumType.IDosingLevel.Normal">Normal</option>
+				<option value="LaundryCare.Washer.EnumType.IDosingLevel.Strong">Strong</option>
+			</options>
+		</state>
+	</channel-type>
+	   <channel-type id="laundry_care_washer_idos2">
+        <item-type>String</item-type>
+        <label>i-Dos 2 dosing level</label>
+        <description>This status defines the i-Dos dosing level of a washer program of the home appliance. (If appliance supports i-Dos)</description>
+        <state>
+            <options>
+                <option value="LaundryCare.Washer.EnumType.IDosingLevel.Off">Off</option>
+                <option value="LaundryCare.Washer.EnumType.IDosingLevel.Light">Light</option>
+                <option value="LaundryCare.Washer.EnumType.IDosingLevel.Normal">Normal</option>
+                <option value="LaundryCare.Washer.EnumType.IDosingLevel.Strong">Strong</option>
+            </options>
+        </state>
+    </channel-type>
 	<channel-type id="setpoint_temperature_refridgerator">
 		<item-type>Number:Temperature</item-type>
 		<label>Refrigerator temperature</label>

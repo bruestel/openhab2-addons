@@ -15,12 +15,17 @@ package org.openhab.binding.homeconnect.internal.handler;
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.*;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.QuantityType;
 import org.eclipse.smarthome.core.library.types.StringType;
+import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.types.State;
+import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,63 +44,20 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
     public HomeConnectWasherHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
         super(thing, dynamicStateDescriptionProvider);
-        // event handler
-        registerEventHandler(EVENT_DOOR_STATE, defaultDoorStateEventHandler());
-        registerEventHandler(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
-        registerEventHandler(EVENT_REMOTE_CONTROL_START_ALLOWED,
-                defaultBooleanEventHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE));
-        registerEventHandler(EVENT_REMOTE_CONTROL_ACTIVE,
-                defaultBooleanEventHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE));
-        registerEventHandler(EVENT_ACTIVE_PROGRAM, event -> {
-            getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(mapStringType(event.getValue())));
+    }
 
-                // revert other channels
-                if (event.getValue() == null) {
-                    resetProgramStateChannels();
-                } else {
-                    // get progress etc. from API
-                    updateChannel(channel.getUID());
-                }
-            });
-        });
-        registerEventHandler(EVENT_REMAINING_PROGRAM_TIME, defaultRemainingProgramTimeEventHandler());
-        registerEventHandler(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
-        registerEventHandler(EVENT_SELECTED_PROGRAM, defaultSelectedProgramStateEventHandler());
-        registerEventHandler(EVENT_WASHER_TEMPERATURE, event -> {
-            getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : mapWasherTemperature(event.getValue()));
-            });
-        });
-        registerEventHandler(EVENT_WASHER_SPIN_SPEED, event -> {
-            getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : mapWasherSpinSpeed(event.getValue()));
-            });
-        });
+    @Override
+    protected void configureChannelUpdateHandlers(ConcurrentHashMap<String, ChannelUpdateHandler> handlers) {
+        // register default update handlers
+        handlers.put(CHANNEL_DOOR_STATE, defaultDoorStateChannelUpdateHandler());
+        handlers.put(CHANNEL_OPERATION_STATE, defaultOperationStateChannelUpdateHandler());
+        handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
+        handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
 
-        registerEventHandler(EVENT_DISCONNECTED, event -> {
-            resetAllChannels();
-        });
-        registerEventHandler(EVENT_CONNECTED, event -> {
-            // revert active program states
-            resetProgramStateChannels();
-
-            // refresh all channels
-            updateChannels();
-        });
-
-        // register update handlers
-        registerChannelUpdateHandler(CHANNEL_DOOR_STATE, defaultDoorStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_OPERATION_STATE, defaultOperationStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE,
-                defaultRemoteControlActiveStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE,
-                defaultRemoteStartAllowanceChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
+        // register washer specific handlers
+        handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
             Program program = client.getActiveProgram(getThingHaId());
+
             if (program != null && program.getKey() != null) {
                 updateState(channelUID, new StringType(mapStringType(program.getKey())));
                 program.getOptions().forEach(option -> {
@@ -114,11 +76,19 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
                             break;
                         case OPTION_WASHER_TEMPERATURE:
                             getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(
-                                    channel -> updateState(channel.getUID(), mapWasherTemperature(option.getValue())));
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
                             break;
                         case OPTION_WASHER_SPIN_SPEED:
                             getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(
-                                    channel -> updateState(channel.getUID(), mapWasherSpinSpeed(option.getValue())));
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                            break;
+                        case OPTION_WASHER_IDOS_1_DOSING_LEVEL:
+                            getThingChannel(CHANNEL_WASHER_IDOS1).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                            break;
+                        case OPTION_WASHER_IDOS_2_DOSING_LEVEL:
+                            getThingChannel(CHANNEL_WASHER_IDOS2).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
                             break;
                     }
                 });
@@ -127,27 +97,160 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
                 resetProgramStateChannels();
             }
         });
-        registerChannelUpdateHandler(CHANNEL_SELECTED_PROGRAM_STATE, (channelUID, client) -> {
+        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, (channelUID, client) -> {
             Program program = client.getSelectedProgram(getThingHaId());
             if (program != null && program.getKey() != null) {
-                updateState(channelUID, new StringType(mapStringType(program.getKey())));
+                updateState(channelUID, new StringType(program.getKey()));
+
                 program.getOptions().forEach(option -> {
                     switch (option.getKey()) {
                         case OPTION_WASHER_TEMPERATURE:
                             getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(
-                                    channel -> updateState(channel.getUID(), mapWasherTemperature(option.getValue())));
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
                             break;
                         case OPTION_WASHER_SPIN_SPEED:
                             getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(
-                                    channel -> updateState(channel.getUID(), mapWasherSpinSpeed(option.getValue())));
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                            break;
+                        case OPTION_WASHER_IDOS_1_DOSING_LEVEL:
+                            getThingChannel(CHANNEL_WASHER_IDOS1).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                            break;
+                        case OPTION_WASHER_IDOS_2_DOSING_LEVEL:
+                            getThingChannel(CHANNEL_WASHER_IDOS2).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
                             break;
                     }
                 });
             } else {
                 updateState(channelUID, UnDefType.NULL);
+            }
+        });
+    }
+
+    @Override
+    protected void configureEventHandlers(ConcurrentHashMap<String, EventHandler> handlers) {
+        // register default event handlers
+        handlers.put(EVENT_DOOR_STATE, defaultDoorStateEventHandler());
+        handlers.put(EVENT_REMOTE_CONTROL_ACTIVE, defaultBooleanEventHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE));
+        handlers.put(EVENT_REMOTE_CONTROL_START_ALLOWED,
+                defaultBooleanEventHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE));
+        handlers.put(EVENT_REMAINING_PROGRAM_TIME, defaultRemainingProgramTimeEventHandler());
+        handlers.put(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
+
+        // TODO do I need to fetch spin speed or temperature via api or is a event published on selected program change?
+        handlers.put(EVENT_SELECTED_PROGRAM, defaultSelectedProgramStateEventHandler());
+
+        // register washer specific event handlers
+        handlers.put(EVENT_WASHER_TEMPERATURE, event -> {
+            getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(channel -> {
+                updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
+            });
+        });
+        handlers.put(EVENT_WASHER_SPIN_SPEED, event -> {
+            getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(channel -> {
+                updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
+            });
+        });
+        handlers.put(EVENT_WASHER_IDOS_1_DOSING_LEVEL, event -> {
+            getThingChannel(CHANNEL_WASHER_IDOS1).ifPresent(channel -> {
+                updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
+            });
+        });
+        handlers.put(EVENT_WASHER_IDOS_2_DOSING_LEVEL, event -> {
+            getThingChannel(CHANNEL_WASHER_IDOS2).ifPresent(channel -> {
+                updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
+            });
+        });
+        handlers.put(EVENT_OPERATION_STATE, event -> {
+            defaultOperationStateEventHandler().handle(event);
+
+            if (STATE_OPERATION_FINISHED.equals(event.getValue())) {
+                getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(0, SECOND)));
+                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(100, PERCENT)));
+            }
+
+            if (STATE_OPERATION_RUN.equals(event.getValue())) {
+                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(0, PERCENT)));
+                getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateChannel(c.getUID()));
+            }
+
+            if (STATE_OPERATION_READY.equals(event.getValue())) {
                 resetProgramStateChannels();
             }
         });
+        handlers.put(EVENT_ACTIVE_PROGRAM, event -> {
+            defaultActiveProgramEventHandler().handle(event);
+
+            if (event.getValue() == null) {
+                resetProgramStateChannels();
+            }
+        });
+    }
+
+    @Override
+    public void handleCommand(@NonNull ChannelUID channelUID, @NonNull Command command) {
+        if (isThingReadyToHandleCommand()) {
+            super.handleCommand(channelUID, command);
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("{}: {}", channelUID, command);
+            }
+
+            try {
+                // start or stop program
+                if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
+                    updateState(channelUID, new StringType(""));
+
+                    if ("start".equalsIgnoreCase(command.toFullString())) {
+                        String program = getClient().getSelectedProgram(getThingHaId()).getKey();
+                        getClient().startProgram(getThingHaId(), program);
+                    } else {
+                        getClient().stopProgram(getThingHaId());
+                    }
+                }
+
+                // set selected program
+                if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
+                    getClient().setSelectedProgram(getThingHaId(), command.toFullString());
+                }
+
+                // set temperature option
+                if (command instanceof StringType && CHANNEL_WASHER_TEMPERATURE.equals(channelUID.getId())) {
+                    getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE, command.toFullString(),
+                            null, false);
+                }
+
+                // set spin speed option
+                if (command instanceof StringType && CHANNEL_WASHER_SPIN_SPEED.equals(channelUID.getId())) {
+                    getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_SPIN_SPEED, command.toFullString(),
+                            null, false);
+                }
+
+                // set iDos 1 option
+                if (command instanceof StringType && CHANNEL_WASHER_IDOS1.equals(channelUID.getId())) {
+                    getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_1_DOSING_LEVEL,
+                            command.toFullString(), null, false);
+                }
+
+                // set iDos 2 option
+                if (command instanceof StringType && CHANNEL_WASHER_IDOS2.equals(channelUID.getId())) {
+                    getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_2_DOSING_LEVEL,
+                            command.toFullString(), null, false);
+                }
+
+            } catch (CommunicationException e) {
+                logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
+                        e.getMessage());
+            }
+        }
     }
 
     @Override
@@ -159,38 +262,6 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
         logger.debug("Resetting active program channel states");
         getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-    }
-
-    private void resetAllChannels() {
-        logger.debug("Resetting all channels");
-        getThing().getChannels().forEach(channel -> {
-            if (!CHANNEL_POWER_STATE.equals(channel.getUID().getId())) {
-                updateState(channel.getUID(), UnDefType.NULL);
-            }
-        });
-    }
-
-    private State mapWasherTemperature(String value) {
-        if (value.startsWith("LaundryCare.Washer.EnumType.Temperature.GC")) {
-            return new StringType(value.replace("LaundryCare.Washer.EnumType.Temperature.GC", "") + "°C");
-        }
-
-        if (value.startsWith("LaundryCare.Washer.EnumType.Temperature.Ul")) {
-            return new StringType(mapStringType(value.replace("LaundryCare.Washer.EnumType.Temperature.Ul", "")));
-        }
-
-        return new StringType(mapStringType(value));
-    }
-
-    private State mapWasherSpinSpeed(String value) {
-        if (value.startsWith("LaundryCare.Washer.EnumType.SpinSpeed.RPM")) {
-            return new StringType(value.replace("LaundryCare.Washer.EnumType.SpinSpeed.RPM", ""));
-        }
-
-        if (value.startsWith("LaundryCare.Washer.EnumType.SpinSpeed.Ul")) {
-            return new StringType(value.replace("LaundryCare.Washer.EnumType.SpinSpeed.Ul", ""));
-        }
-
-        return new StringType(mapStringType(value));
+        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
     }
 }

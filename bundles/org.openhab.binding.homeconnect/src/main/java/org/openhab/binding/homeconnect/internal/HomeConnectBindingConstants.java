@@ -60,6 +60,8 @@ public class HomeConnectBindingConstants {
     public static final String EVENT_DURATION = "BSH.Common.Option.Duration";
     public static final String EVENT_WASHER_TEMPERATURE = "LaundryCare.Washer.Option.Temperature";
     public static final String EVENT_WASHER_SPIN_SPEED = "LaundryCare.Washer.Option.SpinSpeed";
+    public static final String EVENT_WASHER_IDOS_1_DOSING_LEVEL = "LaundryCare.Washer.Option.IDos1DosingLevel";
+    public static final String EVENT_WASHER_IDOS_2_DOSING_LEVEL = "LaundryCare.Washer.Option.IDos2DosingLevel";
     public static final String EVENT_FREEZER_SETPOINT_TEMPERATURE = "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer";
     public static final String EVENT_FRIDGE_SETPOINT_TEMPERATURE = "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator";
     public static final String EVENT_FREEZER_SUPER_MODE = "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer";
@@ -87,6 +89,8 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_DURATION = "duration";
     public static final String CHANNEL_WASHER_TEMPERATURE = "laundry_care_washer_temperature";
     public static final String CHANNEL_WASHER_SPIN_SPEED = "laundry_care_washer_spin_speed";
+    public static final String CHANNEL_WASHER_IDOS1 = "laundry_care_washer_idos1";
+    public static final String CHANNEL_WASHER_IDOS2 = "laundry_care_washer_idos2";
     public static final String CHANNEL_REFRIDGERATOR_SETPOINT_TEMPERATURE = "setpoint_temperature_refridgerator";
     public static final String CHANNEL_REFRIDGERATOR_SUPER_MODE = "super_mode_refrigerator";
     public static final String CHANNEL_FREEZER_SETPOINT_TEMPERATURE = "setpoint_temperature_freezer";
@@ -127,6 +131,8 @@ public class HomeConnectBindingConstants {
     public static final String OPTION_DURATION = "BSH.Common.Option.Duration";
     public static final String OPTION_WASHER_TEMPERATURE = "LaundryCare.Washer.Option.Temperature";
     public static final String OPTION_WASHER_SPIN_SPEED = "LaundryCare.Washer.Option.SpinSpeed";
+    public static final String OPTION_WASHER_IDOS_1_DOSING_LEVEL = "LaundryCare.Washer.Option.IDos1DosingLevel";
+    public static final String OPTION_WASHER_IDOS_2_DOSING_LEVEL = "LaundryCare.Washer.Option.IDos2DosingLevel";
     public static final String OPTION_DRYER_DRYING_TARGET = "LaundryCare.Dryer.Option.DryingTarget";
 
     // Network and oAuth constants

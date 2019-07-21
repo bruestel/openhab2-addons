@@ -250,7 +250,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                             logger.debug("Set setpoint temperature to {} {}.", value, unit);
                         }
 
-                        getClient().setProgramOptions(getThingHaId(), OPTION_SETPOINT_TEMPERATURE, value, unit);
+                        getClient().setProgramOptions(getThingHaId(), OPTION_SETPOINT_TEMPERATURE, value, unit, true);
 
                     } catch (IncommensurableException | UnconvertibleException e) {
                         logger.error("Could not set setpoint!", e.getMessage());
@@ -270,9 +270,9 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                             logger.debug("Set duration to {} seconds.", value);
                         }
 
-                        getClient().setProgramOptions(getThingHaId(), OPTION_DURATION, value, "seconds");
+                        getClient().setProgramOptions(getThingHaId(), OPTION_DURATION, value, "seconds", true);
                     } catch (IncommensurableException | UnconvertibleException e) {
-                        logger.error("Could not set duration!", e.getMessage());
+                        logger.error("Could not set duration! error: {}", e.getMessage());
                     }
                 }
             } catch (CommunicationException e) {
