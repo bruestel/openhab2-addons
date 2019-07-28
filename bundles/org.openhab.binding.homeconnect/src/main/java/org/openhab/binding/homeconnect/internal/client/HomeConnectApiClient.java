@@ -29,6 +29,7 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 import org.openhab.binding.homeconnect.internal.client.exception.InvalidTokenException;
 import org.openhab.binding.homeconnect.internal.client.listener.ServerSentEventListener;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgram;
+import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
@@ -81,11 +82,15 @@ public class HomeConnectApiClient {
     private final Set<ServerSentEventListener> eventListeners;
     private final HashMap<String, ServerSentEvent> serverSentEvent;
 
+    private final ConcurrentHashMap<String, List<AvailableProgramOption>> availableProgramOptionsCache;
+
     private OkSse oksse;
 
     public HomeConnectApiClient(String accessToken, boolean simulated, Supplier<String> newAccessTokenFunction) {
         this.accessToken = accessToken;
         this.newAccessTokenFunction = newAccessTokenFunction;
+
+        availableProgramOptionsCache = new ConcurrentHashMap<String, List<AvailableProgramOption>>();
 
         eventListeners = ConcurrentHashMap.newKeySet();
         serverSentEvent = new HashMap<>();
@@ -341,10 +346,12 @@ public class HomeConnectApiClient {
         putData(haId, "/api/homeappliances/" + haId + "/programs/active", new Data(program, null, null), false);
     }
 
-    public void setProgramOptions(String haId, String key, String value, String unit, boolean valueAsInt)
-            throws CommunicationException {
-        putOption(haId, "/api/homeappliances/" + haId + "/programs/active/options", new Option(key, value, unit),
-                valueAsInt);
+    public void setProgramOptions(String haId, String key, String value, String unit, boolean valueAsInt,
+            boolean isProgramActive) throws CommunicationException {
+        String programState = isProgramActive ? "active" : "selected";
+
+        putOption(haId, "/api/homeappliances/" + haId + "/programs/" + programState + "/options",
+                new Option(key, value, unit), valueAsInt);
     }
 
     public void stopProgram(String haId) throws CommunicationException {
@@ -357,6 +364,43 @@ public class HomeConnectApiClient {
 
     public List<AvailableProgram> getAvailablePrograms(String haId) throws CommunicationException {
         return getAvailablePrograms(haId, "/api/homeappliances/" + haId + "/programs/available");
+    }
+
+    public synchronized List<AvailableProgramOption> getProgramOptions(String haId, String programKey)
+            throws CommunicationException {
+
+        if (availableProgramOptionsCache.containsKey(programKey)) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Returning cached options for `{}` \n{}", programKey,
+                        availableProgramOptionsCache.get(programKey));
+            }
+            return availableProgramOptionsCache.get(programKey);
+        }
+
+        String path = "/api/homeappliances/" + haId + "/programs/available/" + programKey;
+        checkOrRefreshAccessToken();
+
+        Request request = createGetRequest(path);
+
+        try (Response response = client.newCall(request).execute()) {
+            checkResponseCode(Arrays.asList(HTTP_OK), response);
+            String body = response.body().string();
+            if (logger.isDebugEnabled()) {
+                logger.debug("[getProgramOptions({}, {})] Response code: {}, \n{}", haId, path, response.code(),
+                        toPrettyFormat(body));
+            }
+
+            List<AvailableProgramOption> availableProgramOptions = mapToAvailableProgramOption(body);
+            availableProgramOptionsCache.put(programKey, availableProgramOptions);
+            return availableProgramOptions;
+        } catch (IOException e) {
+            logger.error("IOException: {}", e.getMessage());
+            throw new CommunicationException(e);
+        } catch (InvalidTokenException e) {
+            setAccessToken(null);
+            logger.debug("[getProgramOptions({}, {})] Retrying method.", haId, path);
+            return getProgramOptions(haId, path);
+        }
     }
 
     /**
@@ -673,7 +717,7 @@ public class HomeConnectApiClient {
         String requestBodyPayload = dataObject.toString();
 
         if (logger.isDebugEnabled()) {
-            logger.debug("Send data \n{}", requestBodyPayload);
+            logger.debug("Send data(PUT {}) \n{}", path, requestBodyPayload);
         }
 
         MediaType JSON = MediaType.parse(BSH_JSON_V1);
@@ -731,7 +775,7 @@ public class HomeConnectApiClient {
         String requestBodyPayload = dataObject.toString();
 
         if (logger.isDebugEnabled()) {
-            logger.debug("Send data \n{}", requestBodyPayload);
+            logger.debug("Send data(PUT {}) \n{}", path, requestBodyPayload);
         }
 
         MediaType JSON = MediaType.parse(BSH_JSON_V1);
@@ -849,6 +893,29 @@ public class HomeConnectApiClient {
             });
         } catch (Exception e) {
             logger.error("Could not parse available programs response!", e.getMessage());
+        }
+
+        return result;
+    }
+
+    private List<AvailableProgramOption> mapToAvailableProgramOption(String json) {
+        ArrayList<AvailableProgramOption> result = new ArrayList<>();
+
+        try {
+            JsonObject responseObject = new JsonParser().parse(json).getAsJsonObject();
+
+            JsonArray options = responseObject.getAsJsonObject("data").getAsJsonArray("options");
+            options.forEach(option -> {
+                JsonObject obj = (JsonObject) option;
+                String key = obj.get("key") != null ? obj.get("key").getAsString() : null;
+                ArrayList<String> allowedValues = new ArrayList<>();
+                obj.getAsJsonObject("constraints").getAsJsonArray("allowedvalues")
+                        .forEach(value -> allowedValues.add(value.getAsString()));
+
+                result.add(new AvailableProgramOption(key, allowedValues));
+            });
+        } catch (Exception e) {
+            logger.error("Could not parse available program options response!", e.getMessage());
         }
 
         return result;

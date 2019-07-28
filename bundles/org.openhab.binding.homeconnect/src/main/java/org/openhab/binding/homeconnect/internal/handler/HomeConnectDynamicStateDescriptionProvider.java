@@ -42,14 +42,14 @@ public class HomeConnectDynamicStateDescriptionProvider implements DynamicStateD
             @Nullable StateDescription originalStateDescription, @Nullable Locale locale) {
 
         if (stateDescriptions.containsKey(channel.getUID().getAsString())) {
-            logger.debug("Return dynamic state description for channel-uid {}.", channel.getUID().getAsString());
+            logger.trace("Return dynamic state description for channel-uid {}.", channel.getUID().getAsString());
             return stateDescriptions.get(channel.getUID().getAsString());
         }
 
         return originalStateDescription;
     }
 
-    protected void addStateDescriptions(String channelUid, StateDescription stateDescription) {
+    protected void putStateDescriptions(String channelUid, StateDescription stateDescription) {
         logger.debug("Adding state description. channel-uid:{} state-description:{}", channelUid, stateDescription);
         stateDescriptions.put(channelUid, stateDescription);
     }

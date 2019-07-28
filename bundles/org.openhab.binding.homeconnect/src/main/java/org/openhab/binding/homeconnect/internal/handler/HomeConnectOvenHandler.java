@@ -40,6 +40,8 @@ import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jersey.repackaged.com.google.common.collect.ImmutableList;
+
 /**
  * The {@link HomeConnectOvenHandler} is responsible for handling commands, which are
  * sent to one of the channels of a oven.
@@ -50,6 +52,11 @@ import org.slf4j.LoggerFactory;
 public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
 
     private final Logger logger = LoggerFactory.getLogger(HomeConnectOvenHandler.class);
+
+    private static final ImmutableList<String> ACTIVE_STATE = ImmutableList.of(OPERATION_STATE_DELAYED_START,
+            OPERATION_STATE_RUN, OPERATION_STATE_PAUSE);
+    private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
+            OPERATION_STATE_READY);
 
     public HomeConnectOvenHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
@@ -250,7 +257,12 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                             logger.debug("Set setpoint temperature to {} {}.", value, unit);
                         }
 
-                        getClient().setProgramOptions(getThingHaId(), OPTION_SETPOINT_TEMPERATURE, value, unit, true);
+                        String operationState = getCurrentOperationState();
+                        if (operationState != null
+                                && (ACTIVE_STATE.contains(operationState) || INACTIVE_STATE.contains(operationState))) {
+                            getClient().setProgramOptions(getThingHaId(), OPTION_SETPOINT_TEMPERATURE, value, unit,
+                                    true, ACTIVE_STATE.contains(operationState));
+                        }
 
                     } catch (IncommensurableException | UnconvertibleException e) {
                         logger.error("Could not set setpoint!", e.getMessage());
@@ -270,7 +282,12 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                             logger.debug("Set duration to {} seconds.", value);
                         }
 
-                        getClient().setProgramOptions(getThingHaId(), OPTION_DURATION, value, "seconds", true);
+                        String operationState = getCurrentOperationState();
+                        if (operationState != null
+                                && (ACTIVE_STATE.contains(operationState) || INACTIVE_STATE.contains(operationState))) {
+                            getClient().setProgramOptions(getThingHaId(), OPTION_DURATION, value, "seconds", true,
+                                    ACTIVE_STATE.contains(operationState));
+                        }
                     } catch (IncommensurableException | UnconvertibleException e) {
                         logger.error("Could not set duration! error: {}", e.getMessage());
                     }

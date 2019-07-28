@@ -126,6 +126,7 @@
 			<channel id="operation_state" typeId="operation_state" />
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
 			<channel id="remote_control_active_state" typeId="remote_control_active_state" />
+			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
 			<channel id="active_program_state" typeId="active_program_state" />
 			<channel id="selected_program_state" typeId="selected_program_state" />
 			<channel id="dryer_drying_target" typeId="dryer_drying_target" />
@@ -171,9 +172,9 @@
 		<description>Home Connect connected coffee machine (e.g. Bosch or Siemens).</description>
 		<channels>
 			<channel id="power_state" typeId="power_state" />
-			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
 			<channel id="operation_state" typeId="operation_state" />
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
+			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
 			<channel id="selected_program_state" typeId="selected_program_state" />
 			<channel id="basic_actions_state" typeId="basic_actions_state" />
 			<channel id="active_program_state" typeId="active_program_state" />

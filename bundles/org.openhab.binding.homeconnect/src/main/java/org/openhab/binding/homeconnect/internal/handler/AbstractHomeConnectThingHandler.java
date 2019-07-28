@@ -70,6 +70,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     @Nullable
     private HomeConnectApiClient client;
 
+    @Nullable
+    private String operationState;
+
     private final ConcurrentHashMap<String, EventHandler> eventHandlers;
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
     private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
@@ -149,6 +152,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                         }
                     }
 
+                    if (EVENT_OPERATION_STATE.contentEquals(event.getKey())) {
+                        operationState = event.getValue() == null ? null : event.getValue();
+                    }
+
                     if (eventHandlers.containsKey(event.getKey())) {
                         eventHandlers.get(event.getKey()).handle(event);
                     } else {
@@ -185,7 +192,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
 
             if (stateDescription != null) {
-                dynamicStateDescriptionProvider.addStateDescriptions(
+                dynamicStateDescriptionProvider.putStateDescriptions(
                         getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).get().getUID().getAsString(), stateDescription);
             }
         } catch (CommunicationException e) {
@@ -369,6 +376,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         return getThing().getConfiguration().get(HA_ID).toString();
     }
 
+    protected String getCurrentOperationState() {
+        return operationState;
+    }
+
     protected EventHandler defaultElapsedProgramTimeEventHandler() {
         return event -> {
             getThingChannel(CHANNEL_ELAPSED_PROGRAM_TIME).ifPresent(
@@ -477,8 +488,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             Data data = client.getOperationState(getThingHaId());
             if (data != null && data.getValue() != null) {
                 updateState(channelUID, new StringType(mapStringType(data.getValue())));
+                operationState = data.getValue();
             } else {
                 updateState(channelUID, UnDefType.NULL);
+                operationState = null;
             }
         };
     }

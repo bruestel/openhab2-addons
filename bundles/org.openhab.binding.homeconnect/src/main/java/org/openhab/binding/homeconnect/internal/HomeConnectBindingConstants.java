@@ -142,4 +142,14 @@ public class HomeConnectBindingConstants {
     public static final String OAUTH_AUTHORIZE_PATH = "security/oauth/authorize";
     public static final String OAUTH_SCOPE = "IdentifyAppliance Monitor Settings Dishwasher-Control Washer-Control Dryer-Control WasherDryer-Control CoffeeMaker-Control Hood-Control CleaningRobot-Control";
 
+    // Operation states
+    public static final String OPERATION_STATE_INACTIVE = "BSH.Common.EnumType.OperationState.Inactive";
+    public static final String OPERATION_STATE_READY = "BSH.Common.EnumType.OperationState.Ready";
+    public static final String OPERATION_STATE_DELAYED_START = "BSH.Common.EnumType.OperationState.DelayedStart";
+    public static final String OPERATION_STATE_RUN = "BSH.Common.EnumType.OperationState.Run";
+    public static final String OPERATION_STATE_PAUSE = "BSH.Common.EnumType.OperationState.Pause";
+    public static final String OPERATION_STATE_ACTION_REQUIRED = "BSH.Common.EnumType.OperationState.ActionRequired";
+    public static final String OPERATION_STATE_FINISHED = "BSH.Common.EnumType.OperationState.Finished";
+    public static final String OPERATION_STATE_ERROR = "BSH.Common.EnumType.OperationState.Error";
+    public static final String OPERATION_STATE_ABORTING = "BSH.Common.EnumType.OperationState.Aborting";
 }
