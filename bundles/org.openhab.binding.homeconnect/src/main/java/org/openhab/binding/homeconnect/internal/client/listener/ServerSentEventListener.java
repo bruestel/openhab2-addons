@@ -40,4 +40,9 @@ public interface ServerSentEventListener {
      * If SSE client did a reconnect
      */
     void onReconnect();
+
+    /**
+     * If reconnect failed
+     */
+    void onReconnectFailed();
 }

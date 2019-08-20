@@ -276,6 +276,10 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
                         && (ACTIVE_STATE.contains(operationState) || INACTIVE_STATE.contains(operationState))) {
                     boolean activeState = ACTIVE_STATE.contains(operationState);
 
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("operation state: {} | active: {}", operationState, activeState);
+                    }
+
                     // set temperature option
                     if (command instanceof StringType && CHANNEL_WASHER_TEMPERATURE.equals(channelUID.getId())) {
                         getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE, command.toFullString(),

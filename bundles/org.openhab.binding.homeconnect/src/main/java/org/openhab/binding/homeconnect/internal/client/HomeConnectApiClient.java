@@ -474,59 +474,37 @@ public class HomeConnectApiClient {
 
                 @Override
                 public boolean onRetryError(ServerSentEvent sse, Throwable throwable, Response response) {
-                    boolean ret = true;
+                    boolean retry = true;
+
                     if (logger.isWarnEnabled() && throwable != null) {
                         logger.warn("[{}] SSE error: {}", haId, throwable.getMessage());
                     }
 
-                    if (response != null && response.code() == HTTP_FORBIDDEN) {
-                        logger.warn(
-                                "[{}] Stopping SSE listener! Got FORBIDDEN response from server. Please check if you allowed to access this device.",
-                                haId);
-
-                        serverSentEvent.remove(haId);
-                        eventListeners.remove(eventListener);
-                        ret = false;
-                    }
-
-                    if (response != null && response.code() == HTTP_UNAUTHORIZED) {
-                        logger.error("SSE access token became invalid.");
-
-                        // invalidate old access token and create new one
-                        synchronized (HomeConnectApiClient.this) {
-
-                            // try {
-                            // setAccessToken(null);
-                            // checkOrRefreshAccessToken();
-                            // ret = true;
-                            // } catch (CommunicationException e) {
-                            // logger.error("Could not create new SSE!", e);
-                            //
-                            // serverSentEvent.remove(haId);
-                            // eventListeners.remove(eventListener);
-                            // ret = false;
-                            // }
-
-                            setAccessToken(null);
-                            serverSentEvent.remove(haId);
-                            eventListeners.remove(eventListener);
-                            sse.close();
-
-                            // register
-                            try {
-                                registerEventListener(eventListener);
-                            } catch (CommunicationException e) {
-                                logger.error("Could not create new SSE!", e);
-                            }
+                    if (response != null) {
+                        if (response.code() == HTTP_FORBIDDEN) {
+                            logger.warn(
+                                    "[{}] Stopping SSE listener! Got FORBIDDEN response from server. Please check if you allowed to access this device.",
+                                    haId);
+                            retry = false;
+                        } else if (response.code() == HTTP_UNAUTHORIZED) {
+                            logger.error("[{}] Stopping SSE listener! Access token became invalid.", haId);
+                            retry = false;
                         }
 
-                        ret = false;
-                    }
-
-                    if (response != null) {
                         response.close();
                     }
-                    return ret; // True to retry, false otherwise
+
+                    if (!retry) {
+                        eventListeners.forEach(listener -> {
+                            if (listener.haId().equals(haId)) {
+                                listener.onReconnectFailed();
+                            }
+                        });
+                        serverSentEvent.remove(haId);
+                        eventListeners.remove(eventListener);
+                    }
+
+                    return retry; // True to retry, false otherwise
                 }
 
                 @Override

@@ -20,6 +20,8 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.measure.Unit;
@@ -170,6 +172,28 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
                 @Override
                 public void onReconnect() {
+                }
+
+                @Override
+                public void onReconnectFailed() {
+                    logger.debug("Trying to reconnect to SSE endpoint.");
+
+                    final ServerSentEventListener ssel = this;
+                    apiClient.unregisterEventListener(ssel);
+                    TimerTask reStartTask = new TimerTask() {
+                        @Override
+                        public void run() {
+                            if (refreshConnectionStatus()) {
+                                try {
+                                    apiClient.registerEventListener(ssel);
+                                } catch (CommunicationException e) {
+                                    logger.error("Home Connect service is not reachable or a problem occurred! {}",
+                                            e.getMessage());
+                                }
+                            }
+                        }
+                    };
+                    new Timer("Restart").schedule(reStartTask, 10000L);
                 }
             };
 
