@@ -15,14 +15,30 @@ package org.openhab.binding.homeconnect.internal.handler;
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.*;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.QuantityType;
 import org.eclipse.smarthome.core.library.types.StringType;
+import org.eclipse.smarthome.core.thing.Channel;
+import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
+import org.eclipse.smarthome.core.types.Command;
+import org.eclipse.smarthome.core.types.StateDescription;
+import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
+import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
+import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link HomeConnectDryerHandler} is responsible for handling commands, which are
@@ -33,62 +49,33 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
 
+    private static final ImmutableList<String> ACTIVE_STATE = ImmutableList.of(OPERATION_STATE_DELAYED_START,
+            OPERATION_STATE_RUN, OPERATION_STATE_PAUSE);
+    private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
+            OPERATION_STATE_READY);
+
     private final Logger logger = LoggerFactory.getLogger(HomeConnectDryerHandler.class);
+    private HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
 
     public HomeConnectDryerHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
         super(thing, dynamicStateDescriptionProvider);
-        // event handler
-        registerEventHandler(EVENT_DOOR_STATE, defaultDoorStateEventHandler());
-        registerEventHandler(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
-        registerEventHandler(EVENT_REMOTE_CONTROL_START_ALLOWED,
-                defaultBooleanEventHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE));
-        registerEventHandler(EVENT_REMOTE_CONTROL_ACTIVE,
-                defaultBooleanEventHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE));
-        registerEventHandler(EVENT_ACTIVE_PROGRAM, event -> {
-            getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(mapStringType(event.getValue())));
+        this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
+    }
 
-                // revert other channels
-                if (event.getValue() == null) {
-                    resetProgramStateChannels();
-                } else {
-                    // get progress etc. from API
-                    updateChannel(channel.getUID());
-                }
-            });
-        });
-        registerEventHandler(EVENT_REMAINING_PROGRAM_TIME, defaultRemainingProgramTimeEventHandler());
-        registerEventHandler(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
-        registerEventHandler(EVENT_SELECTED_PROGRAM, defaultSelectedProgramStateEventHandler());
+    @Override
+    protected void configureChannelUpdateHandlers(ConcurrentHashMap<String, ChannelUpdateHandler> handlers) {
+        // register default update handlers
+        handlers.put(CHANNEL_DOOR_STATE, defaultDoorStateChannelUpdateHandler());
+        handlers.put(CHANNEL_OPERATION_STATE, defaultOperationStateChannelUpdateHandler());
+        handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
+        handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
+        handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
 
-        registerEventHandler(EVENT_DISCONNECTED, event -> {
-            resetAllChannels();
-        });
-        registerEventHandler(EVENT_CONNECTED, event -> {
-            // revert active program states
-            resetProgramStateChannels();
-
-            // refresh all channels
-            updateChannels();
-        });
-        registerEventHandler(EVENT_DRYER_DRYING_TARGET, event -> {
-            getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(mapStringType(event.getValue())));
-            });
-        });
-
-        // register update handlers
-        registerChannelUpdateHandler(CHANNEL_DOOR_STATE, defaultDoorStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_OPERATION_STATE, defaultOperationStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE,
-                defaultRemoteControlActiveStateChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE,
-                defaultRemoteStartAllowanceChannelUpdateHandler());
-        registerChannelUpdateHandler(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
+        // register dryer specific handlers
+        handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
             Program program = client.getActiveProgram(getThingHaId());
+
             if (program != null && program.getKey() != null) {
                 updateState(channelUID, new StringType(mapStringType(program.getKey())));
                 program.getOptions().forEach(option -> {
@@ -106,9 +93,8 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                                                     : new QuantityType<>(option.getValueAsInt(), PERCENT)));
                             break;
                         case OPTION_DRYER_DRYING_TARGET:
-                            getThingChannel(CHANNEL_DRYER_DRYING_TARGET)
-                                    .ifPresent(channel -> updateState(channel.getUID(),
-                                            new StringType(mapStringType(option.getValue()))));
+                            getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
                             break;
                     }
                 });
@@ -117,43 +103,172 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                 resetProgramStateChannels();
             }
         });
-        registerChannelUpdateHandler(CHANNEL_SELECTED_PROGRAM_STATE, (channelUID, client) -> {
+        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, (channelUID, client) -> {
             Program program = client.getSelectedProgram(getThingHaId());
             if (program != null && program.getKey() != null) {
-                updateState(channelUID, new StringType(mapStringType(program.getKey())));
+                updateState(channelUID, new StringType(program.getKey()));
+
+                updateProgramOptions(program.getKey());
+
                 program.getOptions().forEach(option -> {
                     switch (option.getKey()) {
                         case OPTION_DRYER_DRYING_TARGET:
-                            getThingChannel(CHANNEL_DRYER_DRYING_TARGET)
-                                    .ifPresent(channel -> updateState(channel.getUID(),
-                                            new StringType(mapStringType(option.getValue()))));
+                            getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
                             break;
                     }
                 });
             } else {
                 updateState(channelUID, UnDefType.NULL);
-                resetProgramStateChannels();
             }
         });
     }
 
     @Override
+    protected void configureEventHandlers(ConcurrentHashMap<String, EventHandler> handlers) {
+        // register default event handlers
+        handlers.put(EVENT_DOOR_STATE, defaultDoorStateEventHandler());
+        handlers.put(EVENT_REMOTE_CONTROL_ACTIVE, defaultBooleanEventHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE));
+        handlers.put(EVENT_REMOTE_CONTROL_START_ALLOWED,
+                defaultBooleanEventHandler(CHANNEL_REMOTE_START_ALLOWANCE_STATE));
+        handlers.put(EVENT_REMAINING_PROGRAM_TIME, defaultRemainingProgramTimeEventHandler());
+        handlers.put(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
+        handlers.put(EVENT_LOCAL_CONTROL_ACTIVE, defaultBooleanEventHandler(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE));
+
+        // register dryer specific event handlers
+        handlers.put(EVENT_SELECTED_PROGRAM, event -> {
+            defaultSelectedProgramStateEventHandler().handle(event);
+
+            // update available program options
+            updateProgramOptions(event.getValue());
+        });
+        handlers.put(EVENT_OPERATION_STATE, event -> {
+            defaultOperationStateEventHandler().handle(event);
+
+            if (STATE_OPERATION_FINISHED.equals(event.getValue())) {
+                getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(0, SECOND)));
+                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(100, PERCENT)));
+            }
+
+            if (STATE_OPERATION_RUN.equals(event.getValue())) {
+                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(0, PERCENT)));
+                getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateChannel(c.getUID()));
+            }
+
+            if (STATE_OPERATION_READY.equals(event.getValue())) {
+                resetProgramStateChannels();
+            }
+        });
+        handlers.put(EVENT_ACTIVE_PROGRAM, event -> {
+            defaultActiveProgramEventHandler().handle(event);
+
+            if (event.getValue() == null) {
+                resetProgramStateChannels();
+            }
+        });
+        handlers.put(EVENT_DRYER_DRYING_TARGET, event -> {
+            getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(channel -> {
+                updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
+            });
+        });
+    }
+
+    @Override
+    public void handleCommand(@NonNull ChannelUID channelUID, @NonNull Command command) {
+        if (isThingReadyToHandleCommand()) {
+            super.handleCommand(channelUID, command);
+            String operationState = getCurrentOperationState();
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("{}: {}", channelUID, command);
+            }
+
+            try {
+                // start or stop program
+                if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
+                    updateState(channelUID, new StringType(""));
+
+                    if ("start".equalsIgnoreCase(command.toFullString())) {
+                        String program = getClient().getSelectedProgram(getThingHaId()).getKey();
+                        getClient().startProgram(getThingHaId(), program);
+                    } else {
+                        getClient().stopProgram(getThingHaId());
+                    }
+                }
+
+                // set selected program
+                if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
+                    getClient().setSelectedProgram(getThingHaId(), command.toFullString());
+                }
+
+                // only handle these commands if operation state allows it
+                if (operationState != null
+                        && (ACTIVE_STATE.contains(operationState) || INACTIVE_STATE.contains(operationState))) {
+                    boolean activeState = ACTIVE_STATE.contains(operationState);
+
+                    if (logger.isDebugEnabled()) {
+                        logger.debug("operation state: {} | active: {}", operationState, activeState);
+                    }
+
+                    // set temperature option
+                    if (command instanceof StringType && CHANNEL_DRYER_DRYING_TARGET.equals(channelUID.getId())) {
+                        getClient().setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET,
+                                command.toFullString(), null, false, activeState);
+                    }
+                }
+
+            } catch (CommunicationException e) {
+                logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
+                        e.getMessage());
+            }
+        }
+    }
+
+    @Override
     public String toString() {
-        return "HomeConnectWasherHandler [haId: " + getThingHaId() + "]";
+        return "HomeConnectDryerHandler [haId: " + getThingHaId() + "]";
     }
 
     private void resetProgramStateChannels() {
         logger.debug("Resetting active program channel states");
         getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
     }
 
-    private void resetAllChannels() {
-        logger.debug("Resetting all channels");
-        getThing().getChannels().forEach(channel -> {
-            if (!CHANNEL_POWER_STATE.equals(channel.getUID().getId())) {
-                updateState(channel.getUID(), UnDefType.NULL);
+    private void updateProgramOptions(String programKey) {
+        try {
+            List<AvailableProgramOption> availableProgramOptions = getClient().getProgramOptions(getThingHaId(),
+                    programKey);
+
+            if (availableProgramOptions.isEmpty()) {
+                dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_DRYER_DRYING_TARGET);
             }
-        });
+
+            availableProgramOptions.forEach(option -> {
+                if (option.getKey() != null && OPTION_DRYER_DRYING_TARGET.equals(option.getKey())) {
+                    ArrayList<StateOption> stateOptions = new ArrayList<>();
+
+                    option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, mapStringType(av))));
+                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
+                            .toStateDescription();
+
+                    if (stateDescription != null) {
+                        Optional<Channel> channel = getThingChannel(CHANNEL_DRYER_DRYING_TARGET);
+                        if (channel.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(channel.get().getUID().getAsString(),
+                                    stateDescription);
+                        }
+                    }
+                }
+            });
+        } catch (CommunicationException e) {
+            logger.error("Could not fetch available program options. {}", e.getMessage());
+        }
     }
 }

@@ -284,9 +284,6 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
                     if (command instanceof StringType && CHANNEL_WASHER_TEMPERATURE.equals(channelUID.getId())) {
                         getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE, command.toFullString(),
                                 null, false, activeState);
-
-                        getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE, command.toFullString(),
-                                null, false, activeState);
                     }
 
                     // set spin speed option

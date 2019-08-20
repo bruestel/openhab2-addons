@@ -131,6 +131,7 @@
 			<channel id="active_program_state" typeId="active_program_state" />
 			<channel id="selected_program_state" typeId="selected_program_state" />
 			<channel id="dryer_drying_target" typeId="dryer_drying_target" />
+			<channel id="basic_actions_state" typeId="basic_actions_state" />
 			<channel id="remaining_program_time_state" typeId="remaining_program_time_state" />
 			<channel id="program_progress_state" typeId="program_progress_state" />
 		</channels>

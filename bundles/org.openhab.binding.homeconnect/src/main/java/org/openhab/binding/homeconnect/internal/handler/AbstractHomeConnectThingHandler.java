@@ -146,10 +146,12 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     logger.debug("[{}] {}", getThingHaId(), event);
 
                     if (EVENT_DISCONNECTED.equals(event.getKey())) {
+                        logger.info("Received offline event. Set {} to offline.", getThing().getLabel());
                         updateStatus(ThingStatus.OFFLINE);
                     } else {
                         if (!ThingStatus.ONLINE.equals(getThing().getStatus())) {
                             updateStatus(ThingStatus.ONLINE);
+                            logger.info("Set {} to online.", getThing().getLabel());
                             updateChannels();
                         }
                     }
@@ -161,7 +163,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     if (eventHandlers.containsKey(event.getKey())) {
                         eventHandlers.get(event.getKey()).handle(event);
                     } else {
-                        logger.debug("[{}] Ignore event {}", getThingHaId(), event);
+                        logger.debug("[{}] No event handler registered for event {}. Ignore event.", getThingHaId(),
+                                event);
                     }
                 }
 
