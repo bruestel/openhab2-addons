@@ -121,8 +121,6 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
             if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
                 Program program = client.getSelectedProgram(getThingHaId());
                 if (program != null && program.getKey() != null) {
-                    updateState(channelUID, new StringType(program.getKey()));
-
                     updateProgramOptions(program.getKey());
                 }
             }
@@ -133,8 +131,6 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
                     && !getThingChannel(CHANNEL_WASHER_SPIN_SPEED).isPresent()) {
                 Program program = client.getSelectedProgram(getThingHaId());
                 if (program != null && program.getKey() != null) {
-                    updateState(channelUID, new StringType(program.getKey()));
-
                     updateProgramOptions(program.getKey());
                 }
             }

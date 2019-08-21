@@ -165,34 +165,61 @@
 		</config-description>
 	</thing-type>
 
-	<!-- Coffee Machine -->
-	<thing-type id="coffeemaker">
-		<supported-bridge-type-refs>
-			<bridge-type-ref id="api_bridge" />
-		</supported-bridge-type-refs>
-		<label>Coffee Machine</label>
-		<description>Home Connect connected coffee machine (e.g. Bosch or Siemens).</description>
-		<channels>
-			<channel id="power_state" typeId="power_state" />
-			<channel id="operation_state" typeId="operation_state" />
-			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
-			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
-			<channel id="selected_program_state" typeId="selected_program_state" />
-			<channel id="basic_actions_state" typeId="basic_actions_state" />
-			<channel id="active_program_state" typeId="active_program_state" />
-			<channel id="program_progress_state" typeId="program_progress_state" />
-			<channel id="coffeemaker_drip_tray_full_state" typeId="coffeemaker_drip_tray_full_state" />
-			<channel id="coffeemaker_water_tank_empty_state" typeId="coffeemaker_water_tank_empty_state" />
-			<channel id="coffeemaker_bean_container_empty_state" typeId="coffeemaker_bean_container_empty_state" />
-		</channels>
-		<config-description>
-			<parameter name="haId" type="text" required="true">
-				<label>haId</label>
-				<description>Unique identifier representing a specific home appliance.</description>
-			</parameter>
-		</config-description>
-	</thing-type>
-
+    <!-- Coffee Machine -->
+    <thing-type id="coffeemaker">
+        <supported-bridge-type-refs>
+            <bridge-type-ref id="api_bridge" />
+        </supported-bridge-type-refs>
+        <label>Coffee Machine</label>
+        <description>Home Connect connected coffee machine (e.g. Bosch or Siemens).</description>
+        <channels>
+            <channel id="power_state" typeId="power_state" />
+            <channel id="operation_state" typeId="operation_state" />
+            <channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
+            <channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+            <channel id="active_program_state" typeId="active_program_state" />
+            <channel id="selected_program_state" typeId="selected_program_state" />
+            <channel id="basic_actions_state" typeId="basic_actions_state" />
+            <channel id="program_progress_state" typeId="program_progress_state" />
+            <channel id="coffeemaker_drip_tray_full_state" typeId="coffeemaker_drip_tray_full_state" />
+            <channel id="coffeemaker_water_tank_empty_state" typeId="coffeemaker_water_tank_empty_state" />
+            <channel id="coffeemaker_bean_container_empty_state" typeId="coffeemaker_bean_container_empty_state" />
+        </channels>
+        <config-description>
+            <parameter name="haId" type="text" required="true">
+                <label>haId</label>
+                <description>Unique identifier representing a specific home appliance.</description>
+            </parameter>
+        </config-description>
+    </thing-type>
+    
+    <!-- Hood -->
+    <thing-type id="hood">
+        <supported-bridge-type-refs>
+            <bridge-type-ref id="api_bridge" />
+        </supported-bridge-type-refs>
+        <label>Hood</label>
+        <description>Home Connect connected kitchen hood.</description>
+        <channels>
+            <channel id="power_state" typeId="power_state" />
+            <channel id="operation_state" typeId="operation_state" />
+            <channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
+            <channel id="remote_control_active_state" typeId="remote_control_active_state" />
+            <channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+            <channel id="active_program_state" typeId="active_program_state" />
+            <channel id="selected_program_state" typeId="selected_program_state" />
+            <channel id="hood_venting_level" typeId="hood_venting_level" />
+            <channel id="hood_intensive_level" typeId="hood_intensive_level" />
+            <channel id="basic_actions_state" typeId="basic_actions_state" />
+        </channels>
+        <config-description>
+            <parameter name="haId" type="text" required="true">
+                <label>haId</label>
+                <description>Unique identifier representing a specific home appliance.</description>
+            </parameter>
+        </config-description>
+    </thing-type>
+    
 	<!-- Channel types -->
 	<channel-type id="basic_actions_state">
 		<item-type>String</item-type>
@@ -424,5 +451,17 @@
 		<description>Specifies the desired dryness setting.</description>
 		<state readOnly="false" />
 	</channel-type>
-
+    <channel-type id="hood_venting_level">
+        <item-type>String</item-type>
+        <label>Venting level</label>
+        <description>This option defines the required fan setting of the hood.</description>
+        <state readOnly="false" />
+    </channel-type>
+        <channel-type id="hood_intensive_level">
+        <item-type>String</item-type>
+        <label>Intensive level</label>
+        <description>This option defines the intensive setting of the hood.</description>
+        <state readOnly="false" />
+    </channel-type>	
+	
 </thing:thing-descriptions>

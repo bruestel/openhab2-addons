@@ -179,20 +179,18 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
                 @Override
                 public void onReconnectFailed() {
-                    logger.debug("Trying to reconnect to SSE endpoint.");
-
                     final ServerSentEventListener ssel = this;
                     apiClient.unregisterEventListener(ssel);
                     TimerTask reStartTask = new TimerTask() {
                         @Override
                         public void run() {
-                            if (refreshConnectionStatus()) {
-                                try {
-                                    apiClient.registerEventListener(ssel);
-                                } catch (CommunicationException e) {
-                                    logger.error("Home Connect service is not reachable or a problem occurred! {}",
-                                            e.getMessage());
-                                }
+                            logger.debug("Trying to reconnect to SSE endpoint.");
+                            refreshConnectionStatus();
+                            try {
+                                apiClient.registerEventListener(ssel);
+                            } catch (CommunicationException e) {
+                                logger.error("Home Connect service is not reachable or a problem occurred! {}",
+                                        e.getMessage());
                             }
                         }
                     };

@@ -40,6 +40,7 @@ public class HomeConnectBindingConstants {
     public static final ThingTypeUID THING_TYPE_FRIDGE_FREEZER = new ThingTypeUID(BINDING_ID, "fridgefreezer");
     public static final ThingTypeUID THING_TYPE_DRYER = new ThingTypeUID(BINDING_ID, "dryer");
     public static final ThingTypeUID THING_TYPE_COFFEE_MAKER = new ThingTypeUID(BINDING_ID, "coffeemaker");
+    public static final ThingTypeUID THING_TYPE_HOOD = new ThingTypeUID(BINDING_ID, "hood");
 
     // SSE Event types
     public static final String EVENT_ELAPSED_PROGRAM_TIME = "BSH.Common.Option.ElapsedProgramTime";
@@ -70,6 +71,8 @@ public class HomeConnectBindingConstants {
     public static final String EVENT_COFFEEMAKER_BEAN_CONTAINER_EMPTY = "ConsumerProducts.CoffeeMaker.Event.BeanContainerEmpty";
     public static final String EVENT_COFFEEMAKER_WATER_TANK_EMPTY = "ConsumerProducts.CoffeeMaker.Event.WaterTankEmpty";
     public static final String EVENT_COFFEEMAKER_DRIP_TRAY_FULL = "ConsumerProducts.CoffeeMaker.Event.DripTrayFull";
+    public static final String EVENT_HOOD_VENTING_LEVEL = "Cooking.Common.Option.Hood.VentingLevel";
+    public static final String EVENT_HOOD_INTENSIVE_LEVEL = "Cooking.Common.Option.Hood.IntensiveLevel";
 
     // Channel IDs
     public static final String CHANNEL_DOOR_STATE = "door_state";
@@ -99,16 +102,19 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_COFFEEMAKER_DRIP_TRAY_FULL_STATE = "coffeemaker_drip_tray_full_state";
     public static final String CHANNEL_COFFEEMAKER_WATER_TANK_EMPTY_STATE = "coffeemaker_water_tank_empty_state";
     public static final String CHANNEL_COFFEEMAKER_BEAN_CONTAINER_EMPTY_STATE = "coffeemaker_bean_container_empty_state";
+    public static final String CHANNEL_HOOD_VENTING_LEVEL = "hood_venting_level";
+    public static final String CHANNEL_HOOD_INTENSIVE_LEVEL = "hood_intensive_level";
 
     // List of all supported devices
     public static final Set<ThingTypeUID> SUPPORTED_DEVICE_THING_TYPES_UIDS = Stream
             .of(THING_TYPE_API_BRIDGE, THING_TYPE_DISHWASHER, THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER,
-                    THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER)
+                    THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER, THING_TYPE_HOOD)
             .collect(Collectors.toSet());
 
     // Discoverable devices
-    public static final Set<ThingTypeUID> DISCOVERABLE_DEVICE_THING_TYPES_UIDS = Stream.of(THING_TYPE_DISHWASHER,
-            THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER, THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER)
+    public static final Set<ThingTypeUID> DISCOVERABLE_DEVICE_THING_TYPES_UIDS = Stream
+            .of(THING_TYPE_DISHWASHER, THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER, THING_TYPE_FRIDGE_FREEZER,
+                    THING_TYPE_COFFEE_MAKER, THING_TYPE_HOOD)
             .collect(Collectors.toSet());
 
     // List of state values
@@ -134,6 +140,8 @@ public class HomeConnectBindingConstants {
     public static final String OPTION_WASHER_IDOS_1_DOSING_LEVEL = "LaundryCare.Washer.Option.IDos1DosingLevel";
     public static final String OPTION_WASHER_IDOS_2_DOSING_LEVEL = "LaundryCare.Washer.Option.IDos2DosingLevel";
     public static final String OPTION_DRYER_DRYING_TARGET = "LaundryCare.Dryer.Option.DryingTarget";
+    public static final String OPTION_HOOD_VENTING_LEVEL = "Cooking.Common.Option.Hood.VentingLevel";
+    public static final String OPTION_HOOD_INTENSIVE_LEVEL = "Cooking.Common.Option.Hood.IntensiveLevel";
 
     // Network and oAuth constants
     public static final String API_BASE_URL = "https://api.home-connect.com/";

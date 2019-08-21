@@ -36,6 +36,7 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectDishwasherHan
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDryerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDynamicStateDescriptionProvider;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectFridgeFreezerHandler;
+import org.openhab.binding.homeconnect.internal.handler.HomeConnectHoodHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectOvenHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherHandler;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
@@ -117,6 +118,8 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
             return new HomeConnectFridgeFreezerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_COFFEE_MAKER.equals(thingTypeUID)) {
             return new HomeConnectCoffeeMakerHandler(thing, dynamicStateDescriptionProvider);
+        } else if (THING_TYPE_HOOD.equals(thingTypeUID)) {
+            return new HomeConnectHoodHandler(thing, dynamicStateDescriptionProvider);
         }
 
         return null;
