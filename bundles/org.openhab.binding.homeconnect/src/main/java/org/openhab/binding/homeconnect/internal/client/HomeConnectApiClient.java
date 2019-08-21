@@ -16,6 +16,7 @@ import static java.net.HttpURLConnection.*;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -733,7 +734,7 @@ public class HomeConnectApiClient {
         }
 
         MediaType JSON = MediaType.parse(BSH_JSON_V1);
-        RequestBody requestBody = RequestBody.create(JSON, requestBodyPayload);
+        RequestBody requestBody = RequestBody.create(JSON, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
 
         checkOrRefreshAccessToken();
         Request request = new Request.Builder().url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
@@ -791,7 +792,7 @@ public class HomeConnectApiClient {
         }
 
         MediaType JSON = MediaType.parse(BSH_JSON_V1);
-        RequestBody requestBody = RequestBody.create(JSON, requestBodyPayload);
+        RequestBody requestBody = RequestBody.create(JSON, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
 
         checkOrRefreshAccessToken();
         Request request = new Request.Builder().url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
