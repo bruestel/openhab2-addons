@@ -72,6 +72,10 @@ public class HomeConnectApiClient {
     private final static int SSE_REQUEST_READ_TIMEOUT = 90;
     private final static int REQUEST_READ_TIMEOUT = 30;
 
+    private final static int VALUE_TYPE_STRING = 0;
+    private final static int VALUE_TYPE_INT = 1;
+    private final static int VALUE_TYPE_BOOLEAN = 2;
+
     private final Logger logger = LoggerFactory.getLogger(HomeConnectApiClient.class);
     private final OkHttpClient client;
     private final String apiUrl;
@@ -210,7 +214,7 @@ public class HomeConnectApiClient {
      */
     public void setFreezerSetpointTemperature(String haId, String state, String unit) throws CommunicationException {
         putSettings(haId, new Data("Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer", state, unit),
-                true);
+                VALUE_TYPE_INT);
     }
 
     /**
@@ -233,7 +237,7 @@ public class HomeConnectApiClient {
      */
     public void setFridgeSetpointTemperature(String haId, String state, String unit) throws CommunicationException {
         putSettings(haId, new Data("Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator", state, unit),
-                true);
+                VALUE_TYPE_INT);
     }
 
     /**
@@ -248,6 +252,19 @@ public class HomeConnectApiClient {
     }
 
     /**
+     * Set fridge super mode
+     *
+     * @param haId home appliance id
+     * @param enable enable or disable fridge super mode
+     * @throws CommunicationException
+     */
+    public void setFridgeSuperMode(String haId, boolean enable) throws CommunicationException {
+        putSettings(haId,
+                new Data("Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator", String.valueOf(enable), null),
+                VALUE_TYPE_BOOLEAN);
+    }
+
+    /**
      * Get freezer super mode
      *
      * @param haId home appliance id
@@ -256,6 +273,19 @@ public class HomeConnectApiClient {
      */
     public Data getFreezerSuperMode(String haId) throws CommunicationException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer");
+    }
+
+    /**
+     * Set freezer super mode
+     *
+     * @param haId home appliance id
+     * @param enable enable or disable freezer super mode
+     * @throws CommunicationException
+     */
+    public void setFreezerSuperMode(String haId, boolean enable) throws CommunicationException {
+        putSettings(haId,
+                new Data("Refrigeration.FridgeFreezer.Setting.SuperModeFreezer", String.valueOf(enable), null),
+                VALUE_TYPE_BOOLEAN);
     }
 
     /**
@@ -339,11 +369,13 @@ public class HomeConnectApiClient {
     }
 
     public void setSelectedProgram(String haId, String program) throws CommunicationException {
-        putData(haId, "/api/homeappliances/" + haId + "/programs/selected", new Data(program, null, null), false);
+        putData(haId, "/api/homeappliances/" + haId + "/programs/selected", new Data(program, null, null),
+                VALUE_TYPE_STRING);
     }
 
     public void startProgram(String haId, String program) throws CommunicationException {
-        putData(haId, "/api/homeappliances/" + haId + "/programs/active", new Data(program, null, null), false);
+        putData(haId, "/api/homeappliances/" + haId + "/programs/active", new Data(program, null, null),
+                VALUE_TYPE_STRING);
     }
 
     public void setProgramOptions(String haId, String key, String value, String unit, boolean valueAsInt,
@@ -563,11 +595,11 @@ public class HomeConnectApiClient {
     }
 
     private void putSettings(String haId, Data data) throws CommunicationException {
-        putSettings(haId, data, false);
+        putSettings(haId, data, VALUE_TYPE_STRING);
     }
 
-    private void putSettings(String haId, Data data, boolean asInt) throws CommunicationException {
-        putData(haId, "/api/homeappliances/" + haId + "/settings/" + data.getName(), data, asInt);
+    private void putSettings(String haId, Data data, int valueType) throws CommunicationException {
+        putData(haId, "/api/homeappliances/" + haId + "/settings/" + data.getName(), data, valueType);
     }
 
     private Data getStatus(String haId, String status) throws CommunicationException {
@@ -673,14 +705,16 @@ public class HomeConnectApiClient {
         }
     }
 
-    private synchronized void putData(String haId, String path, Data data, boolean asInt)
+    private synchronized void putData(String haId, String path, Data data, int valueType)
             throws CommunicationException {
         JsonObject innerObject = new JsonObject();
         innerObject.addProperty("key", data.getName());
 
         if (data.getValue() != null) {
-            if (asInt) {
+            if (valueType == VALUE_TYPE_INT) {
                 innerObject.addProperty("value", Integer.valueOf(data.getValue()));
+            } else if (valueType == VALUE_TYPE_BOOLEAN) {
+                innerObject.addProperty("value", Boolean.valueOf(data.getValue()));
             } else {
                 innerObject.addProperty("value", data.getValue());
             }
@@ -720,7 +754,7 @@ public class HomeConnectApiClient {
         } catch (InvalidTokenException e) {
             setAccessToken(null);
             logger.debug("[putData({}, {}, {})] Retrying method.", haId, path, data);
-            putData(haId, path, data, asInt);
+            putData(haId, path, data, valueType);
         }
     }
 

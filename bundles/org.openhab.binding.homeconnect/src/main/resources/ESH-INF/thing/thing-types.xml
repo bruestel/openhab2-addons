@@ -392,14 +392,14 @@
 		<label>Refrigerator temperature</label>
 		<description>Target temperature of the refrigerator compartment (Range depends on appliance - common range 2 to 8°C).
         </description>
-		<state step="1" pattern="%.0f %unit%" readOnly="false"></state>
+		<state step="1" pattern="%.0f %unit%"></state>
 	</channel-type>
 	<channel-type id="setpoint_temperature_freezer">
 		<item-type>Number:Temperature</item-type>
 		<label>Freezer temperature</label>
 		<description>Target temperature of the freezer compartment (Range depends on appliance - common range -16 to -24°C).
         </description>
-		<state step="1" pattern="%.0f %unit%" readOnly="false"></state>
+		<state step="1" pattern="%.0f %unit%"></state>
 	</channel-type>
 	<channel-type id="super_mode_refrigerator">
 		<item-type>Switch</item-type>
@@ -407,7 +407,7 @@
 		<description>The setting has no impact on setpoint temperatures but will make the fridge compartment cool to the
             lowest possible temperature until it is disabled by the manually by the customer or by the HA because of a timeout.
         </description>
-		<state readOnly="true" />
+		<state readOnly="false" />
 	</channel-type>
 	<channel-type id="super_mode_freezer">
 		<item-type>Switch</item-type>
@@ -416,13 +416,13 @@
             lowest possible temperature until it is disabled by the manually by the customer or by the home appliance because of
             a timeout.
         </description>
-		<state readOnly="true" />
+		<state readOnly="false" />
 	</channel-type>
 	<channel-type id="dryer_drying_target">
 		<item-type>String</item-type>
 		<label>Drying target</label>
 		<description>Specifies the desired dryness setting.</description>
-		<state readOnly="true" />
+		<state readOnly="false" />
 	</channel-type>
 
 </thing:thing-descriptions>

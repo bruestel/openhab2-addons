@@ -245,7 +245,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                             unit = quantity.getUnit().toString();
                             value = String.valueOf(quantity.intValue());
                         } else {
-                            logger.info("Converting target setpoint temperture from {}{} to °C value.",
+                            logger.info("Converting target setpoint temperature from {}{} to °C value.",
                                     quantity.intValue(), quantity.getUnit().toString());
                             unit = "°C";
                             value = String.valueOf(
@@ -253,9 +253,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                             logger.info("{}{}", value, unit);
                         }
 
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Set setpoint temperature to {} {}.", value, unit);
-                        }
+                        logger.debug("Set setpoint temperature to {} {}.", value, unit);
 
                         String operationState = getCurrentOperationState();
                         if (operationState != null

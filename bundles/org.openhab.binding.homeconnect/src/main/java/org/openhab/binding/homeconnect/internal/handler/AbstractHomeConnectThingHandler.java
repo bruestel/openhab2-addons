@@ -209,21 +209,24 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         }
 
         // update available selectable programs (dynamic program list)
-        try {
-            ArrayList<StateOption> stateOptions = new ArrayList<>();
-            apiClient.getPrograms(getThingHaId()).stream().filter(p -> p.isAvailable()).forEach(p -> {
-                stateOptions.add(new StateOption(p.getKey(), mapStringType(p.getKey())));
-            });
+        if (!(this instanceof HomeConnectFridgeFreezerHandler)) {
+            try {
+                ArrayList<StateOption> stateOptions = new ArrayList<>();
+                apiClient.getPrograms(getThingHaId()).stream().filter(p -> p.isAvailable()).forEach(p -> {
+                    stateOptions.add(new StateOption(p.getKey(), mapStringType(p.getKey())));
+                });
 
-            StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                    .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
+                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
 
-            if (stateDescription != null) {
-                dynamicStateDescriptionProvider.putStateDescriptions(
-                        getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).get().getUID().getAsString(), stateDescription);
+                if (stateDescription != null) {
+                    dynamicStateDescriptionProvider.putStateDescriptions(
+                            getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).get().getUID().getAsString(),
+                            stateDescription);
+                }
+            } catch (CommunicationException e) {
+                logger.error("Could not fetch available programs. {}", e.getMessage());
             }
-        } catch (CommunicationException e) {
-            logger.error("Could not fetch available programs. {}", e.getMessage());
         }
     }
 
@@ -252,18 +255,6 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         return true;
     }
 
-    @Deprecated
-    protected void registerEventHandler(String eventId, EventHandler eventHandler) {
-        eventHandlers.put(eventId, eventHandler);
-        // TODO remove
-    }
-
-    @Deprecated
-    protected void registerChannelUpdateHandler(String channelId, ChannelUpdateHandler handler) {
-        channelUpdateHandlers.put(channelId, handler);
-        // TODO remove
-    }
-
     protected HomeConnectApiClient getClient() {
         return client;
     }
@@ -272,14 +263,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         return Optional.ofNullable(getThing().getChannel(channelId));
     }
 
-    protected void configureChannelUpdateHandlers(
-            final @NonNull ConcurrentHashMap<String, ChannelUpdateHandler> handlers) {
-        // TODO make abstract, so that all handler need to impl. this
-    }
+    protected abstract void configureChannelUpdateHandlers(
+            final @NonNull ConcurrentHashMap<String, ChannelUpdateHandler> handlers);
 
-    protected void configureEventHandlers(final @NonNull ConcurrentHashMap<String, EventHandler> handlers) {
-        // TODO make abstract, so that all handler need to impl. this
-    }
+    protected abstract void configureEventHandlers(final @NonNull ConcurrentHashMap<String, EventHandler> handlers);
 
     /**
      * Update all channels via API.
