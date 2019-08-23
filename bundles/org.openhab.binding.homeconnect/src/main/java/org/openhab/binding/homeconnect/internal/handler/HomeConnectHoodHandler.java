@@ -64,7 +64,6 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
         handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
-        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, defaultSelectedProgramStateUpdateHandler());
 
         // register hood specific update handlers
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {

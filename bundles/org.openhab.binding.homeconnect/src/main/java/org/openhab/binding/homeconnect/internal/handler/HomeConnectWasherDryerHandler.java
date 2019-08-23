@@ -41,23 +41,24 @@ import org.slf4j.LoggerFactory;
 import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
- * The {@link HomeConnectDryerHandler} is responsible for handling commands, which are
- * sent to one of the channels of a dryer.
+ * The {@link HomeConnectWasherDryerHandler} is responsible for handling commands, which are
+ * sent to one of the channels of a washer dryer combined machine.
  *
  * @author Jonas Brüstel - Initial contribution
  */
 @NonNullByDefault
-public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
+public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandler {
+
+    private final Logger logger = LoggerFactory.getLogger(HomeConnectWasherDryerHandler.class);
 
     private static final ImmutableList<String> ACTIVE_STATE = ImmutableList.of(OPERATION_STATE_DELAYED_START,
             OPERATION_STATE_RUN, OPERATION_STATE_PAUSE);
     private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
             OPERATION_STATE_READY);
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectDryerHandler.class);
     private HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
 
-    public HomeConnectDryerHandler(Thing thing,
+    public HomeConnectWasherDryerHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
         super(thing, dynamicStateDescriptionProvider);
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
@@ -72,7 +73,7 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
 
-        // register dryer specific handlers
+        // register washer specific handlers
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
             Program program = client.getActiveProgram(getThingHaId());
 
@@ -92,6 +93,14 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                                             option.getValueAsInt() == 100 ? UnDefType.NULL
                                                     : new QuantityType<>(option.getValueAsInt(), PERCENT)));
                             break;
+                        case OPTION_WASHER_TEMPERATURE:
+                            getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                            break;
+                        case OPTION_WASHER_SPIN_SPEED:
+                            getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                            break;
                         case OPTION_DRYER_DRYING_TARGET:
                             getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(
                                     channel -> updateState(channel.getUID(), new StringType(option.getValue())));
@@ -103,6 +112,25 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                 resetProgramStateChannels();
             }
         });
+        handlers.put(CHANNEL_WASHER_SPIN_SPEED, (channelUID, client) -> {
+            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
+            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
+                Program program = client.getSelectedProgram(getThingHaId());
+                if (program != null && program.getKey() != null) {
+                    updateProgramOptions(program.getKey());
+                }
+            }
+        });
+        handlers.put(CHANNEL_WASHER_TEMPERATURE, (channelUID, client) -> {
+            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_WASHER_SPIN_SPEED are not there
+            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
+                    && !getThingChannel(CHANNEL_WASHER_SPIN_SPEED).isPresent()) {
+                Program program = client.getSelectedProgram(getThingHaId());
+                if (program != null && program.getKey() != null) {
+                    updateProgramOptions(program.getKey());
+                }
+            }
+        });
         handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, (channelUID, client) -> {
             Program program = client.getSelectedProgram(getThingHaId());
             if (program != null && program.getKey() != null) {
@@ -112,6 +140,14 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
 
                 program.getOptions().forEach(option -> {
                     switch (option.getKey()) {
+                        case OPTION_WASHER_TEMPERATURE:
+                            getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                            break;
+                        case OPTION_WASHER_SPIN_SPEED:
+                            getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(
+                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                            break;
                         case OPTION_DRYER_DRYING_TARGET:
                             getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(
                                     channel -> updateState(channel.getUID(), new StringType(option.getValue())));
@@ -135,12 +171,30 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
         handlers.put(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
         handlers.put(EVENT_LOCAL_CONTROL_ACTIVE, defaultBooleanEventHandler(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE));
 
-        // register dryer specific event handlers
+        // register washer specific event handlers
         handlers.put(EVENT_SELECTED_PROGRAM, event -> {
             defaultSelectedProgramStateEventHandler().handle(event);
 
             // update available program options
             updateProgramOptions(event.getValue());
+        });
+        handlers.put(EVENT_WASHER_TEMPERATURE, event -> {
+            getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(channel -> {
+                updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
+            });
+        });
+        handlers.put(EVENT_WASHER_SPIN_SPEED, event -> {
+            getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(channel -> {
+                updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
+            });
+        });
+        handlers.put(EVENT_DRYER_DRYING_TARGET, event -> {
+            getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(channel -> {
+                updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
+            });
         });
         handlers.put(EVENT_OPERATION_STATE, event -> {
             defaultOperationStateEventHandler().handle(event);
@@ -168,12 +222,6 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
             if (event.getValue() == null) {
                 resetProgramStateChannels();
             }
-        });
-        handlers.put(EVENT_DRYER_DRYING_TARGET, event -> {
-            getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
-            });
         });
     }
 
@@ -214,6 +262,18 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                         logger.debug("operation state: {} | active: {}", operationState, activeState);
                     }
 
+                    // set temperature option
+                    if (command instanceof StringType && CHANNEL_WASHER_TEMPERATURE.equals(channelUID.getId())) {
+                        getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE, command.toFullString(),
+                                null, false, activeState);
+                    }
+
+                    // set spin speed option
+                    if (command instanceof StringType && CHANNEL_WASHER_SPIN_SPEED.equals(channelUID.getId())) {
+                        getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_SPIN_SPEED, command.toFullString(),
+                                null, false, activeState);
+                    }
+
                     // set drying target option
                     if (command instanceof StringType && CHANNEL_DRYER_DRYING_TARGET.equals(channelUID.getId())) {
                         getClient().setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET,
@@ -230,7 +290,7 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
 
     @Override
     public String toString() {
-        return "HomeConnectDryerHandler [haId: " + getThingHaId() + "]";
+        return "HomeConnectWasherDryerHandler [haId: " + getThingHaId() + "]";
     }
 
     private void resetProgramStateChannels() {
@@ -246,11 +306,45 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                     programKey);
 
             if (availableProgramOptions.isEmpty()) {
+                dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_WASHER_SPIN_SPEED);
+                dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_WASHER_TEMPERATURE);
                 dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_DRYER_DRYING_TARGET);
             }
 
             availableProgramOptions.forEach(option -> {
-                if (option.getKey() != null && OPTION_DRYER_DRYING_TARGET.equals(option.getKey())) {
+                if (option.getKey() != null && OPTION_WASHER_SPIN_SPEED.equals(option.getKey())) {
+                    ArrayList<StateOption> stateOptions = new ArrayList<>();
+
+                    option.getAllowedValues()
+                            .forEach(av -> stateOptions.add(new StateOption(av, convertWasherSpinSpeed(av))));
+                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
+                            .toStateDescription();
+
+                    if (stateDescription != null) {
+                        Optional<Channel> channel = getThingChannel(CHANNEL_WASHER_SPIN_SPEED);
+                        if (channel.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(channel.get().getUID().getAsString(),
+                                    stateDescription);
+                        }
+                    }
+                } else if (option.getKey() != null && OPTION_WASHER_TEMPERATURE.equals(option.getKey())) {
+                    ArrayList<StateOption> stateOptions = new ArrayList<>();
+
+                    option.getAllowedValues()
+                            .forEach(av -> stateOptions.add(new StateOption(av, convertWasherTemperature(av))));
+                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
+                            .toStateDescription();
+
+                    if (stateDescription != null) {
+                        Optional<Channel> channel = getThingChannel(CHANNEL_WASHER_TEMPERATURE);
+                        if (channel.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(channel.get().getUID().getAsString(),
+                                    stateDescription);
+                        }
+                    }
+                } else if (option.getKey() != null && OPTION_DRYER_DRYING_TARGET.equals(option.getKey())) {
                     ArrayList<StateOption> stateOptions = new ArrayList<>();
 
                     option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, mapStringType(av))));
@@ -270,5 +364,29 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
         } catch (CommunicationException e) {
             logger.error("Could not fetch available program options. {}", e.getMessage());
         }
+    }
+
+    private String convertWasherTemperature(String value) {
+        if (value.startsWith("LaundryCare.Washer.EnumType.Temperature.GC")) {
+            return value.replace("LaundryCare.Washer.EnumType.Temperature.GC", "") + "°C";
+        }
+
+        if (value.startsWith("LaundryCare.Washer.EnumType.Temperature.Ul")) {
+            return mapStringType(value.replace("LaundryCare.Washer.EnumType.Temperature.Ul", ""));
+        }
+
+        return mapStringType(value);
+    }
+
+    private String convertWasherSpinSpeed(String value) {
+        if (value.startsWith("LaundryCare.Washer.EnumType.SpinSpeed.RPM")) {
+            return value.replace("LaundryCare.Washer.EnumType.SpinSpeed.RPM", "") + " RPM";
+        }
+
+        if (value.startsWith("LaundryCare.Washer.EnumType.SpinSpeed.Ul")) {
+            return value.replace("LaundryCare.Washer.EnumType.SpinSpeed.Ul", "");
+        }
+
+        return mapStringType(value);
     }
 }

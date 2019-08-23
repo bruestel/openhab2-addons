@@ -32,12 +32,14 @@ import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
 import org.openhab.binding.homeconnect.internal.discovery.HomeConnectDiscoveryService;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectCoffeeMakerHandler;
+import org.openhab.binding.homeconnect.internal.handler.HomeConnectCooktopHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDishwasherHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDryerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDynamicStateDescriptionProvider;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectFridgeFreezerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectHoodHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectOvenHandler;
+import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherDryerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherHandler;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
 import org.osgi.framework.ServiceRegistration;
@@ -112,6 +114,8 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
             return new HomeConnectOvenHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_WASHER.equals(thingTypeUID)) {
             return new HomeConnectWasherHandler(thing, dynamicStateDescriptionProvider);
+        } else if (THING_TYPE_WASHER_DRYER.equals(thingTypeUID)) {
+            return new HomeConnectWasherDryerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_DRYER.equals(thingTypeUID)) {
             return new HomeConnectDryerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_FRIDGE_FREEZER.equals(thingTypeUID)) {
@@ -120,6 +124,8 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
             return new HomeConnectCoffeeMakerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_HOOD.equals(thingTypeUID)) {
             return new HomeConnectHoodHandler(thing, dynamicStateDescriptionProvider);
+        } else if (THING_TYPE_COOKTOP.equals(thingTypeUID)) {
+            return new HomeConnectCooktopHandler(thing, dynamicStateDescriptionProvider);
         }
 
         return null;

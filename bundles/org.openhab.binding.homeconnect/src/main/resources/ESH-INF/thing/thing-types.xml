@@ -114,6 +114,36 @@
 			</parameter>
 		</config-description>
 	</thing-type>
+	
+	<!-- Washer dryer combination -->
+    <thing-type id="washerdryer">
+        <supported-bridge-type-refs>
+            <bridge-type-ref id="api_bridge" />
+        </supported-bridge-type-refs>
+        <label>Washer Dryer combination</label>
+        <description>Home Connect connected combined washer dryer appliance.</description>
+        <channels>
+            <channel id="door_state" typeId="door_state" />
+            <channel id="operation_state" typeId="operation_state" />
+            <channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
+            <channel id="remote_control_active_state" typeId="remote_control_active_state" />
+            <channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+            <channel id="active_program_state" typeId="active_program_state" />
+            <channel id="selected_program_state" typeId="selected_program_state" />
+            <channel id="laundry_care_washer_temperature" typeId="laundry_care_washer_temperature" />
+            <channel id="laundry_care_washer_spin_speed" typeId="laundry_care_washer_spin_speed" />
+            <channel id="dryer_drying_target" typeId="dryer_drying_target" />
+            <channel id="basic_actions_state" typeId="basic_actions_state" />
+            <channel id="remaining_program_time_state" typeId="remaining_program_time_state" />
+            <channel id="program_progress_state" typeId="program_progress_state" />
+        </channels>
+        <config-description>
+            <parameter name="haId" type="text" required="true">
+                <label>haId</label>
+                <description>Unique identifier representing a specific home appliance.</description>
+            </parameter>
+        </config-description>
+    </thing-type>
 
 	<!-- Dryer -->
 	<thing-type id="dryer">
@@ -219,6 +249,30 @@
             </parameter>
         </config-description>
     </thing-type>
+    
+    <!-- Cooktop -->
+    <thing-type id="hob">
+        <supported-bridge-type-refs>
+            <bridge-type-ref id="api_bridge" />
+        </supported-bridge-type-refs>
+        <label>Cooktop</label>
+        <description>Home Connect connected kitchen cooktop (hob).</description>
+        <channels>
+            <channel id="power_state" typeId="power_state" />
+            <channel id="operation_state" typeId="operation_state" />
+            <channel id="remote_start_allowance_state" typeId="remote_start_allowance_state" />
+            <channel id="remote_control_active_state" typeId="remote_control_active_state" />
+            <channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+            <channel id="active_program_state" typeId="active_program_state" />
+            <channel id="selected_program_state" typeId="selected_program_state" />
+        </channels>
+        <config-description>
+            <parameter name="haId" type="text" required="true">
+                <label>haId</label>
+                <description>Unique identifier representing a specific home appliance.</description>
+            </parameter>
+        </config-description>
+    </thing-type>    
     
 	<!-- Channel types -->
 	<channel-type id="basic_actions_state">

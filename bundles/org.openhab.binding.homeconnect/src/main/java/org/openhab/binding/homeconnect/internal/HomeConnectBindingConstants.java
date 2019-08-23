@@ -37,10 +37,12 @@ public class HomeConnectBindingConstants {
     public static final ThingTypeUID THING_TYPE_DISHWASHER = new ThingTypeUID(BINDING_ID, "dishwasher");
     public static final ThingTypeUID THING_TYPE_OVEN = new ThingTypeUID(BINDING_ID, "oven");
     public static final ThingTypeUID THING_TYPE_WASHER = new ThingTypeUID(BINDING_ID, "washer");
+    public static final ThingTypeUID THING_TYPE_WASHER_DRYER = new ThingTypeUID(BINDING_ID, "washerdryer");
     public static final ThingTypeUID THING_TYPE_FRIDGE_FREEZER = new ThingTypeUID(BINDING_ID, "fridgefreezer");
     public static final ThingTypeUID THING_TYPE_DRYER = new ThingTypeUID(BINDING_ID, "dryer");
     public static final ThingTypeUID THING_TYPE_COFFEE_MAKER = new ThingTypeUID(BINDING_ID, "coffeemaker");
     public static final ThingTypeUID THING_TYPE_HOOD = new ThingTypeUID(BINDING_ID, "hood");
+    public static final ThingTypeUID THING_TYPE_COOKTOP = new ThingTypeUID(BINDING_ID, "hob");
 
     // SSE Event types
     public static final String EVENT_ELAPSED_PROGRAM_TIME = "BSH.Common.Option.ElapsedProgramTime";
@@ -106,15 +108,15 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_HOOD_INTENSIVE_LEVEL = "hood_intensive_level";
 
     // List of all supported devices
-    public static final Set<ThingTypeUID> SUPPORTED_DEVICE_THING_TYPES_UIDS = Stream
-            .of(THING_TYPE_API_BRIDGE, THING_TYPE_DISHWASHER, THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER,
-                    THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER, THING_TYPE_HOOD)
+    public static final Set<ThingTypeUID> SUPPORTED_DEVICE_THING_TYPES_UIDS = Stream.of(THING_TYPE_API_BRIDGE,
+            THING_TYPE_DISHWASHER, THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER, THING_TYPE_WASHER_DRYER,
+            THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER, THING_TYPE_HOOD, THING_TYPE_COOKTOP)
             .collect(Collectors.toSet());
 
     // Discoverable devices
     public static final Set<ThingTypeUID> DISCOVERABLE_DEVICE_THING_TYPES_UIDS = Stream
-            .of(THING_TYPE_DISHWASHER, THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER, THING_TYPE_FRIDGE_FREEZER,
-                    THING_TYPE_COFFEE_MAKER, THING_TYPE_HOOD)
+            .of(THING_TYPE_DISHWASHER, THING_TYPE_OVEN, THING_TYPE_WASHER, THING_TYPE_DRYER, THING_TYPE_WASHER_DRYER,
+                    THING_TYPE_FRIDGE_FREEZER, THING_TYPE_COFFEE_MAKER, THING_TYPE_HOOD, THING_TYPE_COOKTOP)
             .collect(Collectors.toSet());
 
     // List of state values
@@ -148,7 +150,7 @@ public class HomeConnectBindingConstants {
     public static final String API_SIMULATOR_BASE_URL = "https://simulator.home-connect.com/";
     public static final String OAUTH_TOKEN_PATH = "security/oauth/token";
     public static final String OAUTH_AUTHORIZE_PATH = "security/oauth/authorize";
-    public static final String OAUTH_SCOPE = "IdentifyAppliance Monitor Settings Dishwasher-Control Washer-Control Dryer-Control WasherDryer-Control CoffeeMaker-Control Hood-Control CleaningRobot-Control";
+    public static final String OAUTH_SCOPE = "IdentifyAppliance Monitor Settings Dishwasher-Control Washer-Control Dryer-Control WasherDryer-Control CoffeeMaker-Control Hood-Control Hob-Control CleaningRobot-Control";
 
     // Operation states
     public static final String OPERATION_STATE_INACTIVE = "BSH.Common.EnumType.OperationState.Inactive";
