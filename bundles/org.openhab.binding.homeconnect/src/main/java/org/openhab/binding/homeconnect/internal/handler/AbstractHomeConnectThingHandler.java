@@ -123,6 +123,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     @Override
     public void dispose() {
+        HomeConnectApiClient client = this.client;
         if (serverSentEventListener != null && client != null) {
             client.unregisterEventListener(serverSentEventListener);
         }
@@ -360,6 +361,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      */
     protected boolean refreshConnectionStatus() {
         ThingStatus oldStatus = getThing().getStatus();
+        HomeConnectApiClient client = this.client;
+
         if (client != null) {
             try {
                 HomeAppliance homeAppliance = client.getHomeAppliance(getThingHaId());

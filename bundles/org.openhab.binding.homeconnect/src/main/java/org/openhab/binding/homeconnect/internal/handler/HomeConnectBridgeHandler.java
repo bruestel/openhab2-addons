@@ -155,10 +155,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     @Override
     public void dispose() {
-        ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture;
-        if (reinitializationFuture != null && !reinitializationFuture.isDone()) {
-            reinitializationFuture.cancel(true);
-        }
+        stopReinitializer();
     }
 
     public @Nullable HomeConnectApiClient getApiClient() {
@@ -200,6 +197,13 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
                 scheduler.schedule(() -> initialize(), REINITIALIZATION_SHORT_DELAY, TimeUnit.SECONDS);
 
             }, seconds, TimeUnit.SECONDS);
+        }
+    }
+
+    private synchronized void stopReinitializer() {
+        ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture;
+        if (reinitializationFuture != null) {
+            reinitializationFuture.cancel(true);
         }
     }
 

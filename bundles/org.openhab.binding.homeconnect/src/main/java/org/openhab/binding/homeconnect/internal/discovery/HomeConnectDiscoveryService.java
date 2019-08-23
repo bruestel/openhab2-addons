@@ -27,7 +27,6 @@ import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
-import org.eclipse.smarthome.core.thing.binding.BridgeHandler;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler;
@@ -48,7 +47,8 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
     private HomeConnectBridgeHandler bridgeHandler;
 
     /**
-     * Construct an {@link HomeConnectDiscoveryService} with the given {@link BridgeHandler}.
+     * Construct an {@link HomeConnectDiscoveryService} with the given
+     * {@link org.eclipse.smarthome.core.thing.binding.BridgeHandler}.
      *
      * @param bridgeHandler
      */

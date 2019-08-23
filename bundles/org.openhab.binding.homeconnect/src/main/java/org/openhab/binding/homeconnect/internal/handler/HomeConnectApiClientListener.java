@@ -13,11 +13,11 @@
 package org.openhab.binding.homeconnect.internal.handler;
 
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 
 /**
- * {@link ThingHandler} which implement {@link HomeConnectApiClientListener} will be informed about new
+ * {@link org.eclipse.smarthome.core.thing.binding.ThingHandler} which implement {@link HomeConnectApiClientListener}
+ * will be informed about new
  * {@link HomeConnectApiClient}
  * instances by there parent ({@link HomeConnectBridgeHandler}).
  *

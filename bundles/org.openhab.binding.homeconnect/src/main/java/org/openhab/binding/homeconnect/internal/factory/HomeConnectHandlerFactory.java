@@ -140,7 +140,9 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
                     .get(thingHandler.getThing().getUID());
             HomeConnectDiscoveryService service = (HomeConnectDiscoveryService) bundleContext
                     .getService(serviceRegistration.getReference());
-            service.deactivate();
+            if (service != null) {
+                service.deactivate();
+            }
             serviceRegistration.unregister();
             discoveryServiceRegistrations.remove(thingHandler.getThing().getUID());
 
