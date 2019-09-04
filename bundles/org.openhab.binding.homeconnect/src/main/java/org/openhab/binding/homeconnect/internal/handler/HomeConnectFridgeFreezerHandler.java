@@ -64,7 +64,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                 updateState(channelUID, UnDefType.NULL);
             }
         });
-        handlers.put(CHANNEL_REFRIDGERATOR_SETPOINT_TEMPERATURE, (channelUID, client) -> {
+        handlers.put(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE, (channelUID, client) -> {
             Data data = client.getFridgeSetpointTemperature(getThingHaId());
             if (data != null && data.getValue() != null) {
                 updateState(channelUID, new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit())));
@@ -72,7 +72,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                 updateState(channelUID, UnDefType.NULL);
             }
         });
-        handlers.put(CHANNEL_REFRIDGERATOR_SUPER_MODE, (channelUID, client) -> {
+        handlers.put(CHANNEL_REFRIGERATOR_SUPER_MODE, (channelUID, client) -> {
             Data data = client.getFridgeSuperMode(getThingHaId());
             if (data != null && data.getValue() != null) {
                 updateState(channelUID, data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF);
@@ -101,12 +101,12 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                     new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
         });
         handlers.put(EVENT_FRIDGE_SETPOINT_TEMPERATURE, event -> {
-            getThingChannel(CHANNEL_REFRIDGERATOR_SETPOINT_TEMPERATURE)
+            getThingChannel(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE)
                     .ifPresent(channel -> updateState(channel.getUID(),
                             new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
         });
         handlers.put(EVENT_FREEZER_SUPER_MODE, defaultBooleanEventHandler(CHANNEL_FREEZER_SUPER_MODE));
-        handlers.put(EVENT_FRIDGE_SUPER_MODE, defaultBooleanEventHandler(CHANNEL_REFRIDGERATOR_SUPER_MODE));
+        handlers.put(EVENT_FRIDGE_SUPER_MODE, defaultBooleanEventHandler(CHANNEL_REFRIGERATOR_SUPER_MODE));
     }
 
     @Override
@@ -120,7 +120,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
 
             try {
                 if (command instanceof QuantityType
-                        && (CHANNEL_REFRIDGERATOR_SETPOINT_TEMPERATURE.equals(channelUID.getId())
+                        && (CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE.equals(channelUID.getId())
                                 || CHANNEL_FREEZER_SETPOINT_TEMPERATURE.equals(channelUID.getId()))) {
                     @SuppressWarnings("unchecked")
                     QuantityType<Temperature> quantity = ((QuantityType<Temperature>) command);
@@ -143,7 +143,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
 
                     logger.debug("Set setpoint temperature to {} {}.", value, unit);
 
-                    if (CHANNEL_REFRIDGERATOR_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
+                    if (CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
                         getClient().setFridgeSetpointTemperature(getThingHaId(), value, unit);
                     } else if (CHANNEL_FREEZER_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
                         getClient().setFreezerSetpointTemperature(getThingHaId(), value, unit);
@@ -152,7 +152,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                 } else if (command instanceof OnOffType) {
                     if (CHANNEL_FREEZER_SUPER_MODE.equals(channelUID.getId())) {
                         getClient().setFreezerSuperMode(getThingHaId(), OnOffType.ON.equals(command));
-                    } else if (CHANNEL_REFRIDGERATOR_SUPER_MODE.equals(channelUID.getId())) {
+                    } else if (CHANNEL_REFRIGERATOR_SUPER_MODE.equals(channelUID.getId())) {
                         getClient().setFridgeSuperMode(getThingHaId(), OnOffType.ON.equals(command));
                     }
                 }

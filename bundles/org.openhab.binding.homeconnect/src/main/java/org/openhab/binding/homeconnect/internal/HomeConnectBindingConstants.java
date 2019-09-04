@@ -96,8 +96,8 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_WASHER_SPIN_SPEED = "laundry_care_washer_spin_speed";
     public static final String CHANNEL_WASHER_IDOS1 = "laundry_care_washer_idos1";
     public static final String CHANNEL_WASHER_IDOS2 = "laundry_care_washer_idos2";
-    public static final String CHANNEL_REFRIDGERATOR_SETPOINT_TEMPERATURE = "setpoint_temperature_refridgerator";
-    public static final String CHANNEL_REFRIDGERATOR_SUPER_MODE = "super_mode_refrigerator";
+    public static final String CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE = "setpoint_temperature_refrigerator";
+    public static final String CHANNEL_REFRIGERATOR_SUPER_MODE = "super_mode_refrigerator";
     public static final String CHANNEL_FREEZER_SETPOINT_TEMPERATURE = "setpoint_temperature_freezer";
     public static final String CHANNEL_FREEZER_SUPER_MODE = "super_mode_freezer";
     public static final String CHANNEL_DRYER_DRYING_TARGET = "dryer_drying_target";

@@ -182,7 +182,7 @@
 		<description>Home Connect connected refrigerator/freezer (e.g. Bosch or Siemens).</description>
 		<channels>
 			<channel id="door_state" typeId="door_state" />
-			<channel id="setpoint_temperature_refridgerator" typeId="setpoint_temperature_refridgerator" />
+			<channel id="setpoint_temperature_refrigerator" typeId="setpoint_temperature_refrigerator" />
 			<channel id="super_mode_refrigerator" typeId="super_mode_refrigerator" />
 			<channel id="setpoint_temperature_freezer" typeId="setpoint_temperature_freezer" />
 			<channel id="super_mode_freezer" typeId="super_mode_freezer" />
@@ -314,16 +314,10 @@
 		<description>Is coffee maker bean container is empty?</description>
 		<state readOnly="true" />
 	</channel-type>
-	<channel-type id="power_state_read_only">
-		<item-type>Switch</item-type>
-		<label>Power State</label>
-		<description>This setting describes the current power state of the home appliance.</description>
-		<state readOnly="true" />
-	</channel-type>
 	<channel-type id="door_state">
 		<item-type>Contact</item-type>
 		<label>Door State</label>
-		<description>This status describes the state of the door of the home appliance. A change of that status is either
+		<description>This status describes the door state of a home appliance. A status change is either
             triggered by the user operating the home appliance locally (i.e. opening/closing door) or automatically by the home
             appliance (i.e. locking the door).
         </description>
@@ -359,7 +353,7 @@
 	<channel-type id="selected_program_state">
 		<item-type>String</item-type>
 		<label>Selected Program</label>
-		<description>This status describes the selected program of the home appliance.</description>
+		<description>This state describes the selected program of the home appliance.</description>
 	</channel-type>
 	<channel-type id="remaining_program_time_state">
 		<item-type>Number:Time</item-type>
@@ -468,7 +462,7 @@
             </options>
         </state>
     </channel-type>
-	<channel-type id="setpoint_temperature_refridgerator">
+	<channel-type id="setpoint_temperature_refrigerator">
 		<item-type>Number:Temperature</item-type>
 		<label>Refrigerator temperature</label>
 		<description>Target temperature of the refrigerator compartment (Range depends on appliance - common range 2 to 8°C).
