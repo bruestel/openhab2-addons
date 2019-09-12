@@ -93,6 +93,8 @@ After the bridge has been added, devices are discovered automatically.
     for example: `http://192.168.178.34:8080/homeconnect` or `https://myhome.domain.com/homeconnect`
     * _One Time Token Mode_: keep unchecked 
     * _Proof Key for Code Exchange_: keep unchecked
+    > **WARNING**: If you plan to add more than two Home Connect appliances, I suggest that you create multiple applications on the Home Connect developer site. Due to the request [limits](https://developer.home-connect.com/docs/general/ratelimiting)  this is nessessary to avoid communication problems. Each Home Connect application is assosiated to a openHAB bridge.  
+    It is also possible to add all home appliances to one bridge. But initializing will take longer after adding them or a openHAB restart. You will see log messages like this: `The rate limit “50 calls in 1 minute” was reached. Requests are blocked during the remaining period of 40 seconds.`. 
 4. After your application has been created, you should see the _Client ID_ and _Client Secret_ of the application. Please save them for later.  
 ![Screenshot Home Connect application page](doc/home_connect_application.png "Screenshot Home Connect application page")
 
