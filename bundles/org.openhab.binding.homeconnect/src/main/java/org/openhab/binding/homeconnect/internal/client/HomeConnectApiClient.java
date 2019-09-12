@@ -101,12 +101,13 @@ public class HomeConnectApiClient {
         serverSentEvent = new HashMap<>();
 
         // setup http client
-        client = new OkHttpClient.Builder().readTimeout(REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).build();
         apiUrl = simulated ? API_SIMULATOR_URL : API_URL;
+
+        client = OkHttpHelper.builder().readTimeout(REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).build();
 
         // configure Server Sent Event client
         // if no keep-alive events arrive within 90 seconds --> fail and try to reconnect
-        oksse = new OkSse(new OkHttpClient.Builder().readTimeout(SSE_REQUEST_READ_TIMEOUT, TimeUnit.SECONDS)
+        oksse = new OkSse(OkHttpHelper.builder().readTimeout(SSE_REQUEST_READ_TIMEOUT, TimeUnit.SECONDS)
                 .retryOnConnectionFailure(true).build());
     }
 
@@ -1013,5 +1014,4 @@ public class HomeConnectApiClient {
             return jsonString;
         }
     }
-
 }

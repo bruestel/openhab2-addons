@@ -48,7 +48,8 @@ public class OAuthHelper {
 
     public static Token getAccessAndRefreshTokenByAuthorizationCode(String clientId, String clientSecret,
             String oAuthCode, boolean simulator) throws CommunicationException {
-        OkHttpClient client = new OkHttpClient().newBuilder().followRedirects(false).followSslRedirects(false).build();
+
+        OkHttpClient client = OkHttpHelper.builder().followRedirects(false).followSslRedirects(false).build();
 
         RequestBody formBody = new FormBody.Builder().add("client_id", clientId).add("grant_type", "authorization_code")
                 .add("code", oAuthCode).add("client_secret", clientSecret).build();
@@ -85,7 +86,7 @@ public class OAuthHelper {
             throws CommunicationException {
         LOG.debug("[oAuth] Refreshing access token. client_id: {}, refresh_token: {}", clientId, refreshToken);
 
-        OkHttpClient client = new OkHttpClient().newBuilder().followRedirects(false).followSslRedirects(false).build();
+        OkHttpClient client = OkHttpHelper.builder().followRedirects(false).followSslRedirects(false).build();
 
         RequestBody formBody = new FormBody.Builder().add("refresh_token", refreshToken)
                 .add("grant_type", "refresh_token").add("client_secret", clientSecret).build();

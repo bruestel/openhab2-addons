@@ -162,4 +162,9 @@ public class HomeConnectBindingConstants {
     public static final String OPERATION_STATE_FINISHED = "BSH.Common.EnumType.OperationState.Finished";
     public static final String OPERATION_STATE_ERROR = "BSH.Common.EnumType.OperationState.Error";
     public static final String OPERATION_STATE_ABORTING = "BSH.Common.EnumType.OperationState.Aborting";
+
+    // proxy settings
+    public static final boolean HTTP_PROXY_ENABLED = false;
+    public static final String HTTP_PROXY_HOST = "localhost";
+    public static final int HTTP_PROXY_PORT = 8888;
 }
