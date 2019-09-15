@@ -40,6 +40,7 @@ import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
+import org.eclipse.smarthome.core.thing.binding.BridgeHandler;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.RefreshType;
 import org.eclipse.smarthome.core.types.StateDescription;
@@ -374,6 +375,16 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             } catch (CommunicationException | RuntimeException e) {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                         "Home Connect service is not reachable or a problem occurred! (" + e.getMessage() + ").");
+
+                // inform bridge
+                Bridge bridge = getBridge();
+                if (bridge != null && ThingStatus.ONLINE.equals(bridge.getStatus())) {
+                    BridgeHandler bridgeHandler = bridge.getHandler();
+                    if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
+                        HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
+                        homeConnectBridgeHandler.reInitialize();
+                    }
+                }
             }
         } else {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED);

@@ -14,6 +14,7 @@ package org.openhab.binding.homeconnect.internal.client;
 
 import static java.net.HttpURLConnection.*;
 import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -60,8 +61,6 @@ import okhttp3.Response;
  *
  */
 public class HomeConnectApiClient {
-    private final static String API_URL = "https://api.home-connect.com";
-    private final static String API_SIMULATOR_URL = "https://simulator.home-connect.com";
     private final static String ACCEPT = "Accept";
     private final static String CONTENT_TYPE = "Content-Type";
     private final static String BSH_JSON_V1 = "application/vnd.bsh.sdk.v1+json";
@@ -101,7 +100,7 @@ public class HomeConnectApiClient {
         serverSentEvent = new HashMap<>();
 
         // setup http client
-        apiUrl = simulated ? API_SIMULATOR_URL : API_URL;
+        apiUrl = simulated ? API_SIMULATOR_BASE_URL : API_BASE_URL;
 
         client = OkHttpHelper.builder().readTimeout(REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).build();
 
@@ -134,6 +133,7 @@ public class HomeConnectApiClient {
             return mapToHomeAppliances(body);
 
         } catch (InvalidTokenException e) {
+            logger.debug("[getHomeAppliances()] Token invalid.");
             setAccessToken(null);
             logger.debug("[getHomeAppliances()] Retrying method.");
             return getHomeAppliances();

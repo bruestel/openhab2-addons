@@ -146,10 +146,10 @@ public class HomeConnectBindingConstants {
     public static final String OPTION_HOOD_INTENSIVE_LEVEL = "Cooking.Common.Option.Hood.IntensiveLevel";
 
     // Network and oAuth constants
-    public static final String API_BASE_URL = "https://api.home-connect.com/";
-    public static final String API_SIMULATOR_BASE_URL = "https://simulator.home-connect.com/";
-    public static final String OAUTH_TOKEN_PATH = "security/oauth/token";
-    public static final String OAUTH_AUTHORIZE_PATH = "security/oauth/authorize";
+    public static final String API_BASE_URL = "https://api.home-connect.com";
+    public static final String API_SIMULATOR_BASE_URL = "https://simulator.home-connect.com";
+    public static final String OAUTH_TOKEN_PATH = "/security/oauth/token";
+    public static final String OAUTH_AUTHORIZE_PATH = "/security/oauth/authorize";
     public static final String OAUTH_SCOPE = "IdentifyAppliance Monitor Settings Dishwasher-Control Washer-Control Dryer-Control WasherDryer-Control CoffeeMaker-Control Hood-Control CleaningRobot-Control";
 
     // Operation states
