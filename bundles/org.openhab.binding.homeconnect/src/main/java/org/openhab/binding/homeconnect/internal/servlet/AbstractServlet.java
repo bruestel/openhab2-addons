@@ -21,10 +21,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.io.IOUtils;
-import org.osgi.framework.BundleContext;
-import org.osgi.service.http.HttpService;
+import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,16 +44,10 @@ public abstract class AbstractServlet extends HttpServlet {
     private static final Pattern MESSAGE_KEY_PATTERN = Pattern.compile("\\$\\{([^\\}]+)\\}");
 
     private final Logger logger = LoggerFactory.getLogger(AbstractServlet.class);
-    protected final HttpService httpService;
-    protected final BundleContext bundleContext;
-
-    protected AbstractServlet(HttpService httpService, BundleContext bundleContext) {
-        this.httpService = httpService;
-        this.bundleContext = bundleContext;
-    }
 
     protected String readHtmlTemplate(String htmlTemplate) throws IOException {
-        final URL templateUrl = bundleContext.getBundle().getEntry(TEMPLATE_BASE_PATH + htmlTemplate);
+
+        final URL templateUrl = FrameworkUtil.getBundle(getClass()).getEntry(TEMPLATE_BASE_PATH + htmlTemplate);
 
         if (templateUrl == null) {
             throw new FileNotFoundException("Cannot find template file '" + htmlTemplate + "'.");
@@ -78,6 +72,12 @@ public abstract class AbstractServlet extends HttpServlet {
         }
         m.appendTail(sb);
         return sb.toString();
+    }
+
+    protected void addNoCacheHeader(HttpServletResponse response) {
+        response.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        response.addHeader("Pragma", "no-cache");
+        response.addHeader("Expires", "0");
     }
 
 }

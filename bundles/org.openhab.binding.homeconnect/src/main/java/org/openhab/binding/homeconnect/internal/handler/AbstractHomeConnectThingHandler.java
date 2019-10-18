@@ -20,8 +20,6 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.measure.Unit;
@@ -29,6 +27,7 @@ import javax.measure.quantity.Temperature;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.OpenClosedType;
 import org.eclipse.smarthome.core.library.types.QuantityType;
@@ -39,6 +38,7 @@ import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
+import org.eclipse.smarthome.core.thing.ThingStatusInfo;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.thing.binding.BridgeHandler;
 import org.eclipse.smarthome.core.types.Command;
@@ -48,6 +48,7 @@ import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
 import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
+import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.listener.ServerSentEventListener;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
@@ -63,18 +64,11 @@ import org.slf4j.LoggerFactory;
  *
  * @author Jonas Brüstel - Initial contribution
  */
-public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler implements HomeConnectApiClientListener {
+public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler implements ServerSentEventListener {
 
     private final Logger logger = LoggerFactory.getLogger(AbstractHomeConnectThingHandler.class);
 
-    @Nullable
-    private ServerSentEventListener serverSentEventListener;
-
-    @Nullable
-    private HomeConnectApiClient client;
-
-    @Nullable
-    private String operationState;
+    private @Nullable String operationState;
 
     private final ConcurrentHashMap<String, EventHandler> eventHandlers;
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
@@ -93,26 +87,43 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     @Override
     public void initialize() {
-        // wait for bridge to be setup first
-        updateStatus(ThingStatus.OFFLINE);
+        logger.debug("Initialize thing handler ({}).", getThingLabel());
 
-        // if handler configuration is updated, re-register Server Sent Event Listener
-        HomeConnectApiClient hcac = client;
-        if (hcac != null) {
-            refreshConnectionStatus();
-
-            if (serverSentEventListener != null) {
-                logger.debug("Thing configuration might have changed --> re-register Server Sent Events listener.");
-                hcac.unregisterEventListener(serverSentEventListener);
-                try {
-                    hcac.registerEventListener(serverSentEventListener);
-                } catch (CommunicationException e) {
-                    logger.error("API communication problem!", e);
-                }
-            }
-
+        Bridge bridge = getBridge();
+        if (bridge != null && ThingStatus.ONLINE.equals(bridge.getStatus())) {
+            refreshThingStatus();
+            updateSelectedProgramStateDescription();
             updateChannels();
+            BridgeHandler bridgeHandler = bridge.getHandler();
+            if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
+                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
+                homeConnectBridgeHandler.registerServerSentEventListener(this);
+            }
+        } else {
+            logger.debug("Bridge is not online ({}), skip initialization of thing handler.", getThingLabel());
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
         }
+    }
+
+    @Override
+    public void dispose() {
+        Bridge bridge = getBridge();
+        if (bridge != null) {
+            BridgeHandler bridgeHandler = bridge.getHandler();
+            if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
+                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
+                homeConnectBridgeHandler.unregisterServerSentEventListener(this);
+            }
+        }
+    }
+
+    @Override
+    public void bridgeStatusChanged(ThingStatusInfo bridgeStatusInfo) {
+        super.bridgeStatusChanged(bridgeStatusInfo);
+        logger.debug("Bridge status changed to {} ({}).", bridgeStatusInfo, getThingLabel());
+
+        dispose();
+        initialize();
     }
 
     @Override
@@ -123,116 +134,116 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     @Override
-    public void dispose() {
-        HomeConnectApiClient client = this.client;
-        if (serverSentEventListener != null && client != null) {
-            client.unregisterEventListener(serverSentEventListener);
+    public void onEvent(@NonNull Event event) {
+        logger.debug("[{}] {}", getThingHaId(), event);
+
+        if (EVENT_DISCONNECTED.equals(event.getKey())) {
+            logger.info("Received offline event. Set {} to offline.", getThing().getLabel());
+            updateStatus(ThingStatus.OFFLINE);
+        } else {
+            if (!ThingStatus.ONLINE.equals(getThing().getStatus())) {
+                updateStatus(ThingStatus.ONLINE);
+                logger.info("Set {} to online.", getThing().getLabel());
+                updateChannels();
+            }
+        }
+
+        if (EVENT_OPERATION_STATE.contentEquals(event.getKey())) {
+            operationState = event.getValue() == null ? null : event.getValue();
+        }
+
+        if (eventHandlers.containsKey(event.getKey())) {
+            eventHandlers.get(event.getKey()).handle(event);
+        } else {
+            logger.debug("[{}] No event handler registered for event {}. Ignore event.", getThingHaId(), event);
         }
     }
 
     @Override
-    public void refreshApiClient(@NonNull HomeConnectApiClient apiClient) {
-        HomeConnectApiClient oldClient = client;
-        client = apiClient;
+    public void onReconnectFailed() {
+        logger.error("SSE connection was closed due to authentication problems!");
+        handleAuthenticationError(new AuthorizationException("SSE connection was killed!"));
+    }
 
-        if (refreshConnectionStatus()) {
-            updateChannels();
-        }
-
-        // Only update client if new instance is passed
-        if (!apiClient.equals(oldClient)) {
-            serverSentEventListener = new ServerSentEventListener() {
-
-                @Override
-                public void onEvent(Event event) {
-                    logger.debug("[{}] {}", getThingHaId(), event);
-
-                    if (EVENT_DISCONNECTED.equals(event.getKey())) {
-                        logger.info("Received offline event. Set {} to offline.", getThing().getLabel());
-                        updateStatus(ThingStatus.OFFLINE);
-                    } else {
-                        if (!ThingStatus.ONLINE.equals(getThing().getStatus())) {
-                            updateStatus(ThingStatus.ONLINE);
-                            logger.info("Set {} to online.", getThing().getLabel());
-                            updateChannels();
-                        }
-                    }
-
-                    if (EVENT_OPERATION_STATE.contentEquals(event.getKey())) {
-                        operationState = event.getValue() == null ? null : event.getValue();
-                    }
-
-                    if (eventHandlers.containsKey(event.getKey())) {
-                        eventHandlers.get(event.getKey()).handle(event);
-                    } else {
-                        logger.debug("[{}] No event handler registered for event {}. Ignore event.", getThingHaId(),
-                                event);
-                    }
-                }
-
-                @Override
-                public String haId() {
-                    return getThingHaId();
-                }
-
-                @Override
-                public void onReconnect() {
-                }
-
-                @Override
-                public void onReconnectFailed() {
-                    final ServerSentEventListener ssel = this;
-                    apiClient.unregisterEventListener(ssel);
-                    TimerTask reStartTask = new TimerTask() {
-                        @Override
-                        public void run() {
-                            logger.debug("Trying to reconnect to SSE endpoint.");
-                            refreshConnectionStatus();
-                            try {
-                                apiClient.registerEventListener(ssel);
-                            } catch (CommunicationException e) {
-                                logger.error("Home Connect service is not reachable or a problem occurred! {}",
-                                        e.getMessage());
-                            }
-                        }
-                    };
-                    new Timer("Restart").schedule(reStartTask, 10000L);
-                }
-            };
-
-            try {
-                apiClient.registerEventListener(serverSentEventListener);
-                updateChannels();
-            } catch (CommunicationException e) {
-                logger.error("Home Connect service is not reachable or a problem occurred! {}", e.getMessage());
+    /**
+     * Get {@link HomeConnectApiClient}.
+     *
+     * @return client instance
+     */
+    protected HomeConnectApiClient getApiClient() {
+        HomeConnectApiClient apiClient = null;
+        Bridge bridge = getBridge();
+        if (bridge != null && ThingStatus.ONLINE.equals(bridge.getStatus())) {
+            BridgeHandler bridgeHandler = bridge.getHandler();
+            if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
+                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
+                apiClient = homeConnectBridgeHandler.getApiClient();
             }
         }
 
-        // update available selectable programs (dynamic program list)
+        return apiClient;
+    }
+
+    /**
+     * Update state description of selected program (Fetch programs via API).
+     */
+    protected void updateSelectedProgramStateDescription() {
+        Bridge bridge = getBridge();
+        if (bridge == null || ThingStatus.OFFLINE.equals(bridge.getStatus())) {
+            return;
+        }
+
+        if (ThingStatus.OFFLINE.equals(getThing().getStatus())) {
+            return;
+        }
+
+        // exclude fridge/freezer as they don't have programs
         if (!(this instanceof HomeConnectFridgeFreezerHandler)) {
-            try {
-                ArrayList<StateOption> stateOptions = new ArrayList<>();
-                apiClient.getPrograms(getThingHaId()).stream().filter(p -> p.isAvailable()).forEach(p -> {
-                    stateOptions.add(new StateOption(p.getKey(), mapStringType(p.getKey())));
-                });
+            HomeConnectApiClient apiClient = getApiClient();
+            if (apiClient != null) {
+                try {
+                    ArrayList<StateOption> stateOptions = new ArrayList<>();
+                    apiClient.getPrograms(getThingHaId()).stream().forEach(p -> {
+                        stateOptions.add(new StateOption(p.getKey(), mapStringType(p.getKey())));
+                    });
 
-                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
+                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
+                            .toStateDescription();
 
-                if (stateDescription != null) {
-                    dynamicStateDescriptionProvider.putStateDescriptions(
-                            getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).get().getUID().getAsString(),
-                            stateDescription);
+                    if (stateDescription != null) {
+                        dynamicStateDescriptionProvider.putStateDescriptions(
+                                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).get().getUID().getAsString(),
+                                stateDescription);
+                    }
+                } catch (CommunicationException | AuthorizationException e) {
+                    logger.error("Could not fetch available programs. {}", e.getMessage());
+                    removeSelectedProgramStateDescription();
                 }
-            } catch (CommunicationException e) {
-                logger.error("Could not fetch available programs. {}", e.getMessage());
+            } else {
+                removeSelectedProgramStateDescription();
             }
         }
     }
 
+    /**
+     * Remove state description of selected program.
+     */
+    protected void removeSelectedProgramStateDescription() {
+        // exclude fridge/freezer as they don't have programs
+        if (!(this instanceof HomeConnectFridgeFreezerHandler)) {
+            dynamicStateDescriptionProvider.removeStateDescriptions(
+                    getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).get().getUID().getAsString());
+        }
+    }
+
+    /**
+     * Is thing ready to process commands. If bridge or thing itself is offline commands will be ignored.
+     *
+     * @return
+     */
     protected boolean isThingReadyToHandleCommand() {
         Bridge bridge = getBridge();
-        HomeConnectApiClient apiClient = client;
         if (bridge == null) {
             logger.warn("BridgeHandler not found. Cannot handle command without bridge.");
             return false;
@@ -247,25 +258,34 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             return false;
         }
 
-        if (apiClient == null) {
-            logger.debug("No API client available.");
-            return false;
-        }
-
         return true;
     }
 
-    protected HomeConnectApiClient getClient() {
-        return client;
-    }
-
+    /**
+     * Get thing channel by given channel id.
+     *
+     * @param channelId
+     * @return
+     */
     protected Optional<Channel> getThingChannel(String channelId) {
         return Optional.ofNullable(getThing().getChannel(channelId));
     }
 
+    /**
+     * Configure channel update handlers. Classes which extend {@link AbstractHomeConnectThingHandler} must implement
+     * this class and add handlers.
+     *
+     * @param handlers channel update handlers
+     */
     protected abstract void configureChannelUpdateHandlers(
             final @NonNull ConcurrentHashMap<String, ChannelUpdateHandler> handlers);
 
+    /**
+     * Configure event handlers. Classes which extend {@link AbstractHomeConnectThingHandler} must implement
+     * this class and add handlers.
+     *
+     * @param handlers Server-Sent-Event handlers
+     */
     protected abstract void configureEventHandlers(final @NonNull ConcurrentHashMap<String, EventHandler> handlers);
 
     /**
@@ -296,7 +316,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * @param channelUID
      */
     protected void updateChannel(@NonNull ChannelUID channelUID) {
-        HomeConnectApiClient apiClient = client;
+        HomeConnectApiClient apiClient = getApiClient();
 
         if (apiClient == null) {
             logger.error("Cannot update channel. No instance of api client found!");
@@ -317,7 +337,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         if (channelUpdateHandlers.containsKey(channelUID.getId())) {
             try {
                 channelUpdateHandlers.get(channelUID.getId()).handle(channelUID, apiClient);
-            } catch (CommunicationException e) {
+            } catch (CommunicationException | AuthorizationException e) {
                 logger.error("API communication problem while trying to update {}!", getThingHaId(), e);
             }
         }
@@ -360,9 +380,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      *
      * @return status has changed
      */
-    protected boolean refreshConnectionStatus() {
-        ThingStatus oldStatus = getThing().getStatus();
-        HomeConnectApiClient client = this.client;
+    protected void refreshThingStatus() {
+        HomeConnectApiClient client = getApiClient();
 
         if (client != null) {
             try {
@@ -375,22 +394,15 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             } catch (CommunicationException | RuntimeException e) {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                         "Home Connect service is not reachable or a problem occurred! (" + e.getMessage() + ").");
+            } catch (AuthorizationException e) {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                        "Home Connect service is not reachable or a problem occurred! (" + e.getMessage() + ").");
 
-                // inform bridge
-                Bridge bridge = getBridge();
-                if (bridge != null && ThingStatus.ONLINE.equals(bridge.getStatus())) {
-                    BridgeHandler bridgeHandler = bridge.getHandler();
-                    if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
-                        HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
-                        homeConnectBridgeHandler.reInitialize();
-                    }
-                }
+                handleAuthenticationError(e);
             }
         } else {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED);
         }
-
-        return !oldStatus.equals(getThing().getStatus());
     }
 
     /**
@@ -402,7 +414,44 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         return getThing().getConfiguration().get(HA_ID).toString();
     }
 
-    protected String getCurrentOperationState() {
+    /**
+     * Returns the human readable label for this thing.
+     *
+     * @return the human readable label
+     */
+    protected String getThingLabel() {
+        return getThing().getLabel();
+    }
+
+    /**
+     * Handle authentication exception.
+     */
+    protected void handleAuthenticationError(AuthorizationException exception) {
+        logger.info("Thing handler got authentication exception --> clear credential storage ({})",
+                exception.getMessage());
+        Bridge bridge = getBridge();
+        if (bridge != null) {
+            BridgeHandler bridgeHandler = bridge.getHandler();
+            if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
+                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
+
+                try {
+                    homeConnectBridgeHandler.getOAuthClientService().remove();
+                } catch (OAuthException e) {
+                    logger.error("Could not clear oAuth storage!", e);
+                }
+                homeConnectBridgeHandler.dispose();
+                homeConnectBridgeHandler.initialize();
+            }
+        }
+    }
+
+    /**
+     * Get operation state of device.
+     *
+     * @return
+     */
+    protected String getOperationState() {
         return operationState;
     }
 
@@ -556,7 +605,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected interface ChannelUpdateHandler {
-        void handle(ChannelUID channelUID, HomeConnectApiClient client) throws CommunicationException;
+        void handle(ChannelUID channelUID, HomeConnectApiClient client)
+                throws CommunicationException, AuthorizationException;
     }
 
 }

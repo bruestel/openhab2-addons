@@ -29,6 +29,7 @@ import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.slf4j.Logger;
@@ -144,21 +145,26 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                     logger.debug("Set setpoint temperature to {} {}.", value, unit);
 
                     if (CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
-                        getClient().setFridgeSetpointTemperature(getThingHaId(), value, unit);
+                        getApiClient().setFridgeSetpointTemperature(getThingHaId(), value, unit);
                     } else if (CHANNEL_FREEZER_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
-                        getClient().setFreezerSetpointTemperature(getThingHaId(), value, unit);
+                        getApiClient().setFreezerSetpointTemperature(getThingHaId(), value, unit);
                     }
 
                 } else if (command instanceof OnOffType) {
                     if (CHANNEL_FREEZER_SUPER_MODE.equals(channelUID.getId())) {
-                        getClient().setFreezerSuperMode(getThingHaId(), OnOffType.ON.equals(command));
+                        getApiClient().setFreezerSuperMode(getThingHaId(), OnOffType.ON.equals(command));
                     } else if (CHANNEL_REFRIGERATOR_SUPER_MODE.equals(channelUID.getId())) {
-                        getClient().setFridgeSuperMode(getThingHaId(), OnOffType.ON.equals(command));
+                        getApiClient().setFridgeSuperMode(getThingHaId(), OnOffType.ON.equals(command));
                     }
                 }
             } catch (CommunicationException e) {
                 logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
                         e.getMessage());
+            } catch (AuthorizationException e) {
+                logger.warn("Could not handle command {}. Authorization problem! error: {}", command.toFullString(),
+                        e.getMessage());
+
+                handleAuthenticationError(e);
             } catch (IncommensurableException | UnconvertibleException e) {
                 logger.error("Could not set setpoint! {}", e.getMessage());
             }

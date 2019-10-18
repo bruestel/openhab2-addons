@@ -32,6 +32,7 @@ import org.eclipse.smarthome.core.types.StateDescription;
 import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
 import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
@@ -229,7 +230,7 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
     public void handleCommand(@NonNull ChannelUID channelUID, @NonNull Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
-            String operationState = getCurrentOperationState();
+            String operationState = getOperationState();
 
             if (logger.isDebugEnabled()) {
                 logger.debug("{}: {}", channelUID, command);
@@ -241,16 +242,15 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
                     updateState(channelUID, new StringType(""));
 
                     if ("start".equalsIgnoreCase(command.toFullString())) {
-                        String program = getClient().getSelectedProgram(getThingHaId()).getKey();
-                        getClient().startProgram(getThingHaId(), program);
+                        getApiClient().startSelectedProgram(getThingHaId());
                     } else {
-                        getClient().stopProgram(getThingHaId());
+                        getApiClient().stopProgram(getThingHaId());
                     }
                 }
 
                 // set selected program
                 if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
-                    getClient().setSelectedProgram(getThingHaId(), command.toFullString());
+                    getApiClient().setSelectedProgram(getThingHaId(), command.toFullString());
                 }
 
                 // only handle these commands if operation state allows it
@@ -264,19 +264,19 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
 
                     // set temperature option
                     if (command instanceof StringType && CHANNEL_WASHER_TEMPERATURE.equals(channelUID.getId())) {
-                        getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE, command.toFullString(),
-                                null, false, activeState);
+                        getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE,
+                                command.toFullString(), null, false, activeState);
                     }
 
                     // set spin speed option
                     if (command instanceof StringType && CHANNEL_WASHER_SPIN_SPEED.equals(channelUID.getId())) {
-                        getClient().setProgramOptions(getThingHaId(), OPTION_WASHER_SPIN_SPEED, command.toFullString(),
-                                null, false, activeState);
+                        getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_SPIN_SPEED,
+                                command.toFullString(), null, false, activeState);
                     }
 
                     // set drying target option
                     if (command instanceof StringType && CHANNEL_DRYER_DRYING_TARGET.equals(channelUID.getId())) {
-                        getClient().setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET,
+                        getApiClient().setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET,
                                 command.toFullString(), null, false, activeState);
                     }
                 }
@@ -284,6 +284,11 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
             } catch (CommunicationException e) {
                 logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
                         e.getMessage());
+            } catch (AuthorizationException e) {
+                logger.warn("Could not handle command {}. Authorization problem! error: {}", command.toFullString(),
+                        e.getMessage());
+
+                handleAuthenticationError(e);
             }
         }
     }
@@ -302,13 +307,26 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
 
     private void updateProgramOptions(String programKey) {
         try {
-            List<AvailableProgramOption> availableProgramOptions = getClient().getProgramOptions(getThingHaId(),
+            Optional<Channel> channelSpinSpeed = getThingChannel(CHANNEL_WASHER_SPIN_SPEED);
+            Optional<Channel> channelTemperature = getThingChannel(CHANNEL_WASHER_TEMPERATURE);
+            Optional<Channel> channelDryingTarget = getThingChannel(CHANNEL_DRYER_DRYING_TARGET);
+
+            List<AvailableProgramOption> availableProgramOptions = getApiClient().getProgramOptions(getThingHaId(),
                     programKey);
 
             if (availableProgramOptions.isEmpty()) {
-                dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_WASHER_SPIN_SPEED);
-                dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_WASHER_TEMPERATURE);
-                dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_DRYER_DRYING_TARGET);
+                if (channelSpinSpeed.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(channelSpinSpeed.get().getUID().getAsString());
+                }
+                if (channelTemperature.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(channelTemperature.get().getUID().getAsString());
+                }
+                if (channelDryingTarget.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(channelDryingTarget.get().getUID().getAsString());
+                }
             }
 
             availableProgramOptions.forEach(option -> {
@@ -322,10 +340,9 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
                             .toStateDescription();
 
                     if (stateDescription != null) {
-                        Optional<Channel> channel = getThingChannel(CHANNEL_WASHER_SPIN_SPEED);
-                        if (channel.isPresent()) {
-                            dynamicStateDescriptionProvider.putStateDescriptions(channel.get().getUID().getAsString(),
-                                    stateDescription);
+                        if (channelSpinSpeed.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(
+                                    channelSpinSpeed.get().getUID().getAsString(), stateDescription);
                         }
                     }
                 } else if (option.getKey() != null && OPTION_WASHER_TEMPERATURE.equals(option.getKey())) {
@@ -338,10 +355,9 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
                             .toStateDescription();
 
                     if (stateDescription != null) {
-                        Optional<Channel> channel = getThingChannel(CHANNEL_WASHER_TEMPERATURE);
-                        if (channel.isPresent()) {
-                            dynamicStateDescriptionProvider.putStateDescriptions(channel.get().getUID().getAsString(),
-                                    stateDescription);
+                        if (channelTemperature.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(
+                                    channelTemperature.get().getUID().getAsString(), stateDescription);
                         }
                     }
                 } else if (option.getKey() != null && OPTION_DRYER_DRYING_TARGET.equals(option.getKey())) {
@@ -353,16 +369,19 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
                             .toStateDescription();
 
                     if (stateDescription != null) {
-                        Optional<Channel> channel = getThingChannel(CHANNEL_DRYER_DRYING_TARGET);
-                        if (channel.isPresent()) {
-                            dynamicStateDescriptionProvider.putStateDescriptions(channel.get().getUID().getAsString(),
-                                    stateDescription);
+                        if (channelDryingTarget.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(
+                                    channelDryingTarget.get().getUID().getAsString(), stateDescription);
                         }
                     }
                 }
             });
         } catch (CommunicationException e) {
             logger.error("Could not fetch available program options. {}", e.getMessage());
+        } catch (AuthorizationException e) {
+            logger.error("Could not fetch available program options. {}", e.getMessage());
+
+            handleAuthenticationError(e);
         }
     }
 

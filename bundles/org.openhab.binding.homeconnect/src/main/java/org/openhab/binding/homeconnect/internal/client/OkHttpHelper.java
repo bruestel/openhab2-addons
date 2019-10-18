@@ -14,9 +14,11 @@ package org.openhab.binding.homeconnect.internal.client;
 
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.security.cert.CertificateException;
+import java.time.LocalDateTime;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -25,11 +27,23 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
+import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
+import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
+import okhttp3.Request;
 
 /**
  * okHttp helper.
@@ -38,6 +52,9 @@ import okhttp3.OkHttpClient.Builder;
  *
  */
 public class OkHttpHelper {
+    private static final String HEADER_AUTHORIZATION = "Authorization";
+    private static final String BEARER = "Bearer ";
+    private static final int OAUTH_EXPIRE_BUFFER = 10;
 
     private static final Logger LOG = LoggerFactory.getLogger(OkHttpHelper.class);
 
@@ -84,5 +101,43 @@ public class OkHttpHelper {
         }
 
         return new OkHttpClient().newBuilder();
+    }
+
+    public static String formatJsonBody(String jsonString) {
+        try {
+            JsonParser parser = new JsonParser();
+            JsonObject json = parser.parse(jsonString).getAsJsonObject();
+
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            String prettyJson = gson.toJson(json);
+            return prettyJson;
+        } catch (Exception e) {
+            return jsonString;
+        }
+    }
+
+    public static Request.Builder requestBuilder(OAuthClientService oAuthClientService)
+            throws AuthorizationException, CommunicationException {
+        try {
+            AccessTokenResponse accessTokenResponse = oAuthClientService.getAccessTokenResponse();
+
+            // refresh the token if it's about to expire
+            if (accessTokenResponse != null
+                    && accessTokenResponse.isExpired(LocalDateTime.now(), OAUTH_EXPIRE_BUFFER)) {
+                accessTokenResponse = oAuthClientService.refreshToken();
+            }
+
+            if (accessTokenResponse != null) {
+                return new Request.Builder().addHeader(HEADER_AUTHORIZATION,
+                        BEARER + accessTokenResponse.getAccessToken());
+            } else {
+                LOG.error("No access token available! Fatal error.");
+                throw new AuthorizationException("No access token available!");
+            }
+        } catch (IOException e) {
+            throw new CommunicationException(e.getMessage(), e);
+        } catch (OAuthException | OAuthResponseException e) {
+            throw new AuthorizationException(e.getMessage(), e);
+        }
     }
 }

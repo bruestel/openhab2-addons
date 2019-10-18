@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>openHAB HomeConnect bridge configuration</title>
+<title>openHAB Home Connect bridge configuration</title>
 <link rel="shortcut icon" href="../paperui/img/logo.ico" />
+<script type="text/javascript">window.history.replaceState({}, document.title, window.location.href.substring(0, window.location.href.lastIndexOf('/homeconnect') + 12));</script>
 
 <style>
 html {
@@ -40,32 +41,41 @@ body, h1, h2, h3 {
 }
 
 .button {
-	color: #ffffff;
-	background: #3ca0dc;
-	padding: 10px 20px;
-	outline: none;
-	border: none;
-	font-size: 16px;
-	font-weight: 500;
-	display: inline-block;
-	outline: 0;
-	line-height: 1.2;
-	margin-right: 5px;
+    color: #ffffff;
+    background: #3ca0dc;
+    padding: 10px 20px;
+    outline: none;
+    border: none;
+    font-size: 16px;
+    font-weight: 500;
+    display: inline-block;
+    outline: 0;
+    line-height: 1.2;
+    margin-right: 5px;
 }
-
-/* .button a {
-	background: #1ED760;
-	border-radius: 500px;
-	color: white;
-	padding: 10px 20px 10px;
-	font-size: 16px;
-	font-weight: 700;
-	border-width: 0;
-	text-decoration: none;
-} */
 
 .button:hover {
     background-color: rgba(60,160,220,0.5);
+    opacity: 1;
+    color: #ffffff;
+}
+
+.cancelbutton {
+    color: #ffffff;
+    background: #323949;
+    padding: 10px 20px;
+    outline: none;
+    border: none;
+    font-size: 16px;
+    font-weight: 500;
+    display: inline-block;
+    outline: 0;
+    line-height: 1.2;
+    margin-right: 5px;
+}
+
+.cancelbutton:hover {
+    background-color: rgba(50, 57, 72, 0.8);
     opacity: 1;
     color: #ffffff;
 }
@@ -131,7 +141,7 @@ code {
 </svg>
 
 
-	<h1>openHAB HomeConnect bridge configuration</h1>
+	<h1>openHAB Home Connect bridge configuration</h1>
 	${bridges}
 
 </body>

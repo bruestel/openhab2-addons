@@ -14,7 +14,6 @@ package org.openhab.binding.homeconnect.internal.factory;
 
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
@@ -22,6 +21,8 @@ import java.util.Map;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.discovery.DiscoveryService;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthFactory;
+import org.eclipse.smarthome.core.storage.StorageService;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
@@ -43,14 +44,9 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherDryerHa
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherHandler;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
 import org.osgi.framework.ServiceRegistration;
-import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.service.http.HttpService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HomeConnectHandlerFactory} is responsible for creating things and thing
@@ -62,15 +58,25 @@ import org.slf4j.LoggerFactory;
 @Component(configurationPid = "binding.homeconnect", service = ThingHandlerFactory.class)
 public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectHandlerFactory.class);
+    private final Map<ThingUID, ServiceRegistration<?>> discoveryServiceRegistrations;
+    private final OAuthFactory oAuthFactory;
+    private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
+    private final StorageService storageService;
+    private final BridgeConfigurationServlet bridgeConfigurationServlet;
 
-    private final Map<ThingUID, ServiceRegistration<?>> discoveryServiceRegistrations = new HashMap<>();
+    @Activate
+    public HomeConnectHandlerFactory(@Reference OAuthFactory oAuthFactory,
+            @Reference HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+            @Reference StorageService storageService,
+            @Reference BridgeConfigurationServlet bridgeConfigurationServlet) {
 
-    private @NonNullByDefault({}) HttpService httpService;
-    private @NonNullByDefault({}) BridgeConfigurationServlet bridgeConfigurationServlet;
-    private @NonNullByDefault({}) HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
+        this.oAuthFactory = oAuthFactory;
+        this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
+        this.storageService = storageService;
+        this.bridgeConfigurationServlet = bridgeConfigurationServlet;
 
-    private final ArrayList<HomeConnectBridgeHandler> bridgeHandlers = new ArrayList<HomeConnectBridgeHandler>();
+        discoveryServiceRegistrations = new HashMap<>();
+    }
 
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
@@ -78,36 +84,19 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
     }
 
     @Override
-    protected void activate(ComponentContext componentContext) {
-        super.activate(componentContext);
-
-        HttpService httpService = this.httpService;
-        BridgeConfigurationServlet bridgeConfigurationServlet = this.bridgeConfigurationServlet;
-        if (bridgeConfigurationServlet == null && httpService != null) {
-            bridgeConfigurationServlet = new BridgeConfigurationServlet(httpService,
-                    componentContext.getBundleContext(), bridgeHandlers);
-        }
-    }
-
-    @Override
     protected @Nullable ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
 
-        HttpService httpService = this.httpService;
         if (THING_TYPE_API_BRIDGE.equals(thingTypeUID)) {
-            if (httpService != null) {
-                HomeConnectBridgeHandler bridgeHandler = new HomeConnectBridgeHandler((Bridge) thing);
-                bridgeHandlers.add(bridgeHandler);
+            HomeConnectBridgeHandler bridgeHandler = new HomeConnectBridgeHandler((Bridge) thing, oAuthFactory,
+                    storageService, bridgeConfigurationServlet);
 
-                // configure discovery service
-                HomeConnectDiscoveryService discoveryService = new HomeConnectDiscoveryService(bridgeHandler);
-                discoveryServiceRegistrations.put(bridgeHandler.getThing().getUID(), bundleContext
-                        .registerService(DiscoveryService.class.getName(), discoveryService, new Hashtable<>()));
+            // configure discovery service
+            HomeConnectDiscoveryService discoveryService = new HomeConnectDiscoveryService(bridgeHandler);
+            discoveryServiceRegistrations.put(bridgeHandler.getThing().getUID(), bundleContext
+                    .registerService(DiscoveryService.class.getName(), discoveryService, new Hashtable<>()));
 
-                return bridgeHandler;
-            } else {
-                logger.error("No HttpService available! Cannot initiate bridge handler.");
-            }
+            return bridgeHandler;
         } else if (THING_TYPE_DISHWASHER.equals(thingTypeUID)) {
             return new HomeConnectDishwasherHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_OVEN.equals(thingTypeUID)) {
@@ -134,45 +123,16 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
     @Override
     protected void removeHandler(ThingHandler thingHandler) {
         if (thingHandler instanceof HomeConnectBridgeHandler) {
-            bridgeHandlers.remove(thingHandler);
+            ThingUID bridgeUID = thingHandler.getThing().getUID();
 
-            ServiceRegistration<?> serviceRegistration = discoveryServiceRegistrations
-                    .get(thingHandler.getThing().getUID());
+            ServiceRegistration<?> serviceRegistration = discoveryServiceRegistrations.get(bridgeUID);
             HomeConnectDiscoveryService service = (HomeConnectDiscoveryService) bundleContext
                     .getService(serviceRegistration.getReference());
             if (service != null) {
                 service.deactivate();
             }
             serviceRegistration.unregister();
-            discoveryServiceRegistrations.remove(thingHandler.getThing().getUID());
-
+            discoveryServiceRegistrations.remove(bridgeUID);
         }
     }
-
-    @Override
-    protected void deactivate(ComponentContext componentContext) {
-        if (bridgeConfigurationServlet != null) {
-            bridgeConfigurationServlet.dispose();
-        }
-        super.deactivate(componentContext);
-    }
-
-    @Reference(cardinality = ReferenceCardinality.MANDATORY, policy = ReferencePolicy.DYNAMIC)
-    protected void setHttpService(HttpService httpService) {
-        this.httpService = httpService;
-    }
-
-    protected void unsetHttpService(HttpService httpService) {
-        this.httpService = null;
-    }
-
-    @Reference
-    protected void setDynamicStateDescriptionProvider(HomeConnectDynamicStateDescriptionProvider provider) {
-        this.dynamicStateDescriptionProvider = provider;
-    }
-
-    protected void unsetDynamicStateDescriptionProvider(HomeConnectDynamicStateDescriptionProvider provider) {
-        this.dynamicStateDescriptionProvider = null;
-    }
-
 }

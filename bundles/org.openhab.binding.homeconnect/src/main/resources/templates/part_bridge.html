@@ -24,10 +24,20 @@
     </span>
 </div>
 <div class="views-field">
+    <span class="views-label"> Status</span>
+    <span class="field-content">
+        <code>${thingStatus}</code>
+    </span>
+</div>
+<div class="views-field">
     <p class="desc">Please make sure the redirect URI is matching the one specified at https://developer.home-connect.com/applications/.</p>
 </div>
-<div>
-	<form action="?uid=${uid}" method="post">
+<div style="display: flex;">
+    <form action="?uid=${uid}&task=clear" method="post">
+        <button class="cancelbutton" name="Clear" value="Clear stored credentials">Clear stored credentials</button>
+    </form>
+    
+	<form action="?uid=${uid}&task=authorize" method="post">
 		<button class="button" name="Authorize" value="Authorize bridge">Authorize bridge</button>
 	</form>
 </div>

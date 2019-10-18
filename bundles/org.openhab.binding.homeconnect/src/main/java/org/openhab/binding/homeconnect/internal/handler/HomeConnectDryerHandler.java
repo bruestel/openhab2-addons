@@ -17,14 +17,12 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.QuantityType;
 import org.eclipse.smarthome.core.library.types.StringType;
-import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
@@ -32,6 +30,7 @@ import org.eclipse.smarthome.core.types.StateDescription;
 import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
 import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
@@ -181,7 +180,7 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
     public void handleCommand(@NonNull ChannelUID channelUID, @NonNull Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
-            String operationState = getCurrentOperationState();
+            String operationState = getOperationState();
 
             if (logger.isDebugEnabled()) {
                 logger.debug("{}: {}", channelUID, command);
@@ -193,16 +192,15 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                     updateState(channelUID, new StringType(""));
 
                     if ("start".equalsIgnoreCase(command.toFullString())) {
-                        String program = getClient().getSelectedProgram(getThingHaId()).getKey();
-                        getClient().startProgram(getThingHaId(), program);
+                        getApiClient().startSelectedProgram(getThingHaId());
                     } else {
-                        getClient().stopProgram(getThingHaId());
+                        getApiClient().stopProgram(getThingHaId());
                     }
                 }
 
                 // set selected program
                 if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
-                    getClient().setSelectedProgram(getThingHaId(), command.toFullString());
+                    getApiClient().setSelectedProgram(getThingHaId(), command.toFullString());
                 }
 
                 // only handle these commands if operation state allows it
@@ -216,7 +214,7 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
 
                     // set drying target option
                     if (command instanceof StringType && CHANNEL_DRYER_DRYING_TARGET.equals(channelUID.getId())) {
-                        getClient().setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET,
+                        getApiClient().setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET,
                                 command.toFullString(), null, false, activeState);
                     }
                 }
@@ -224,6 +222,11 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
             } catch (CommunicationException e) {
                 logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
                         e.getMessage());
+            } catch (AuthorizationException e) {
+                logger.warn("Could not handle command {}. Authorization problem! error: {}", command.toFullString(),
+                        e.getMessage());
+
+                handleAuthenticationError(e);
             }
         }
     }
@@ -241,34 +244,38 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
     }
 
     private void updateProgramOptions(String programKey) {
-        try {
-            List<AvailableProgramOption> availableProgramOptions = getClient().getProgramOptions(getThingHaId(),
-                    programKey);
+        getThingChannel(CHANNEL_DRYER_DRYING_TARGET).map(channel -> channel.getUID().getAsString())
+                .ifPresent(channelUID -> {
+                    try {
+                        List<AvailableProgramOption> availableProgramOptions = getApiClient()
+                                .getProgramOptions(getThingHaId(), programKey);
 
-            if (availableProgramOptions.isEmpty()) {
-                dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_DRYER_DRYING_TARGET);
-            }
-
-            availableProgramOptions.forEach(option -> {
-                if (option.getKey() != null && OPTION_DRYER_DRYING_TARGET.equals(option.getKey())) {
-                    ArrayList<StateOption> stateOptions = new ArrayList<>();
-
-                    option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, mapStringType(av))));
-                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
-                            .toStateDescription();
-
-                    if (stateDescription != null) {
-                        Optional<Channel> channel = getThingChannel(CHANNEL_DRYER_DRYING_TARGET);
-                        if (channel.isPresent()) {
-                            dynamicStateDescriptionProvider.putStateDescriptions(channel.get().getUID().getAsString(),
-                                    stateDescription);
+                        if (availableProgramOptions.isEmpty()) {
+                            dynamicStateDescriptionProvider.removeStateDescriptions(channelUID);
                         }
+
+                        availableProgramOptions.forEach(option -> {
+                            if (option.getKey() != null && OPTION_DRYER_DRYING_TARGET.equals(option.getKey())) {
+                                ArrayList<StateOption> stateOptions = new ArrayList<>();
+
+                                option.getAllowedValues()
+                                        .forEach(av -> stateOptions.add(new StateOption(av, mapStringType(av))));
+                                StateDescription stateDescription = StateDescriptionFragmentBuilder.create()
+                                        .withPattern("%s").withReadOnly(stateOptions.isEmpty())
+                                        .withOptions(stateOptions).build().toStateDescription();
+
+                                if (stateDescription != null) {
+                                    dynamicStateDescriptionProvider.putStateDescriptions(channelUID, stateDescription);
+                                }
+                            }
+                        });
+                    } catch (CommunicationException e) {
+                        logger.error("Could not fetch available program options. {}", e.getMessage());
+                    } catch (AuthorizationException e) {
+                        logger.warn("Could not fetch available program options. {}", e.getMessage());
+
+                        handleAuthenticationError(e);
                     }
-                }
-            });
-        } catch (CommunicationException e) {
-            logger.error("Could not fetch available program options. {}", e.getMessage());
-        }
+                });
     }
 }

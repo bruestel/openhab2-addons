@@ -31,6 +31,7 @@ import org.eclipse.smarthome.core.types.StateDescription;
 import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
 import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
@@ -195,42 +196,46 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                     updateState(channelUID, new StringType(""));
 
                     if ("start".equalsIgnoreCase(command.toFullString())) {
-                        String program = getClient().getSelectedProgram(getThingHaId()).getKey();
-                        getClient().startProgram(getThingHaId(), program);
+                        getApiClient().startSelectedProgram(getThingHaId());
                     } else {
-                        getClient().stopProgram(getThingHaId());
+                        getApiClient().stopProgram(getThingHaId());
                     }
                 }
 
                 // set selected program of hood
                 if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
-                    getClient().setSelectedProgram(getThingHaId(), command.toFullString());
+                    getApiClient().setSelectedProgram(getThingHaId(), command.toFullString());
                 }
 
                 // turn hood on and off
                 if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())) {
-                    getClient().setPowerState(getThingHaId(),
+                    getApiClient().setPowerState(getThingHaId(),
                             OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_OFF);
                 }
 
                 // program options
-                String operationState = getCurrentOperationState();
+                String operationState = getOperationState();
                 if (OPERATION_STATE_RUN.equals(operationState) || OPERATION_STATE_INACTIVE.equals(operationState)) {
                     boolean activeState = OPERATION_STATE_RUN.equals(operationState);
                     logger.debug("operation state: {} | active: {}", operationState, activeState);
 
                     // set intensive level
                     if (command instanceof StringType && CHANNEL_HOOD_INTENSIVE_LEVEL.equals(channelUID.getId())) {
-                        getClient().setProgramOptions(getThingHaId(), OPTION_HOOD_INTENSIVE_LEVEL,
+                        getApiClient().setProgramOptions(getThingHaId(), OPTION_HOOD_INTENSIVE_LEVEL,
                                 command.toFullString(), null, false, activeState);
                     } else if (command instanceof StringType && CHANNEL_HOOD_VENTING_LEVEL.equals(channelUID.getId())) {
-                        getClient().setProgramOptions(getThingHaId(), OPTION_HOOD_VENTING_LEVEL, command.toFullString(),
-                                null, false, activeState);
+                        getApiClient().setProgramOptions(getThingHaId(), OPTION_HOOD_VENTING_LEVEL,
+                                command.toFullString(), null, false, activeState);
                     }
                 }
             } catch (CommunicationException e) {
                 logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
                         e.getMessage());
+            } catch (AuthorizationException e) {
+                logger.warn("Could not handle command {}. Authorization problem! error: {}", command.toFullString(),
+                        e.getMessage());
+
+                handleAuthenticationError(e);
             }
         }
     }
@@ -249,12 +254,20 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
 
     private void updateProgramOptions(String programKey) {
         try {
-            List<AvailableProgramOption> availableProgramOptions = getClient().getProgramOptions(getThingHaId(),
+            List<AvailableProgramOption> availableProgramOptions = getApiClient().getProgramOptions(getThingHaId(),
                     programKey);
 
             if (availableProgramOptions.isEmpty()) {
-                dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_HOOD_INTENSIVE_LEVEL);
-                dynamicStateDescriptionProvider.removeStateDescriptions(CHANNEL_HOOD_VENTING_LEVEL);
+                Optional<Channel> intensiveLevelChannel = getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL);
+                if (intensiveLevelChannel.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(intensiveLevelChannel.get().getUID().getAsString());
+                }
+                Optional<Channel> ventingLevelchannel = getThingChannel(CHANNEL_HOOD_VENTING_LEVEL);
+                if (ventingLevelchannel.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(ventingLevelchannel.get().getUID().getAsString());
+                }
             }
 
             availableProgramOptions.forEach(option -> {
@@ -292,6 +305,10 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
             });
         } catch (CommunicationException e) {
             logger.error("Could not fetch available program options. {}", e.getMessage());
+        } catch (AuthorizationException e) {
+            logger.error("Could not fetch available program options. {}", e.getMessage());
+
+            handleAuthenticationError(e);
         }
     }
 

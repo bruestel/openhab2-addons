@@ -23,13 +23,6 @@ import org.openhab.binding.homeconnect.internal.client.model.Event;
 public interface ServerSentEventListener {
 
     /**
-     * Home appliance id of interest
-     *
-     * @return
-     */
-    String haId();
-
-    /**
      * Inform listener about new event
      *
      * @param event
@@ -39,10 +32,14 @@ public interface ServerSentEventListener {
     /**
      * If SSE client did a reconnect
      */
-    void onReconnect();
+    default void onReconnect() {
+
+    }
 
     /**
      * If reconnect failed
      */
-    void onReconnectFailed();
+    default void onReconnectFailed() {
+
+    }
 }

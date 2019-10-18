@@ -12,29 +12,34 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
-import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
-import java.util.List;
+import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.config.core.Configuration;
+import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthFactory;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
+import org.eclipse.smarthome.core.storage.StorageService;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
-import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
-import org.openhab.binding.homeconnect.internal.client.OAuthHelper;
+import org.openhab.binding.homeconnect.internal.client.HomeConnectSseClient;
+import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.model.Token;
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
+import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,17 +52,29 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
-    private static final int REINITIALIZATION_LONG_DELAY = 120;
-    private static final int REINITIALIZATION_MEDIUM_DELAY = 30;
-    private static final int REINITIALIZATION_SHORT_DELAY = 5;
+    private static final int REINITIALIZATION_DELAY = 120;
 
     private final Logger logger = LoggerFactory.getLogger(HomeConnectBridgeHandler.class);
 
-    private @Nullable HomeConnectApiClient apiClient;
     private @Nullable ScheduledFuture<?> reinitializationFuture;
 
-    public HomeConnectBridgeHandler(Bridge bridge) {
+    private final OAuthFactory oAuthFactory;
+    // TODO implement bundle request logging
+    // private final Storage<String> storage;
+    private final BridgeConfigurationServlet bridgeConfigurationServlet;
+
+    private @NonNullByDefault({}) OAuthClientService oAuthClientService;
+    private @NonNullByDefault({}) String oAuthServiceHandleId;
+    private @NonNullByDefault({}) HomeConnectApiClient apiClient;
+    private @NonNullByDefault({}) HomeConnectSseClient sseClient;
+
+    public HomeConnectBridgeHandler(Bridge bridge, OAuthFactory oAuthFactory, StorageService storageService,
+            BridgeConfigurationServlet bridgeConfigurationServlet) {
         super(bridge);
+
+        this.oAuthFactory = oAuthFactory;
+        this.bridgeConfigurationServlet = bridgeConfigurationServlet;
+        // storage = storageService.getStorage(getThing().getUID().toString());
     }
 
     @Override
@@ -67,123 +84,114 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     @Override
     public void initialize() {
-        updateStatus(ThingStatus.UNKNOWN);
+        // let the bridge configuration servlet know about this handler
+        bridgeConfigurationServlet.addBridgeHandler(this);
 
-        HomeConnectApiClient apiClient = getApiClient();
-
-        if (logger.isDebugEnabled()) {
-            if (apiClient != null) {
-                logger.debug("Updating Home Connect bridge handler");
-            } else {
-                logger.debug("Initializing Home Connect bridge handler");
-            }
-        }
-
-        if (apiClient != null) {
-            // remove old api client
-            apiClient.dispose();
-        }
-
-        // check for oAuth token
+        // create oAuth service
         ApiBridgeConfiguration config = getConfiguration();
-        if (StringUtils.isEmpty(config.getRefreshToken())) {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING,
-                    "Please authenticate your account at http(s)://<YOUROPENHAB>:<YOURPORT>/homeconnect (e.g. http://192.168.178.100:8080/homeconnect).");
-        } else {
-            // check token
-            String refreshToken = config.getRefreshToken();
-            String accessToken = config.getAccessToken();
-            try {
-                if (isEmpty(accessToken)) {
-                    Token token = OAuthHelper.refreshToken(config.getClientId(), config.getClientSecret(), refreshToken,
-                            config.isSimulator());
-                    updateToken(token.getAccessToken(), token.getRefreshToken());
-                    accessToken = token.getAccessToken();
-                    refreshToken = token.getRefreshToken();
-                }
+        String tokenUrl = (config.isSimulator() ? API_SIMULATOR_BASE_URL : API_BASE_URL) + OAUTH_TOKEN_PATH;
+        String authorizeUrl = (config.isSimulator() ? API_SIMULATOR_BASE_URL : API_BASE_URL) + OAUTH_AUTHORIZE_PATH;
+        String oAuthServiceHandleId = thing.getUID().getAsString() + (config.isSimulator() ? "simulator" : "");
+        oAuthClientService = oAuthFactory.createOAuthClientService(oAuthServiceHandleId, tokenUrl, authorizeUrl,
+                config.getClientId(), config.getClientSecret(), OAUTH_SCOPE, true);
+        this.oAuthServiceHandleId = oAuthServiceHandleId;
 
-                // initialize api client
-                apiClient = new HomeConnectApiClient(accessToken, config.isSimulator(), () -> {
-                    try {
-                        Token token = OAuthHelper.refreshToken(config.getClientId(), config.getClientSecret(),
-                                config.getRefreshToken(), config.isSimulator());
-                        updateToken(token.getAccessToken(), token.getRefreshToken());
-                        return token.getAccessToken();
-                    } catch (CommunicationException e) {
-                        logger.error("Could not refresh access token! {}", e.getMessage());
-                    }
-                    return null;
+        // create api client
+        apiClient = new HomeConnectApiClient(oAuthClientService, config.isSimulator());
+        sseClient = new HomeConnectSseClient(oAuthClientService, config.isSimulator());
 
-                });
-                setApiClient(apiClient);
+        try {
+            AccessTokenResponse accessTokenResponse = oAuthClientService.getAccessTokenResponse();
 
-                // check if client works
+            if (accessTokenResponse == null) {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING,
+                        "Please authenticate your account at http(s)://<YOUROPENHAB>:<YOURPORT>/homeconnect (e.g. http://192.168.178.100:8080/homeconnect).");
+            } else {
                 apiClient.getHomeAppliances();
                 updateStatus(ThingStatus.ONLINE);
-
-                // update API clients of bridge children
-                logger.debug("Bridge finished initializing process --> refresh client handlers");
-                List<Thing> children = getThing().getThings();
-                for (Thing thing : children) {
-                    ThingHandler childHandler = thing.getHandler();
-                    HomeConnectApiClient client = apiClient;
-                    if (childHandler instanceof HomeConnectApiClientListener && client != null) {
-                        ((HomeConnectApiClientListener) childHandler).refreshApiClient(client);
-                    }
-                }
-            } catch (RuntimeException e) {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                        "Home Connect service is not reachable or a problem occurred! Retrying in a couple of seconds ("
-                                + e.getMessage() + ").");
-                scheduleReinitialize(REINITIALIZATION_LONG_DELAY);
-            } catch (CommunicationException e) {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                        "Home Connect service is not reachable or a problem occurred! Retrying in a couple of seconds ("
-                                + e.getMessage() + ").");
-                scheduleReinitialize(REINITIALIZATION_MEDIUM_DELAY);
             }
-        }
-    }
+        } catch (OAuthException | IOException | OAuthResponseException | CommunicationException
+                | AuthorizationException e) {
+            ZonedDateTime nextReinitializeDateTime = ZonedDateTime.now().plusSeconds(REINITIALIZATION_DELAY);
 
-    @Override
-    public void childHandlerInitialized(ThingHandler childHandler, Thing childThing) {
-        HomeConnectApiClient client = apiClient;
-        if (childHandler instanceof HomeConnectApiClientListener && client != null) {
-            ((HomeConnectApiClientListener) childHandler).refreshApiClient(client);
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                    "Home Connect service is not reachable or a problem occurred! Retrying at "
+                            + nextReinitializeDateTime.format(DateTimeFormatter.RFC_1123_DATE_TIME) + " ("
+                            + e.getMessage() + ").");
+
+            scheduleReinitialize(REINITIALIZATION_DELAY);
         }
     }
 
     @Override
     public void dispose() {
+        logger.debug("Dispose {}", getClass().getSimpleName());
+
         stopReinitializer();
+        cleanup();
     }
 
-    public @Nullable HomeConnectApiClient getApiClient() {
+    /**
+     * Allow clients to register (start) SSE listener.
+     *
+     * @param abstractHomeConnectThingHandler
+     */
+    public void registerServerSentEventListener(AbstractHomeConnectThingHandler abstractHomeConnectThingHandler) {
+        if (ThingStatus.ONLINE.equals(abstractHomeConnectThingHandler.getThing().getStatus())) {
+            try {
+                sseClient.registerServerSentEventListener(abstractHomeConnectThingHandler.getThingHaId(),
+                        abstractHomeConnectThingHandler);
+            } catch (CommunicationException | AuthorizationException e) {
+                logger.error("Could not start SSE connection for child handler. handler={} error={}",
+                        abstractHomeConnectThingHandler, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Unregister SSE listener.
+     * 
+     * @param abstractHomeConnectThingHandler
+     */
+    public void unregisterServerSentEventListener(AbstractHomeConnectThingHandler abstractHomeConnectThingHandler) {
+        sseClient.unregisterServerSentEventListener(abstractHomeConnectThingHandler);
+    }
+
+    /**
+     * Get {@link HomeConnectApiClient}.
+     *
+     * @return api client instance
+     */
+    public HomeConnectApiClient getApiClient() {
         return apiClient;
     }
 
-    private void setApiClient(HomeConnectApiClient apiClient) {
-        this.apiClient = apiClient;
-    }
-
+    /**
+     * Get {@link ApiBridgeConfiguration}.
+     *
+     * @return bridge configuration (clientId, clientSecret, etc.)
+     */
     public ApiBridgeConfiguration getConfiguration() {
         return getConfigAs(ApiBridgeConfiguration.class);
     }
 
-    public void updateToken(String accessToken, String refreshtoken) {
-        Configuration configuration = editConfiguration();
-        if (logger.isDebugEnabled()) {
-            logger.debug(
-                    "Token were updated. \naccess token (old): {}\naccess token (new):{}\nrefresh token (old): {}\nrefresh token (new): {}",
-                    configuration.get("accessToken"), accessToken, configuration.get("refreshToken"), refreshtoken);
-        }
-        configuration.put("refreshToken", refreshtoken);
-        configuration.put("accessToken", accessToken);
-        updateConfiguration(configuration);
+    /**
+     * Get {@link OAuthClientService} instance.
+     *
+     * @return oAuth client service instance
+     */
+    public OAuthClientService getOAuthClientService() {
+        return oAuthClientService;
     }
 
-    public void reInitialize() {
-        initialize();
+    private void cleanup() {
+        sseClient.dispose();
+
+        if (oAuthServiceHandleId != null) {
+            oAuthFactory.ungetOAuthService(oAuthServiceHandleId);
+        }
+
+        bridgeConfigurationServlet.removeBridgeHandler(this);
     }
 
     private synchronized void scheduleReinitialize(int seconds) {
@@ -192,10 +200,9 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
             logger.debug("Reinitialization is already scheduled. Starting in {} seconds.",
                     reinitializationFuture.getDelay(TimeUnit.SECONDS));
         } else {
-            reinitializationFuture = scheduler.schedule(() -> {
-
-                scheduler.schedule(() -> initialize(), REINITIALIZATION_SHORT_DELAY, TimeUnit.SECONDS);
-
+            this.reinitializationFuture = scheduler.schedule(() -> {
+                cleanup();
+                initialize();
             }, seconds, TimeUnit.SECONDS);
         }
     }
