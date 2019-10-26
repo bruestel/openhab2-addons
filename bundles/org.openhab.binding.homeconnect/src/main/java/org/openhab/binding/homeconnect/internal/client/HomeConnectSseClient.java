@@ -27,8 +27,10 @@ import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationEx
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.listener.ServerSentEventListener;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.Type;
+import org.slf4j.event.Level;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -36,6 +38,7 @@ import com.google.gson.JsonParser;
 import com.here.oksse.OkSse;
 import com.here.oksse.ServerSentEvent;
 
+import jersey.repackaged.com.google.common.collect.ImmutableList;
 import okhttp3.Request;
 import okhttp3.Response;
 
@@ -55,14 +58,15 @@ public class HomeConnectSseClient {
     private static final int SSE_REQUEST_READ_TIMEOUT = 90;
     private static final String ACCEPT = "Accept";
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectSseClient.class);
     private final String apiUrl;
     private final OkSse oksse;
     private final OAuthClientService oAuthClientService;
     private final HashSet<ServerSentEventListener> eventListeners;
     private final HashMap<ServerSentEventListener, ServerSentEvent> serverSentEventConnections;
+    private final Logger logger;
 
-    public HomeConnectSseClient(OAuthClientService oAuthClientService, boolean simulated) {
+    public HomeConnectSseClient(OAuthClientService oAuthClientService, boolean simulated,
+            EmbeddedLoggingService loggingService) {
         apiUrl = simulated ? API_SIMULATOR_BASE_URL : API_BASE_URL;
         oksse = new OkSse(OkHttpHelper.builder().readTimeout(SSE_REQUEST_READ_TIMEOUT, TimeUnit.SECONDS)
                 .retryOnConnectionFailure(true).build());
@@ -70,6 +74,8 @@ public class HomeConnectSseClient {
 
         eventListeners = new HashSet<>();
         serverSentEventConnections = new HashMap<>();
+
+        logger = loggingService.getLogger(HomeConnectSseClient.class);
     }
 
     /**
@@ -84,35 +90,33 @@ public class HomeConnectSseClient {
      */
     public synchronized void registerServerSentEventListener(final String haId,
             final ServerSentEventListener eventListener) throws CommunicationException, AuthorizationException {
+        logger.debugWithHaId(haId, "Register event listener: {}", eventListener);
 
-        logger.debug("Register event listener: {}", eventListener);
         eventListeners.add(eventListener);
 
         if (!serverSentEventConnections.containsKey(eventListener)) {
             Request request = OkHttpHelper.requestBuilder(oAuthClientService)
                     .url(apiUrl + "/api/homeappliances/" + haId + "/events").header(ACCEPT, TEXT_EVENT_STREAM).build();
 
-            logger.debug("Create new SSE listener");
+            logger.debugWithHaId(haId, "Create new listener");
             ServerSentEvent sse = oksse.newServerSentEvent(request, new ServerSentEvent.Listener() {
 
                 @Override
                 public void onOpen(ServerSentEvent sse, Response response) {
-                    logger.debug("[{}] SSE channel opened", haId);
+                    logger.debugWithHaId(haId, "Channel opened");
                 }
 
                 @Override
                 public void onMessage(ServerSentEvent sse, String id, String event, String message) {
-                    if (logger.isDebugEnabled()) {
-                        if (KEEP_ALIVE.equals(event)) {
-                            logger.debug("[{}] SSE KEEP-ALIVE", haId);
-                        } else {
-                            logger.debug("[{}] SSE received id: {}, event: {}, message:\n{}", haId, id, event,
-                                    formatJsonBody(message));
-                        }
+                    if (KEEP_ALIVE.equals(event)) {
+                        logger.debugWithHaId(haId, "KEEP-ALIVE");
+                    } else {
+                        logger.log(Type.DEFAULT, Level.DEBUG, haId, null, ImmutableList.of(formatJsonBody(message)),
+                                null, null, "Received id: {}, event: {}", id, event);
                     }
 
                     if (!StringUtils.isEmpty(message) && !EMPTY_EVENT.equals(message)) {
-                        ArrayList<Event> events = mapToEvents(message);
+                        ArrayList<Event> events = mapToEvents(message, haId);
                         events.forEach(e -> eventListener.onEvent(e));
                     }
 
@@ -123,12 +127,12 @@ public class HomeConnectSseClient {
 
                 @Override
                 public void onComment(ServerSentEvent sse, String comment) {
-                    logger.debug("[{}] SSE comment received comment: {}", haId, comment);
+                    logger.debugWithHaId(haId, "Comment received. comment: {}", comment);
                 }
 
                 @Override
                 public boolean onRetryTime(ServerSentEvent sse, long milliseconds) {
-                    logger.debug("[{}] SSE retry time {}", haId, milliseconds);
+                    logger.debugWithHaId(haId, "Retry time {}", milliseconds);
                     return true; // True to use the new retry time received by SSE
                 }
 
@@ -136,18 +140,15 @@ public class HomeConnectSseClient {
                 public boolean onRetryError(ServerSentEvent sse, Throwable throwable, Response response) {
                     boolean retry = true;
 
-                    if (logger.isWarnEnabled() && throwable != null) {
-                        logger.warn("[{}] SSE error: {}", haId, throwable.getMessage());
-                    }
+                    logger.warnWithHaId(haId, "Error: {}", throwable.getMessage());
 
                     if (response != null) {
                         if (response.code() == HTTP_FORBIDDEN) {
-                            logger.warn(
-                                    "[{}] Stopping SSE listener! Got FORBIDDEN response from server. Please check if you allowed to access this device.",
-                                    haId);
+                            logger.warnWithHaId(haId,
+                                    "Stopping listener! Got FORBIDDEN response from server. Please check if you allowed to access this device.");
                             retry = false;
                         } else if (response.code() == HTTP_UNAUTHORIZED) {
-                            logger.error("[{}] Stopping SSE listener! Access token became invalid.", haId);
+                            logger.errorWithHaId(haId, "Stopping listener! Access token became invalid.");
                             retry = false;
                         }
 
@@ -166,7 +167,7 @@ public class HomeConnectSseClient {
 
                 @Override
                 public void onClosed(ServerSentEvent sse) {
-                    logger.debug("[{}] SSE closed", haId);
+                    logger.debugWithHaId(haId, "Closed");
                 }
 
                 @Override
@@ -178,7 +179,7 @@ public class HomeConnectSseClient {
                                 .url(apiUrl + "/api/homeappliances/" + haId + "/events")
                                 .header(ACCEPT, TEXT_EVENT_STREAM).build();
                     } catch (AuthorizationException | CommunicationException e) {
-                        logger.debug("Could not create new SSE request. {}", e.getMessage());
+                        logger.debugWithHaId(haId, "Could not create new request. {}", e.getMessage());
                     }
 
                     return request;
@@ -209,7 +210,7 @@ public class HomeConnectSseClient {
         serverSentEventConnections.clear();
     }
 
-    private ArrayList<Event> mapToEvents(String json) {
+    private ArrayList<Event> mapToEvents(String json, String haId) {
         ArrayList<Event> events = new ArrayList<>();
 
         try {
@@ -228,7 +229,7 @@ public class HomeConnectSseClient {
             });
 
         } catch (IllegalStateException e) {
-            logger.error("Could not parse event! {}", e.getMessage());
+            logger.errorWithHaId(haId, "Could not parse event! {}", e.getMessage());
         }
         return events;
     }

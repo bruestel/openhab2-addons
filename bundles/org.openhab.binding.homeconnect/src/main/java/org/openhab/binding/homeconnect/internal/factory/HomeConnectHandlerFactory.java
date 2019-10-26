@@ -22,7 +22,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.discovery.DiscoveryService;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthFactory;
-import org.eclipse.smarthome.core.storage.StorageService;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
@@ -42,6 +41,7 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectHoodHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectOvenHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherDryerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherHandler;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.annotations.Activate;
@@ -61,19 +61,19 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
     private final Map<ThingUID, ServiceRegistration<?>> discoveryServiceRegistrations;
     private final OAuthFactory oAuthFactory;
     private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
-    private final StorageService storageService;
     private final BridgeConfigurationServlet bridgeConfigurationServlet;
+    private final EmbeddedLoggingService loggingService;
 
     @Activate
     public HomeConnectHandlerFactory(@Reference OAuthFactory oAuthFactory,
             @Reference HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
-            @Reference StorageService storageService,
-            @Reference BridgeConfigurationServlet bridgeConfigurationServlet) {
+            @Reference BridgeConfigurationServlet bridgeConfigurationServlet,
+            @Reference EmbeddedLoggingService loggingService) {
 
         this.oAuthFactory = oAuthFactory;
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
-        this.storageService = storageService;
         this.bridgeConfigurationServlet = bridgeConfigurationServlet;
+        this.loggingService = loggingService;
 
         discoveryServiceRegistrations = new HashMap<>();
     }
@@ -89,7 +89,7 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
 
         if (THING_TYPE_API_BRIDGE.equals(thingTypeUID)) {
             HomeConnectBridgeHandler bridgeHandler = new HomeConnectBridgeHandler((Bridge) thing, oAuthFactory,
-                    storageService, bridgeConfigurationServlet);
+                    bridgeConfigurationServlet, loggingService);
 
             // configure discovery service
             HomeConnectDiscoveryService discoveryService = new HomeConnectDiscoveryService(bridgeHandler);

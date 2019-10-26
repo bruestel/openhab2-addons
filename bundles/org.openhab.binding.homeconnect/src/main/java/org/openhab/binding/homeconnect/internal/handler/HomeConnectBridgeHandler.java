@@ -27,7 +27,6 @@ import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthFactory;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
-import org.eclipse.smarthome.core.storage.StorageService;
 import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.ThingStatus;
@@ -39,9 +38,8 @@ import org.openhab.binding.homeconnect.internal.client.HomeConnectSseClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HomeConnectBridgeHandler} is responsible for handling commands, which are
@@ -54,27 +52,26 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     private static final int REINITIALIZATION_DELAY = 120;
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectBridgeHandler.class);
+    private final OAuthFactory oAuthFactory;
+    private final BridgeConfigurationServlet bridgeConfigurationServlet;
+    private final org.openhab.binding.homeconnect.internal.logger.Logger logger;
+    private final EmbeddedLoggingService loggingService;
 
     private @Nullable ScheduledFuture<?> reinitializationFuture;
-
-    private final OAuthFactory oAuthFactory;
-    // TODO implement bundle request logging
-    // private final Storage<String> storage;
-    private final BridgeConfigurationServlet bridgeConfigurationServlet;
 
     private @NonNullByDefault({}) OAuthClientService oAuthClientService;
     private @NonNullByDefault({}) String oAuthServiceHandleId;
     private @NonNullByDefault({}) HomeConnectApiClient apiClient;
     private @NonNullByDefault({}) HomeConnectSseClient sseClient;
 
-    public HomeConnectBridgeHandler(Bridge bridge, OAuthFactory oAuthFactory, StorageService storageService,
-            BridgeConfigurationServlet bridgeConfigurationServlet) {
+    public HomeConnectBridgeHandler(Bridge bridge, OAuthFactory oAuthFactory,
+            BridgeConfigurationServlet bridgeConfigurationServlet, EmbeddedLoggingService loggingService) {
         super(bridge);
 
         this.oAuthFactory = oAuthFactory;
         this.bridgeConfigurationServlet = bridgeConfigurationServlet;
-        // storage = storageService.getStorage(getThing().getUID().toString());
+        this.logger = loggingService.getLogger(HomeConnectBridgeHandler.class);
+        this.loggingService = loggingService;
     }
 
     @Override
@@ -84,6 +81,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     @Override
     public void initialize() {
+        logger.debugWithLabel(getThing().getLabel(), "Initialize bridge");
         // let the bridge configuration servlet know about this handler
         bridgeConfigurationServlet.addBridgeHandler(this);
 
@@ -97,8 +95,8 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
         this.oAuthServiceHandleId = oAuthServiceHandleId;
 
         // create api client
-        apiClient = new HomeConnectApiClient(oAuthClientService, config.isSimulator());
-        sseClient = new HomeConnectSseClient(oAuthClientService, config.isSimulator());
+        apiClient = new HomeConnectApiClient(oAuthClientService, config.isSimulator(), loggingService);
+        sseClient = new HomeConnectSseClient(oAuthClientService, config.isSimulator(), loggingService);
 
         try {
             AccessTokenResponse accessTokenResponse = oAuthClientService.getAccessTokenResponse();
@@ -106,6 +104,8 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
             if (accessTokenResponse == null) {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING,
                         "Please authenticate your account at http(s)://<YOUROPENHAB>:<YOURPORT>/homeconnect (e.g. http://192.168.178.100:8080/homeconnect).");
+                logger.infoWithLabel(getThing().getLabel(),
+                        "Configuration is pending. Please authenticate your account at http(s)://<YOUROPENHAB>:<YOURPORT>/homeconnect (e.g. http://192.168.178.100:8080/homeconnect).");
             } else {
                 apiClient.getHomeAppliances();
                 updateStatus(ThingStatus.ONLINE);
@@ -114,10 +114,11 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
                 | AuthorizationException e) {
             ZonedDateTime nextReinitializeDateTime = ZonedDateTime.now().plusSeconds(REINITIALIZATION_DELAY);
 
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                    "Home Connect service is not reachable or a problem occurred! Retrying at "
-                            + nextReinitializeDateTime.format(DateTimeFormatter.RFC_1123_DATE_TIME) + " ("
-                            + e.getMessage() + ").");
+            String infoMessage = "Home Connect service is not reachable or a problem occurred! Retrying at "
+                    + nextReinitializeDateTime.format(DateTimeFormatter.RFC_1123_DATE_TIME) + " (" + e.getMessage()
+                    + ").";
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, infoMessage);
+            logger.infoWithLabel(getThing().getLabel(), infoMessage);
 
             scheduleReinitialize(REINITIALIZATION_DELAY);
         }
@@ -125,7 +126,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     @Override
     public void dispose() {
-        logger.debug("Dispose {}", getClass().getSimpleName());
+        logger.debugWithLabel(getThing().getLabel(), "Dispose bridge");
 
         stopReinitializer();
         cleanup();
@@ -142,7 +143,8 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
                 sseClient.registerServerSentEventListener(abstractHomeConnectThingHandler.getThingHaId(),
                         abstractHomeConnectThingHandler);
             } catch (CommunicationException | AuthorizationException e) {
-                logger.error("Could not start SSE connection for child handler. handler={} error={}",
+                logger.errorWithLabel(getThing().getLabel(),
+                        "Could not start SSE connection for child handler. handler={} error={}",
                         abstractHomeConnectThingHandler, e.getMessage());
             }
         }
@@ -150,7 +152,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     /**
      * Unregister SSE listener.
-     * 
+     *
      * @param abstractHomeConnectThingHandler
      */
     public void unregisterServerSentEventListener(AbstractHomeConnectThingHandler abstractHomeConnectThingHandler) {
@@ -197,7 +199,8 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     private synchronized void scheduleReinitialize(int seconds) {
         ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture;
         if (reinitializationFuture != null && !reinitializationFuture.isDone()) {
-            logger.debug("Reinitialization is already scheduled. Starting in {} seconds.",
+            logger.debugWithLabel(getThing().getLabel(),
+                    "Reinitialization is already scheduled. Starting in {} seconds.",
                     reinitializationFuture.getDelay(TimeUnit.SECONDS));
         } else {
             this.reinitializationFuture = scheduler.schedule(() -> {
