@@ -21,8 +21,6 @@ public class ApiBridgeConfiguration {
 
     private String clientId;
     private String clientSecret;
-    private String accessToken;
-    private String refreshToken;
     private boolean simulator;
 
     public String getClientId() {
@@ -41,22 +39,6 @@ public class ApiBridgeConfiguration {
         this.clientSecret = clientSecret;
     }
 
-    public String getAccessToken() {
-        return accessToken;
-    }
-
-    public void setAccessToken(String accessToken) {
-        this.accessToken = accessToken;
-    }
-
-    public String getRefreshToken() {
-        return refreshToken;
-    }
-
-    public void setRefreshToken(String refreshToken) {
-        this.refreshToken = refreshToken;
-    }
-
     public boolean isSimulator() {
         return simulator;
     }
@@ -67,8 +49,8 @@ public class ApiBridgeConfiguration {
 
     @Override
     public String toString() {
-        return "ApiBridgeConfiguration [clientId=" + clientId + ", clientSecret=" + clientSecret + ", accessToken="
-                + accessToken + ", refreshToken=" + refreshToken + ", simulator=" + simulator + "]";
+        return "ApiBridgeConfiguration [clientId=" + clientId + ", clientSecret=" + clientSecret + ", simulator="
+                + simulator + "]";
     }
 
 }

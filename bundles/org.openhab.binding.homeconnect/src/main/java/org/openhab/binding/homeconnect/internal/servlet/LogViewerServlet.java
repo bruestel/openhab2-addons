@@ -12,6 +12,7 @@
  */
 package org.openhab.binding.homeconnect.internal.servlet;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -20,8 +21,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -133,12 +137,33 @@ public class LogViewerServlet extends AbstractServlet {
         }
 
         if (request.getQueryString() != null && request.getQueryString().contains("export")) {
-            response.setHeader("Content-Disposition", "attachment; filename=\""
-                    + ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm")) + ".html\"");
+            ServletOutputStream sos = response.getOutputStream();
+            response.setContentType("application/zip");
+
+            String filePrefix = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm"));
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filePrefix + ".zip\"");
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ZipOutputStream zos = new ZipOutputStream(baos);
+            zos.putNextEntry(new ZipEntry(filePrefix + ".html"));
+
+            String content = replaceKeysFromMap(readHtmlTemplate(TEMPLATE), replaceMap);
+            zos.write(content.getBytes());
+            zos.closeEntry();
+            zos.flush();
+            baos.flush();
+            zos.close();
+            baos.close();
+
+            byte[] zipOutput = baos.toByteArray();
+
+            sos.write(zipOutput);
+            sos.flush();
+        } else {
+            response.setContentType(CONTENT_TYPE);
+            response.getWriter().append(replaceKeysFromMap(readHtmlTemplate(TEMPLATE), replaceMap));
+            response.getWriter().close();
         }
-        response.setContentType(CONTENT_TYPE);
-        response.getWriter().append(replaceKeysFromMap(readHtmlTemplate(TEMPLATE), replaceMap));
-        response.getWriter().close();
     }
 
     private String renderLogPart(Log entry) {
@@ -158,9 +183,13 @@ public class LogViewerServlet extends AbstractServlet {
             }
             sb.append(entry.getRequest().getUrl());
             replaceMap.put(PLACEHOLDER_KEY_MESSAGE, sb.toString());
-
         } else {
-            replaceMap.put(PLACEHOLDER_KEY_MESSAGE, entry.getMessage() == null ? "" : entry.getMessage());
+            if (entry.getLabel() != null) {
+                replaceMap.put(PLACEHOLDER_KEY_MESSAGE,
+                        (entry.getMessage() == null ? "" : entry.getMessage()) + " (" + entry.getLabel() + ")");
+            } else {
+                replaceMap.put(PLACEHOLDER_KEY_MESSAGE, entry.getMessage() == null ? "" : entry.getMessage());
+            }
         }
 
         // CSS highlighting

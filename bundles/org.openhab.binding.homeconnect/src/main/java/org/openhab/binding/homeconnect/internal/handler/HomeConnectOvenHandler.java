@@ -38,8 +38,8 @@ import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationEx
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Option;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.logger.Logger;
 
 import jersey.repackaged.com.google.common.collect.ImmutableList;
 
@@ -52,16 +52,18 @@ import jersey.repackaged.com.google.common.collect.ImmutableList;
 @NonNullByDefault
 public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectOvenHandler.class);
-
     private static final ImmutableList<String> ACTIVE_STATE = ImmutableList.of(OPERATION_STATE_DELAYED_START,
             OPERATION_STATE_RUN, OPERATION_STATE_PAUSE);
     private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
             OPERATION_STATE_READY);
 
+    private final Logger logger;
+
     public HomeConnectOvenHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
-        super(thing, dynamicStateDescriptionProvider);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+            EmbeddedLoggingService loggingService) {
+        super(thing, dynamicStateDescriptionProvider, loggingService);
+        logger = loggingService.getLogger(HomeConnectOvenHandler.class);
     }
 
     @Override
@@ -204,10 +206,6 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("{}: {}", channelUID, command);
-            }
-
             try {
                 // start or stop program
                 if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
@@ -245,15 +243,16 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                             unit = quantity.getUnit().toString();
                             value = String.valueOf(quantity.intValue());
                         } else {
-                            logger.info("Converting target setpoint temperature from {}{} to °C value.",
+                            logger.infoWithHaId(getThingHaId(),
+                                    "Converting target setpoint temperature from {}{} to °C value.",
                                     quantity.intValue(), quantity.getUnit().toString());
                             unit = "°C";
                             value = String.valueOf(
                                     quantity.getUnit().getConverterToAny(SIUnits.CELSIUS).convert(quantity).intValue());
-                            logger.info("{}{}", value, unit);
+                            logger.infoWithHaId(getThingHaId(), "{}{}", value, unit);
                         }
 
-                        logger.debug("Set setpoint temperature to {} {}.", value, unit);
+                        logger.debugWithHaId(getThingHaId(), "Set setpoint temperature to {} {}.", value, unit);
 
                         String operationState = getOperationState();
                         if (operationState != null
@@ -263,7 +262,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                         }
 
                     } catch (IncommensurableException | UnconvertibleException e) {
-                        logger.error("Could not set setpoint! {}", e.getMessage());
+                        logger.errorWithHaId(getThingHaId(), "Could not set setpoint! {}", e.getMessage());
                     }
                 }
 
@@ -276,9 +275,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                         String value = String
                                 .valueOf(quantity.getUnit().getConverterToAny(SECOND).convert(quantity).intValue());
 
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("Set duration to {} seconds.", value);
-                        }
+                        logger.debugWithHaId(getThingHaId(), "Set duration to {} seconds.", value);
 
                         String operationState = getOperationState();
                         if (operationState != null
@@ -287,15 +284,15 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                                     ACTIVE_STATE.contains(operationState));
                         }
                     } catch (IncommensurableException | UnconvertibleException e) {
-                        logger.error("Could not set duration! error: {}", e.getMessage());
+                        logger.errorWithHaId(getThingHaId(), "Could not set duration! error: {}", e.getMessage());
                     }
                 }
             } catch (CommunicationException e) {
-                logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
-                        e.getMessage());
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
+                        command.toFullString(), e.getMessage());
             } catch (AuthorizationException e) {
-                logger.warn("Could not handle command {}. Authorization problem! error: {}", command.toFullString(),
-                        e.getMessage());
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
+                        command.toFullString(), e.getMessage());
 
                 handleAuthenticationError(e);
             }
@@ -308,7 +305,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
     }
 
     private void resetProgramStateChannels() {
-        logger.debug("Resetting active program channel states");
+        logger.debugWithHaId(getThingHaId(), "Resetting active program channel states.");
         getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_ELAPSED_PROGRAM_TIME).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));

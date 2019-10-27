@@ -32,8 +32,8 @@ import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.logger.Logger;
 
 /**
  * The {@link HomeConnectFridgeFreezerHandler} is responsible for handling commands, which are
@@ -44,11 +44,13 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectFridgeFreezerHandler.class);
+    private final Logger logger;
 
     public HomeConnectFridgeFreezerHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
-        super(thing, dynamicStateDescriptionProvider);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+            EmbeddedLoggingService loggingService) {
+        super(thing, dynamicStateDescriptionProvider, loggingService);
+        logger = loggingService.getLogger(HomeConnectFridgeFreezerHandler.class);
     }
 
     @Override
@@ -115,10 +117,6 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("{}: {}", channelUID, command);
-            }
-
             try {
                 if (command instanceof QuantityType
                         && (CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE.equals(channelUID.getId())
@@ -134,15 +132,16 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                         unit = quantity.getUnit().toString();
                         value = String.valueOf(quantity.intValue());
                     } else {
-                        logger.info("Converting target setpoint temperature from {}{} to °C value.",
-                                quantity.intValue(), quantity.getUnit().toString());
+                        logger.infoWithHaId(getThingHaId(),
+                                "Converting target setpoint temperature from {}{} to °C value.", quantity.intValue(),
+                                quantity.getUnit().toString());
                         unit = "°C";
                         value = String.valueOf(
                                 quantity.getUnit().getConverterToAny(SIUnits.CELSIUS).convert(quantity).intValue());
-                        logger.info("{}{}", value, unit);
+                        logger.infoWithHaId(getThingHaId(), "{}{}", value, unit);
                     }
 
-                    logger.debug("Set setpoint temperature to {} {}.", value, unit);
+                    logger.debugWithHaId(getThingHaId(), "Set setpoint temperature to {} {}.", value, unit);
 
                     if (CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
                         getApiClient().setFridgeSetpointTemperature(getThingHaId(), value, unit);
@@ -158,15 +157,15 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                     }
                 }
             } catch (CommunicationException e) {
-                logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
-                        e.getMessage());
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
+                        command.toFullString(), e.getMessage());
             } catch (AuthorizationException e) {
-                logger.warn("Could not handle command {}. Authorization problem! error: {}", command.toFullString(),
-                        e.getMessage());
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
+                        command.toFullString(), e.getMessage());
 
                 handleAuthenticationError(e);
             } catch (IncommensurableException | UnconvertibleException e) {
-                logger.error("Could not set setpoint! {}", e.getMessage());
+                logger.errorWithHaId(getThingHaId(), "Could not set setpoint! {}", e.getMessage());
             }
         }
     }

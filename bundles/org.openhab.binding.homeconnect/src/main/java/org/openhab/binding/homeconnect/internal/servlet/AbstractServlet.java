@@ -67,7 +67,7 @@ public abstract class AbstractServlet extends HttpServlet {
                 final String key = m.group(1);
                 m.appendReplacement(sb, Matcher.quoteReplacement(map.getOrDefault(key, "${" + key + '}')));
             } catch (RuntimeException e) {
-                logger.debug("Error occurred during template filling, cause ", e);
+                logger.error("Error occurred during template filling, cause ", e);
             }
         }
         m.appendTail(sb);

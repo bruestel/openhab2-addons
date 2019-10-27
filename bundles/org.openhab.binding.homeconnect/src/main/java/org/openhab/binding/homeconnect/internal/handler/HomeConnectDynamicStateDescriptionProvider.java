@@ -21,9 +21,15 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.type.DynamicStateDescriptionProvider;
 import org.eclipse.smarthome.core.types.StateDescription;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.Type;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.osgi.service.component.annotations.Reference;
+import org.slf4j.event.Level;
+
+import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link HomeConnectDynamicStateDescriptionProvider} is responsible for handling dynamic thing values.
@@ -34,8 +40,13 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectDynamicStateDescriptionProvider implements DynamicStateDescriptionProvider {
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectDynamicStateDescriptionProvider.class);
     private final ConcurrentHashMap<String, StateDescription> stateDescriptions = new ConcurrentHashMap<>();
+    private final Logger logger;
+
+    @Activate
+    public HomeConnectDynamicStateDescriptionProvider(@Reference EmbeddedLoggingService loggingService) {
+        logger = loggingService.getLogger(HomeConnectDynamicStateDescriptionProvider.class);
+    }
 
     @Override
     public @Nullable StateDescription getStateDescription(@NonNull Channel channel,
@@ -49,12 +60,13 @@ public class HomeConnectDynamicStateDescriptionProvider implements DynamicStateD
     }
 
     protected void putStateDescriptions(String channelUid, StateDescription stateDescription) {
-        logger.debug("Adding state description. channel-uid:{} state-description:{}", channelUid, stateDescription);
+        logger.log(Type.DEFAULT, Level.DEBUG, null, null, ImmutableList.of(stateDescription.toString()), null, null,
+                "Adding state description for channel-uid: {}", channelUid);
         stateDescriptions.put(channelUid, stateDescription);
     }
 
     protected void removeStateDescriptions(String channelUid) {
-        logger.debug("Removing state description for channel-uid {}.", channelUid);
+        logger.debug("Removing state description for channel-uid: {}.", channelUid);
         stateDescriptions.remove(channelUid);
     }
 

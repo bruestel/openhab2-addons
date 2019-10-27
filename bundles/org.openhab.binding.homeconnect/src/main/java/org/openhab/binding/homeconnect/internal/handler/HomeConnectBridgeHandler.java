@@ -39,6 +39,7 @@ import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationEx
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.logger.Logger;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
 
 /**
@@ -54,7 +55,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     private final OAuthFactory oAuthFactory;
     private final BridgeConfigurationServlet bridgeConfigurationServlet;
-    private final org.openhab.binding.homeconnect.internal.logger.Logger logger;
+    private final Logger logger;
     private final EmbeddedLoggingService loggingService;
 
     private @Nullable ScheduledFuture<?> reinitializationFuture;

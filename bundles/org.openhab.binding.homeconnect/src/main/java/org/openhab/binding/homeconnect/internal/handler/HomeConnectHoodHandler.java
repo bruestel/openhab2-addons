@@ -35,8 +35,8 @@ import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationEx
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.logger.Logger;
 
 /**
  * The {@link HomeConnectHoodHandler} is responsible for handling commands, which are
@@ -47,13 +47,15 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectHoodHandler.class);
-    private HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
+    private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
+    private final Logger logger;
 
     public HomeConnectHoodHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
-        super(thing, dynamicStateDescriptionProvider);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+            EmbeddedLoggingService loggingService) {
+        super(thing, dynamicStateDescriptionProvider, loggingService);
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
+        logger = loggingService.getLogger(HomeConnectHoodHandler.class);
         resetProgramStateChannels();
     }
 
@@ -186,10 +188,6 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("{}: {}", channelUID, command);
-            }
-
             try {
                 // start or stop program
                 if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
@@ -217,7 +215,8 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                 String operationState = getOperationState();
                 if (OPERATION_STATE_RUN.equals(operationState) || OPERATION_STATE_INACTIVE.equals(operationState)) {
                     boolean activeState = OPERATION_STATE_RUN.equals(operationState);
-                    logger.debug("operation state: {} | active: {}", operationState, activeState);
+                    logger.debugWithHaId(getThingHaId(), "operation state: {} | active: {}", operationState,
+                            activeState);
 
                     // set intensive level
                     if (command instanceof StringType && CHANNEL_HOOD_INTENSIVE_LEVEL.equals(channelUID.getId())) {
@@ -229,11 +228,11 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                     }
                 }
             } catch (CommunicationException e) {
-                logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
-                        e.getMessage());
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
+                        command.toFullString(), e.getMessage());
             } catch (AuthorizationException e) {
-                logger.warn("Could not handle command {}. Authorization problem! error: {}", command.toFullString(),
-                        e.getMessage());
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
+                        command.toFullString(), e.getMessage());
 
                 handleAuthenticationError(e);
             }
@@ -246,7 +245,7 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
     }
 
     private void resetProgramStateChannels() {
-        logger.debug("Resetting active program channel states");
+        logger.debugWithHaId(getThingHaId(), "Resetting active program channel states.");
         getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_HOOD_VENTING_LEVEL).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
@@ -304,9 +303,9 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                 }
             });
         } catch (CommunicationException e) {
-            logger.error("Could not fetch available program options. {}", e.getMessage());
+            logger.errorWithHaId(getThingHaId(), "Could not fetch available program options. {}", e.getMessage());
         } catch (AuthorizationException e) {
-            logger.error("Could not fetch available program options. {}", e.getMessage());
+            logger.errorWithHaId(getThingHaId(), "Could not fetch available program options. {}", e.getMessage());
 
             handleAuthenticationError(e);
         }

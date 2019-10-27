@@ -55,8 +55,8 @@ import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.logger.Logger;
 
 /**
  * The {@link AbstractHomeConnectThingHandler} is responsible for handling commands, which are
@@ -66,20 +66,21 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler implements ServerSentEventListener {
 
-    private final Logger logger = LoggerFactory.getLogger(AbstractHomeConnectThingHandler.class);
-
     private @Nullable String operationState;
 
     private final ConcurrentHashMap<String, EventHandler> eventHandlers;
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
     private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
+    private final Logger logger;
 
     public AbstractHomeConnectThingHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+            EmbeddedLoggingService loggingService) {
         super(thing);
         eventHandlers = new ConcurrentHashMap<>();
         channelUpdateHandlers = new ConcurrentHashMap<>();
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
+        logger = loggingService.getLogger(AbstractHomeConnectThingHandler.class);
 
         configureEventHandlers(eventHandlers);
         configureChannelUpdateHandlers(channelUpdateHandlers);
@@ -87,7 +88,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     @Override
     public void initialize() {
-        logger.debug("Initialize thing handler ({}).", getThingLabel());
+        logger.debugWithHaId(getThingHaId(), "Initialize thing handler ({}).", getThingLabel());
 
         Bridge bridge = getBridge();
         if (bridge != null && ThingStatus.ONLINE.equals(bridge.getStatus())) {
@@ -100,7 +101,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 homeConnectBridgeHandler.registerServerSentEventListener(this);
             }
         } else {
-            logger.debug("Bridge is not online ({}), skip initialization of thing handler.", getThingLabel());
+            logger.debugWithHaId(getThingHaId(), "Bridge is not online ({}), skip initialization of thing handler.",
+                    getThingLabel());
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
         }
     }
@@ -120,7 +122,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     @Override
     public void bridgeStatusChanged(ThingStatusInfo bridgeStatusInfo) {
         super.bridgeStatusChanged(bridgeStatusInfo);
-        logger.debug("Bridge status changed to {} ({}).", bridgeStatusInfo, getThingLabel());
+        logger.debugWithHaId(getThingHaId(), "Bridge status changed to {} ({}).", bridgeStatusInfo, getThingLabel());
 
         dispose();
         initialize();
@@ -128,22 +130,26 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-        if (isThingReadyToHandleCommand() && command instanceof RefreshType) {
-            updateChannel(channelUID);
+        if (isThingReadyToHandleCommand()) {
+            logger.debugWithHaId(getThingHaId(), "Handle \"{}\" command ({}).", command, channelUID);
+
+            if (command instanceof RefreshType) {
+                updateChannel(channelUID);
+            }
         }
     }
 
     @Override
     public void onEvent(@NonNull Event event) {
-        logger.debug("[{}] {}", getThingHaId(), event);
+        logger.debugWithHaId(getThingHaId(), "{}", event);
 
         if (EVENT_DISCONNECTED.equals(event.getKey())) {
-            logger.info("Received offline event. Set {} to offline.", getThing().getLabel());
+            logger.infoWithHaId(getThingHaId(), "Received offline event. Set {} to offline.", getThing().getLabel());
             updateStatus(ThingStatus.OFFLINE);
         } else {
             if (!ThingStatus.ONLINE.equals(getThing().getStatus())) {
                 updateStatus(ThingStatus.ONLINE);
-                logger.info("Set {} to online.", getThing().getLabel());
+                logger.infoWithHaId(getThingHaId(), "Set {} to online.", getThing().getLabel());
                 updateChannels();
             }
         }
@@ -155,13 +161,13 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         if (eventHandlers.containsKey(event.getKey())) {
             eventHandlers.get(event.getKey()).handle(event);
         } else {
-            logger.debug("[{}] No event handler registered for event {}. Ignore event.", getThingHaId(), event);
+            logger.debugWithHaId(getThingHaId(), "No event handler registered for event {}. Ignore event.", event);
         }
     }
 
     @Override
     public void onReconnectFailed() {
-        logger.error("SSE connection was closed due to authentication problems!");
+        logger.errorWithHaId(getThingHaId(), "SSE connection was closed due to authentication problems!");
         handleAuthenticationError(new AuthorizationException("SSE connection was killed!"));
     }
 
@@ -217,7 +223,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                                 stateDescription);
                     }
                 } catch (CommunicationException | AuthorizationException e) {
-                    logger.error("Could not fetch available programs. {}", e.getMessage());
+                    logger.errorWithHaId(getThingHaId(), "Could not fetch available programs. {}", e.getMessage());
                     removeSelectedProgramStateDescription();
                 }
             } else {
@@ -245,16 +251,16 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected boolean isThingReadyToHandleCommand() {
         Bridge bridge = getBridge();
         if (bridge == null) {
-            logger.warn("BridgeHandler not found. Cannot handle command without bridge.");
+            logger.warnWithHaId(getThingHaId(), "BridgeHandler not found. Cannot handle command without bridge.");
             return false;
         }
         if (ThingStatus.OFFLINE.equals(bridge.getStatus())) {
-            logger.debug("Bridge is OFFLINE. Ignore command.");
+            logger.debugWithHaId(getThingHaId(), "Bridge is OFFLINE. Ignore command.");
             return false;
         }
 
         if (ThingStatus.OFFLINE.equals(getThing().getStatus())) {
-            logger.debug("{} is OFFLINE. Ignore command.", getThing().getLabel());
+            logger.debugWithHaId(getThingHaId(), "{} is OFFLINE. Ignore command.", getThing().getLabel());
             return false;
         }
 
@@ -295,12 +301,12 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected void updateChannels() {
         Bridge bridge = getBridge();
         if (bridge == null || ThingStatus.OFFLINE.equals(bridge.getStatus())) {
-            logger.warn("BridgeHandler not found or offline. Stopping update of channels.");
+            logger.warnWithHaId(getThingHaId(), "BridgeHandler not found or offline. Stopping update of channels.");
             return;
         }
 
         if (ThingStatus.OFFLINE.equals(getThing().getStatus())) {
-            logger.debug("{} offline. Stopping update of channels.", getThing().getLabel());
+            logger.debugWithHaId(getThingHaId(), "{} offline. Stopping update of channels.", getThing().getLabel());
             return;
         }
 
@@ -319,18 +325,20 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         HomeConnectApiClient apiClient = getApiClient();
 
         if (apiClient == null) {
-            logger.error("Cannot update channel. No instance of api client found!");
+            logger.errorWithHaId(getThingHaId(), "Cannot update channel. No instance of api client found!");
             return;
         }
 
         Bridge bridge = getBridge();
         if (bridge == null || ThingStatus.OFFLINE.equals(bridge.getStatus())) {
-            logger.warn("BridgeHandler not found or offline. Stopping update of channel {}.", channelUID);
+            logger.warnWithHaId(getThingHaId(), "BridgeHandler not found or offline. Stopping update of channel {}.",
+                    channelUID);
             return;
         }
 
         if (ThingStatus.OFFLINE.equals(getThing().getStatus())) {
-            logger.debug("{} offline. Stopping update of channel {}.", getThing().getLabel(), channelUID);
+            logger.debugWithHaId(getThingHaId(), "{} offline. Stopping update of channel {}.", getThing().getLabel(),
+                    channelUID);
             return;
         }
 
@@ -338,7 +346,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             try {
                 channelUpdateHandlers.get(channelUID.getId()).handle(channelUID, apiClient);
             } catch (CommunicationException | AuthorizationException e) {
-                logger.error("API communication problem while trying to update {}!", getThingHaId(), e);
+                logger.errorWithHaId(getThingHaId(), "API communication problem while trying to update!", e);
             }
         }
     }
@@ -427,8 +435,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * Handle authentication exception.
      */
     protected void handleAuthenticationError(AuthorizationException exception) {
-        logger.info("Thing handler got authentication exception --> clear credential storage ({})",
-                exception.getMessage());
+        logger.infoWithHaId(getThingHaId(),
+                "Thing handler got authentication exception --> clear credential storage ({})", exception.getMessage());
         Bridge bridge = getBridge();
         if (bridge != null) {
             BridgeHandler bridgeHandler = bridge.getHandler();
@@ -438,7 +446,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 try {
                     homeConnectBridgeHandler.getOAuthClientService().remove();
                 } catch (OAuthException e) {
-                    logger.error("Could not clear oAuth storage!", e);
+                    logger.errorWithHaId(getThingHaId(), "Could not clear oAuth storage!", e);
                 }
                 homeConnectBridgeHandler.dispose();
                 homeConnectBridgeHandler.initialize();

@@ -92,29 +92,30 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
                     bridgeConfigurationServlet, loggingService);
 
             // configure discovery service
-            HomeConnectDiscoveryService discoveryService = new HomeConnectDiscoveryService(bridgeHandler);
+            HomeConnectDiscoveryService discoveryService = new HomeConnectDiscoveryService(bridgeHandler,
+                    loggingService);
             discoveryServiceRegistrations.put(bridgeHandler.getThing().getUID(), bundleContext
                     .registerService(DiscoveryService.class.getName(), discoveryService, new Hashtable<>()));
 
             return bridgeHandler;
         } else if (THING_TYPE_DISHWASHER.equals(thingTypeUID)) {
-            return new HomeConnectDishwasherHandler(thing, dynamicStateDescriptionProvider);
+            return new HomeConnectDishwasherHandler(thing, dynamicStateDescriptionProvider, loggingService);
         } else if (THING_TYPE_OVEN.equals(thingTypeUID)) {
-            return new HomeConnectOvenHandler(thing, dynamicStateDescriptionProvider);
+            return new HomeConnectOvenHandler(thing, dynamicStateDescriptionProvider, loggingService);
         } else if (THING_TYPE_WASHER.equals(thingTypeUID)) {
-            return new HomeConnectWasherHandler(thing, dynamicStateDescriptionProvider);
+            return new HomeConnectWasherHandler(thing, dynamicStateDescriptionProvider, loggingService);
         } else if (THING_TYPE_WASHER_DRYER.equals(thingTypeUID)) {
-            return new HomeConnectWasherDryerHandler(thing, dynamicStateDescriptionProvider);
+            return new HomeConnectWasherDryerHandler(thing, dynamicStateDescriptionProvider, loggingService);
         } else if (THING_TYPE_DRYER.equals(thingTypeUID)) {
-            return new HomeConnectDryerHandler(thing, dynamicStateDescriptionProvider);
+            return new HomeConnectDryerHandler(thing, dynamicStateDescriptionProvider, loggingService);
         } else if (THING_TYPE_FRIDGE_FREEZER.equals(thingTypeUID)) {
-            return new HomeConnectFridgeFreezerHandler(thing, dynamicStateDescriptionProvider);
+            return new HomeConnectFridgeFreezerHandler(thing, dynamicStateDescriptionProvider, loggingService);
         } else if (THING_TYPE_COFFEE_MAKER.equals(thingTypeUID)) {
-            return new HomeConnectCoffeeMakerHandler(thing, dynamicStateDescriptionProvider);
+            return new HomeConnectCoffeeMakerHandler(thing, dynamicStateDescriptionProvider, loggingService);
         } else if (THING_TYPE_HOOD.equals(thingTypeUID)) {
-            return new HomeConnectHoodHandler(thing, dynamicStateDescriptionProvider);
+            return new HomeConnectHoodHandler(thing, dynamicStateDescriptionProvider, loggingService);
         } else if (THING_TYPE_COOKTOP.equals(thingTypeUID)) {
-            return new HomeConnectCooktopHandler(thing, dynamicStateDescriptionProvider);
+            return new HomeConnectCooktopHandler(thing, dynamicStateDescriptionProvider, loggingService);
         }
 
         return null;

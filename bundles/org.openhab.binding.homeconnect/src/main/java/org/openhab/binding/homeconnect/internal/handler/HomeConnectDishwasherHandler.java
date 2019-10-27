@@ -28,8 +28,8 @@ import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.logger.Logger;
 
 /**
  * The {@link HomeConnectDishwasherHandler} is responsible for handling commands, which are
@@ -40,11 +40,13 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectDishwasherHandler.class);
+    private final Logger logger;
 
     public HomeConnectDishwasherHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
-        super(thing, dynamicStateDescriptionProvider);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+            EmbeddedLoggingService loggingService) {
+        super(thing, dynamicStateDescriptionProvider, loggingService);
+        logger = loggingService.getLogger(HomeConnectDishwasherHandler.class);
         resetProgramStateChannels();
     }
 
@@ -145,10 +147,6 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
 
-            if (logger.isDebugEnabled()) {
-                logger.debug("{}: {}", channelUID, command);
-            }
-
             try {
                 // start or stop program
                 if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
@@ -172,11 +170,11 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
                             OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_OFF);
                 }
             } catch (CommunicationException e) {
-                logger.warn("Could not handle command {}. API communication problem! error: {}", command.toFullString(),
-                        e.getMessage());
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
+                        command.toFullString(), e.getMessage());
             } catch (AuthorizationException e) {
-                logger.warn("Could not handle command {}. Authorization problem! error: {}", command.toFullString(),
-                        e.getMessage());
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
+                        command.toFullString(), e.getMessage());
 
                 handleAuthenticationError(e);
             }
@@ -189,7 +187,7 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
     }
 
     private void resetProgramStateChannels() {
-        logger.debug("Resetting active program channel states");
+        logger.debugWithHaId(getThingHaId(), "Resetting active program channel states.");
         getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));

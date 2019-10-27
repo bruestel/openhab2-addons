@@ -21,8 +21,8 @@ import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.logger.Logger;
 
 /**
  * The {@link HomeConnectCooktopHandler} is responsible for handling commands, which are
@@ -33,11 +33,13 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectCooktopHandler extends AbstractHomeConnectThingHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(HomeConnectCooktopHandler.class);
+    private final Logger logger;
 
     public HomeConnectCooktopHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
-        super(thing, dynamicStateDescriptionProvider);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+            EmbeddedLoggingService loggingService) {
+        super(thing, dynamicStateDescriptionProvider, loggingService);
+        logger = loggingService.getLogger(HomeConnectCooktopHandler.class);
         resetProgramStateChannels();
     }
 
@@ -101,7 +103,7 @@ public class HomeConnectCooktopHandler extends AbstractHomeConnectThingHandler {
     }
 
     private void resetProgramStateChannels() {
-        logger.debug("Resetting active program channel states");
+        logger.debugWithHaId(getThingHaId(), "Resetting active program channel states.");
         getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
     }
 }
