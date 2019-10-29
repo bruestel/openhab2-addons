@@ -81,7 +81,7 @@ public class LogViewerServlet extends AbstractServlet {
     public LogViewerServlet(@Reference HttpService httpService, @Reference EmbeddedLoggingService loggingService) {
         this.httpService = httpService;
         this.loggingService = loggingService;
-        dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+        dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS z");
 
         try {
             logger.debug("Initialize log viewer servlet... ({})", SERVLET_LOG_VIEWER_PATH);

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -57,6 +58,7 @@ public class EmbeddedLoggingService {
     private final Storage<String> storage;
     private final Gson gson;
     private final org.slf4j.Logger logger = LoggerFactory.getLogger(EmbeddedLoggingService.class);
+    private final AtomicLong atomicLong;
 
     private @Nullable ScheduledFuture<?> cleanupFuture;
 
@@ -67,6 +69,7 @@ public class EmbeddedLoggingService {
         storage = storageService.getStorage(STORAGE_NAME);
         gson = new GsonBuilder().create();
         scheduler = ThreadPoolManager.getScheduledPool(getClass().getSimpleName());
+        atomicLong = new AtomicLong();
     }
 
     @Activate
@@ -94,12 +97,29 @@ public class EmbeddedLoggingService {
     }
 
     public Logger getLogger(Class<?> clazz) {
-        return new Logger(clazz, loggingEnabled, storage);
+        return new Logger(clazz, loggingEnabled, storage, atomicLong);
     }
 
     public List<Log> getLogEntries() {
         try {
-            return storage.stream().sorted((o1, o2) -> o1.getKey().compareTo(o2.getKey())).map(e -> {
+            return storage.stream().sorted((o1, o2) -> {
+                String[] keys0 = o1.getKey().split("-");
+                String[] keys1 = o2.getKey().split("-");
+                Long ps0 = Long.valueOf(keys0[0]);
+                Long ps1 = Long.valueOf(keys1[0]);
+
+                int result = ps0.compareTo(ps1);
+                if (result != 0) {
+                    return result;
+                }
+                Integer ss0 = 0;
+                Integer ss1 = 0;
+                if (keys0.length > 1 && keys1.length > 1) {
+                    ss0 = Integer.valueOf(keys0[1]);
+                    ss1 = Integer.valueOf(keys1[1]);
+                }
+                return ss0.compareTo(ss1);
+            }).map(e -> {
                 String serializedObject = e.getValue();
                 if (serializedObject == null) {
                     throw new RuntimeException("Empty object in log storage");
@@ -130,6 +150,7 @@ public class EmbeddedLoggingService {
         long min = minDateTime.toInstant().toEpochMilli();
 
         logger.debug("Remove old log entries (< {})", minDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
-        storage.getKeys().stream().filter(key -> (Long.valueOf(key) < min)).forEach(key -> storage.remove(key));
+        storage.getKeys().stream().filter(key -> (Long.valueOf(key.split("-")[0]) < min))
+                .forEach(key -> storage.remove(key));
     }
 }

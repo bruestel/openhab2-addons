@@ -13,6 +13,7 @@
 package org.openhab.binding.homeconnect.internal.logger;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.storage.Storage;
@@ -39,13 +40,15 @@ public class Logger {
     private final Gson gson;
     private final Storage<String> storage;
     private final String className;
+    private final AtomicLong atomicLong;
     private boolean loggingEnabled;
 
-    public Logger(Class<?> clazz, boolean loggingEnabled, Storage<String> storage) {
+    protected Logger(Class<?> clazz, boolean loggingEnabled, Storage<String> storage, AtomicLong atomicLong) {
         this.slf4jLogger = LoggerFactory.getLogger(clazz);
         this.storage = storage;
         this.className = clazz.getSimpleName();
         this.loggingEnabled = loggingEnabled;
+        this.atomicLong = atomicLong;
 
         gson = new GsonBuilder().create();
     }
@@ -183,7 +186,8 @@ public class Logger {
         // log to storage
         try {
             if (loggingEnabled) {
-                storage.put(String.valueOf(entry.getCreated()), serialize(entry));
+                String key = entry.getCreated() + "-" + atomicLong.getAndIncrement();
+                storage.put(key, serialize(entry));
             }
         } catch (Exception e) {
             slf4jLogger.error("Could not persist to extended log system. error={}  entry={}", e.getMessage(), entry);
