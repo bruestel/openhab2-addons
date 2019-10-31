@@ -14,12 +14,17 @@ package org.openhab.binding.homeconnect.internal.servlet;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -28,6 +33,7 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.xml.bind.DatatypeConverter;
 
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -71,6 +77,7 @@ public class LogViewerServlet extends AbstractServlet {
     private static final String PLACEHOLDER_KEY_HA_ID = "haId";
     private static final String PLACEHOLDER_KEY_LOGS = "logs";
     private static final String SERVLET_LOG_VIEWER_PATH = SERVLET_BASE_PATH + "logs";
+    private static final Pattern HA_ID_PATTERN = Pattern.compile("[A-Z]{5,}-\\w{6,}-\\w{6,}");
 
     private final Logger logger = LoggerFactory.getLogger(LogViewerServlet.class);
     private final EmbeddedLoggingService loggingService;
@@ -148,7 +155,7 @@ public class LogViewerServlet extends AbstractServlet {
             zos.putNextEntry(new ZipEntry(filePrefix + ".html"));
 
             String content = replaceKeysFromMap(readHtmlTemplate(TEMPLATE), replaceMap);
-            zos.write(content.getBytes());
+            zos.write(pseudonymize(content).getBytes());
             zos.closeEntry();
             zos.flush();
             baos.flush();
@@ -257,5 +264,36 @@ public class LogViewerServlet extends AbstractServlet {
             logger.error("Could not render template {}!", TEMPLATE_DETAILS, e);
             return "";
         }
+    }
+
+    private String pseudonymize(String content) {
+        StringBuffer sb = new StringBuffer(content.length());
+        Matcher haIdMatcher = HA_ID_PATTERN.matcher(content);
+
+        while (haIdMatcher.find()) {
+            String haId = haIdMatcher.group();
+            String haIdPart[] = haId.split("-");
+            if (haIdPart.length == 3) {
+                String id2 = sha1(haIdPart[2]);
+                String pseudonymizedHaId = haIdPart[0] + "-" + haIdPart[1] + "-"
+                        + (id2 == null ? "XXXXXXXXXXXX" : "XXXXX" + id2.substring(5, 12));
+                haIdMatcher.appendReplacement(sb, Matcher.quoteReplacement(pseudonymizedHaId));
+            }
+        }
+        haIdMatcher.appendTail(sb);
+
+        return sb.toString();
+    }
+
+    private @Nullable String sha1(String input) {
+        String sha1 = null;
+        try {
+            MessageDigest msdDigest = MessageDigest.getInstance("SHA-1");
+            msdDigest.update(input.getBytes("UTF-8"), 0, input.length());
+            sha1 = DatatypeConverter.printHexBinary(msdDigest.digest());
+        } catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
+            logger.error("Could not create SHA-1 hash.", e);
+        }
+        return sha1;
     }
 }
