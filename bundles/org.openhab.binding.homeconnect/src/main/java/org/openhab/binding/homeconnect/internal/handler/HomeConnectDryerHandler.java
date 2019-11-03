@@ -12,28 +12,19 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
-import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.*;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.QuantityType;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.StateDescription;
-import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
-import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
-import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
 
@@ -53,7 +44,6 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
     private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
             OPERATION_STATE_READY);
 
-    private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
     private final Logger logger;
 
     public HomeConnectDryerHandler(Thing thing,
@@ -61,7 +51,6 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
             EmbeddedLoggingService loggingService) {
         super(thing, dynamicStateDescriptionProvider, loggingService);
         logger = loggingService.getLogger(HomeConnectDryerHandler.class);
-        this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
     }
 
     @Override
@@ -72,57 +61,8 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
-
-        // register dryer specific handlers
-        handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
-            Program program = client.getActiveProgram(getThingHaId());
-
-            if (program != null && program.getKey() != null) {
-                updateState(channelUID, new StringType(mapStringType(program.getKey())));
-                program.getOptions().forEach(option -> {
-                    switch (option.getKey()) {
-                        case OPTION_REMAINING_PROGRAM_TIME:
-                            getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE)
-                                    .ifPresent(channel -> updateState(channel.getUID(),
-                                            option.getValueAsInt() == 0 ? UnDefType.NULL
-                                                    : new QuantityType<>(option.getValueAsInt(), SECOND)));
-                            break;
-                        case OPTION_PROGRAM_PROGRESS:
-                            getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
-                                    .ifPresent(channel -> updateState(channel.getUID(),
-                                            option.getValueAsInt() == 100 ? UnDefType.NULL
-                                                    : new QuantityType<>(option.getValueAsInt(), PERCENT)));
-                            break;
-                        case OPTION_DRYER_DRYING_TARGET:
-                            getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(
-                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
-                            break;
-                    }
-                });
-            } else {
-                updateState(channelUID, UnDefType.NULL);
-                resetProgramStateChannels();
-            }
-        });
-        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, (channelUID, client) -> {
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                updateState(channelUID, new StringType(program.getKey()));
-
-                updateProgramOptions(program.getKey());
-
-                program.getOptions().forEach(option -> {
-                    switch (option.getKey()) {
-                        case OPTION_DRYER_DRYING_TARGET:
-                            getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(
-                                    channel -> updateState(channel.getUID(), new StringType(option.getValue())));
-                            break;
-                    }
-                });
-            } else {
-                updateState(channelUID, UnDefType.NULL);
-            }
-        });
+        handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
+        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, updateProgramOptionsAndSelectedProgramStateUpdateHandler());
     }
 
     @Override
@@ -135,41 +75,11 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
         handlers.put(EVENT_REMAINING_PROGRAM_TIME, defaultRemainingProgramTimeEventHandler());
         handlers.put(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
         handlers.put(EVENT_LOCAL_CONTROL_ACTIVE, defaultBooleanEventHandler(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE));
+        handlers.put(EVENT_ACTIVE_PROGRAM, defaultActiveProgramEventHandler());
+        handlers.put(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
+        handlers.put(EVENT_SELECTED_PROGRAM, updateProgramOptionsAndSelectedProgramStateEventHandler());
 
         // register dryer specific event handlers
-        handlers.put(EVENT_SELECTED_PROGRAM, event -> {
-            defaultSelectedProgramStateEventHandler().handle(event);
-
-            // update available program options
-            updateProgramOptions(event.getValue());
-        });
-        handlers.put(EVENT_OPERATION_STATE, event -> {
-            defaultOperationStateEventHandler().handle(event);
-
-            if (STATE_OPERATION_FINISHED.equals(event.getValue())) {
-                getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE)
-                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(0, SECOND)));
-                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
-                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(100, PERCENT)));
-            }
-
-            if (STATE_OPERATION_RUN.equals(event.getValue())) {
-                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
-                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(0, PERCENT)));
-                getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateChannel(c.getUID()));
-            }
-
-            if (STATE_OPERATION_READY.equals(event.getValue())) {
-                resetProgramStateChannels();
-            }
-        });
-        handlers.put(EVENT_ACTIVE_PROGRAM, event -> {
-            defaultActiveProgramEventHandler().handle(event);
-
-            if (event.getValue() == null) {
-                resetProgramStateChannels();
-            }
-        });
         handlers.put(EVENT_DRYER_DRYING_TARGET, event -> {
             getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(channel -> {
                 updateState(channel.getUID(),
@@ -233,48 +143,11 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
         return "HomeConnectDryerHandler [haId: " + getThingHaId() + "]";
     }
 
-    private void resetProgramStateChannels() {
-        logger.debugWithHaId(getThingHaId(), "Resetting active program channel states.");
+    @Override
+    protected void resetProgramStateChannels() {
+        super.resetProgramStateChannels();
         getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-    }
-
-    private void updateProgramOptions(String programKey) {
-        getThingChannel(CHANNEL_DRYER_DRYING_TARGET).map(channel -> channel.getUID().getAsString())
-                .ifPresent(channelUID -> {
-                    try {
-                        List<AvailableProgramOption> availableProgramOptions = getApiClient()
-                                .getProgramOptions(getThingHaId(), programKey);
-
-                        if (availableProgramOptions.isEmpty()) {
-                            dynamicStateDescriptionProvider.removeStateDescriptions(channelUID);
-                        }
-
-                        availableProgramOptions.forEach(option -> {
-                            if (option.getKey() != null && OPTION_DRYER_DRYING_TARGET.equals(option.getKey())) {
-                                ArrayList<StateOption> stateOptions = new ArrayList<>();
-
-                                option.getAllowedValues()
-                                        .forEach(av -> stateOptions.add(new StateOption(av, mapStringType(av))));
-                                StateDescription stateDescription = StateDescriptionFragmentBuilder.create()
-                                        .withPattern("%s").withReadOnly(stateOptions.isEmpty())
-                                        .withOptions(stateOptions).build().toStateDescription();
-
-                                if (stateDescription != null) {
-                                    dynamicStateDescriptionProvider.putStateDescriptions(channelUID, stateDescription);
-                                }
-                            }
-                        });
-                    } catch (CommunicationException e) {
-                        logger.errorWithHaId(getThingHaId(), "Could not fetch available program options. {}",
-                                e.getMessage());
-                    } catch (AuthorizationException e) {
-                        logger.warnWithHaId(getThingHaId(), "Could not fetch available program options. {}",
-                                e.getMessage());
-
-                        handleAuthenticationError(e);
-                    }
-                });
     }
 }

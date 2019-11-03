@@ -12,7 +12,6 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
-import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.PERCENT;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.QuantityType;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -28,7 +26,6 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
 
@@ -59,26 +56,7 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
         handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, defaultSelectedProgramStateUpdateHandler());
-
-        // register coffee maker specific update handlers
-        handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
-            Program program = client.getActiveProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                updateState(channelUID, new StringType(mapStringType(program.getKey())));
-                program.getOptions().forEach(option -> {
-                    switch (option.getKey()) {
-                        case OPTION_PROGRAM_PROGRESS:
-                            getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
-                                    .ifPresent(channel -> updateState(channel.getUID(),
-                                            new QuantityType<>(option.getValueAsInt(), PERCENT)));
-                            break;
-                    }
-                });
-            } else {
-                updateState(channelUID, UnDefType.NULL);
-                resetProgramStateChannels();
-            }
-        });
+        handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
     }
 
     @Override
@@ -94,6 +72,9 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
                 defaultEventPresentStateEventHandler(CHANNEL_COFFEEMAKER_DRIP_TRAY_FULL_STATE));
         handlers.put(EVENT_COFFEEMAKER_WATER_TANK_EMPTY,
                 defaultEventPresentStateEventHandler(CHANNEL_COFFEEMAKER_WATER_TANK_EMPTY_STATE));
+        handlers.put(EVENT_ACTIVE_PROGRAM, defaultActiveProgramEventHandler());
+        handlers.put(EVENT_POWER_STATE, defaultPowerStateEventHandler());
+        handlers.put(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
 
         // register coffee maker specific SSE event handlers
         handlers.put(EVENT_PROGRAM_PROGRESS, event -> {
@@ -101,44 +82,6 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
                 getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
             } else {
                 defaultProgramProgressEventHandler().handle(event);
-            }
-        });
-        handlers.put(EVENT_ACTIVE_PROGRAM, event -> {
-            defaultActiveProgramEventHandler().handle(event);
-
-            if (event.getValue() == null) {
-                resetProgramStateChannels();
-            }
-        });
-
-        handlers.put(EVENT_OPERATION_STATE, event -> {
-            defaultOperationStateEventHandler().handle(event);
-
-            if (STATE_OPERATION_FINISHED.equals(event.getValue())) {
-                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
-                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(100, PERCENT)));
-            }
-
-            if (STATE_OPERATION_RUN.equals(event.getValue())) {
-                getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
-                        .ifPresent(c -> updateState(c.getUID(), new QuantityType<>(0, PERCENT)));
-                getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateChannel(c.getUID()));
-            }
-
-            if (STATE_OPERATION_READY.equals(event.getValue())) {
-                resetProgramStateChannels();
-            }
-        });
-
-        handlers.put(EVENT_POWER_STATE, event -> {
-            defaultPowerStateEventHandler().handle(event);
-
-            if (!STATE_POWER_ON.equals(event.getValue())) {
-                resetProgramStateChannels();
-                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-            }
-            if (STATE_POWER_ON.equals(event.getValue())) {
-                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(c -> updateChannel(c.getUID()));
             }
         });
     }
@@ -187,8 +130,9 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
         return "HomeConnectCoffeeMakerHandler [haId: " + getThingHaId() + "]";
     }
 
-    private void resetProgramStateChannels() {
-        logger.debugWithHaId(getThingHaId(), "Resetting active program channel states.");
+    @Override
+    protected void resetProgramStateChannels() {
+        super.resetProgramStateChannels();
         getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
         getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
     }

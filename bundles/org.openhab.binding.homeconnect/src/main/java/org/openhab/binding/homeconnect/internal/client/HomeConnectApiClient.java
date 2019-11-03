@@ -481,7 +481,6 @@ public class HomeConnectApiClient {
                 "getProgram(String haId, String path)");
 
         Request request = createGetRequest(path);
-
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(Arrays.asList(HTTP_OK, HTTP_NOT_FOUND), response, haId);
             String body = response.body().string();

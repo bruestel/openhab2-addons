@@ -17,12 +17,9 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.UnDefType;
-import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
 
 /**
  * The {@link HomeConnectCooktopHandler} is responsible for handling commands, which are
@@ -33,13 +30,10 @@ import org.openhab.binding.homeconnect.internal.logger.Logger;
 @NonNullByDefault
 public class HomeConnectCooktopHandler extends AbstractHomeConnectThingHandler {
 
-    private final Logger logger;
-
     public HomeConnectCooktopHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
             EmbeddedLoggingService loggingService) {
         super(thing, dynamicStateDescriptionProvider, loggingService);
-        logger = loggingService.getLogger(HomeConnectCooktopHandler.class);
         resetProgramStateChannels();
     }
 
@@ -52,18 +46,7 @@ public class HomeConnectCooktopHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, defaultSelectedProgramStateUpdateHandler());
-
-        // register hob specific update handlers
-        handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, (channelUID, client) -> {
-            Program program = client.getActiveProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                updateState(channelUID, new StringType(mapStringType(program.getKey())));
-            } else {
-                updateState(channelUID, UnDefType.NULL);
-                resetProgramStateChannels();
-            }
-        });
-
+        handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
     }
 
     @Override
@@ -75,26 +58,8 @@ public class HomeConnectCooktopHandler extends AbstractHomeConnectThingHandler {
         handlers.put(EVENT_LOCAL_CONTROL_ACTIVE, defaultBooleanEventHandler(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE));
         handlers.put(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
         handlers.put(EVENT_SELECTED_PROGRAM, defaultSelectedProgramStateEventHandler());
-
-        // register hood specific SSE event handlers
-        handlers.put(EVENT_ACTIVE_PROGRAM, event -> {
-            defaultActiveProgramEventHandler().handle(event);
-
-            if (event.getValue() == null) {
-                resetProgramStateChannels();
-            }
-        });
-        handlers.put(EVENT_POWER_STATE, event -> {
-            defaultPowerStateEventHandler().handle(event);
-
-            if (!STATE_POWER_ON.equals(event.getValue())) {
-                resetProgramStateChannels();
-                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-            }
-            if (STATE_POWER_ON.equals(event.getValue())) {
-                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(c -> updateChannel(c.getUID()));
-            }
-        });
+        handlers.put(EVENT_ACTIVE_PROGRAM, defaultActiveProgramEventHandler());
+        handlers.put(EVENT_POWER_STATE, defaultPowerStateEventHandler());
     }
 
     @Override
@@ -102,8 +67,9 @@ public class HomeConnectCooktopHandler extends AbstractHomeConnectThingHandler {
         return "HomeConnectCooktopHandler [haId: " + getThingHaId() + "]";
     }
 
-    private void resetProgramStateChannels() {
-        logger.debugWithHaId(getThingHaId(), "Resetting active program channel states.");
+    @Override
+    protected void resetProgramStateChannels() {
+        super.resetProgramStateChannels();
         getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
     }
 }
