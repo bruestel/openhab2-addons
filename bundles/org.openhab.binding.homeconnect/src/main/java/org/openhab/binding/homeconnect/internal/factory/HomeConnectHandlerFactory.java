@@ -35,7 +35,6 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectCoffeeMakerHa
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectCooktopHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDishwasherHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectDryerHandler;
-import org.openhab.binding.homeconnect.internal.handler.HomeConnectDynamicStateDescriptionProvider;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectFridgeFreezerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectHoodHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectOvenHandler;
@@ -43,6 +42,7 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherDryerHa
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherHandler;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
+import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;

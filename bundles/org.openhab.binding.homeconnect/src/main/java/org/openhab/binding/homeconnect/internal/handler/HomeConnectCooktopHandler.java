@@ -20,6 +20,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
+import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 
 /**
  * The {@link HomeConnectCooktopHandler} is responsible for handling commands, which are

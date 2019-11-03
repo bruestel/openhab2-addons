@@ -28,6 +28,7 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 
 import jersey.repackaged.com.google.common.collect.ImmutableList;
 
@@ -128,22 +129,6 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
             String operationState = getOperationState();
 
             try {
-                // start or stop program
-                if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
-                    updateState(channelUID, new StringType(""));
-
-                    if ("start".equalsIgnoreCase(command.toFullString())) {
-                        getApiClient().startSelectedProgram(getThingHaId());
-                    } else {
-                        getApiClient().stopProgram(getThingHaId());
-                    }
-                }
-
-                // set selected program
-                if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
-                    getApiClient().setSelectedProgram(getThingHaId(), command.toFullString());
-                }
-
                 // only handle these commands if operation state allows it
                 if (operationState != null
                         && (ACTIVE_STATE.contains(operationState) || INACTIVE_STATE.contains(operationState))) {

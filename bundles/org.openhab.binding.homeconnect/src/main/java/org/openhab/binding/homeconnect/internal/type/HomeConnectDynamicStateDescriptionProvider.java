@@ -10,7 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.binding.homeconnect.internal.handler;
+package org.openhab.binding.homeconnect.internal.type;
 
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,13 +59,13 @@ public class HomeConnectDynamicStateDescriptionProvider implements DynamicStateD
         return originalStateDescription;
     }
 
-    protected void putStateDescriptions(String channelUid, StateDescription stateDescription) {
+    public void putStateDescriptions(String channelUid, StateDescription stateDescription) {
         logger.log(Type.DEFAULT, Level.DEBUG, null, null, ImmutableList.of(stateDescription.toString()), null, null,
                 "Adding state description for channel-uid: {}", channelUid);
         stateDescriptions.put(channelUid, stateDescription);
     }
 
-    protected void removeStateDescriptions(String channelUid) {
+    public void removeStateDescriptions(String channelUid) {
         logger.debug("Removing state description for channel-uid: {}.", channelUid);
         stateDescriptions.remove(channelUid);
     }

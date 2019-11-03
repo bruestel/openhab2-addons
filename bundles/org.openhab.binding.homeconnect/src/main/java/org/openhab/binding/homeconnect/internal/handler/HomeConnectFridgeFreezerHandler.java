@@ -34,6 +34,7 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 
 /**
  * The {@link HomeConnectFridgeFreezerHandler} is responsible for handling commands, which are

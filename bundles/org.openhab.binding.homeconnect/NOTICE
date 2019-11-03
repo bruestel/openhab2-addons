@@ -11,3 +11,20 @@ https://www.eclipse.org/legal/epl-2.0/.
 == Source Code
 
 https://github.com/openhab/openhab2-addons
+
+== Third-party Content
+
+okhttp
+* License: Apache License 2.0
+* Project: https://square.github.io/okhttp/
+* Source:  https://github.com/square/okhttp
+
+okio
+* License: Apache License 2.0
+* Project: https://github.com/square/okio
+* Source:  https://github.com/square/okio
+
+okSse
+* License: Apache License 2.0
+* Project: https://github.com/heremaps/oksse
+* Source:  https://github.com/heremaps/oksse

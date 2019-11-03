@@ -61,6 +61,7 @@ import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 
 /**
  * The {@link AbstractHomeConnectThingHandler} is responsible for handling commands, which are
@@ -140,9 +141,28 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             logger.debugWithHaId(getThingHaId(), "Handle \"{}\" command ({}).", command, channelUID.getId());
+            try {
+                if (command instanceof RefreshType) {
+                    updateChannel(channelUID);
+                } else if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
+                    updateState(channelUID, new StringType(""));
 
-            if (command instanceof RefreshType) {
-                updateChannel(channelUID);
+                    if ("start".equalsIgnoreCase(command.toFullString())) {
+                        getApiClient().startSelectedProgram(getThingHaId());
+                    } else {
+                        getApiClient().stopProgram(getThingHaId());
+                    }
+                } else if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
+                    getApiClient().setSelectedProgram(getThingHaId(), command.toFullString());
+                }
+            } catch (CommunicationException e) {
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
+                        command.toFullString(), e.getMessage());
+            } catch (AuthorizationException e) {
+                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
+                        command.toFullString(), e.getMessage());
+
+                handleAuthenticationError(e);
             }
         }
     }

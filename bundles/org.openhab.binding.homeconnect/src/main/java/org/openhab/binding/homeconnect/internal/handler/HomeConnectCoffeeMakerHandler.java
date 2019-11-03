@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.OnOffType;
-import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
@@ -28,6 +27,7 @@ import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationEx
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 
 /**
  * The {@link HomeConnectCoffeeMakerHandler} is responsible for handling commands, which are
@@ -92,22 +92,6 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
             super.handleCommand(channelUID, command);
 
             try {
-                // start or stop program
-                if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
-                    updateState(channelUID, new StringType(""));
-
-                    if ("start".equalsIgnoreCase(command.toFullString())) {
-                        getApiClient().startSelectedProgram(getThingHaId());
-                    } else {
-                        getApiClient().stopProgram(getThingHaId());
-                    }
-                }
-
-                // set selected program of coffee maker
-                if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
-                    getApiClient().setSelectedProgram(getThingHaId(), command.toFullString());
-                }
-
                 // turn coffee maker on and standby
                 if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())) {
                     getApiClient().setPowerState(getThingHaId(),
