@@ -15,7 +15,6 @@ package org.openhab.binding.homeconnect.internal.handler;
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.SECOND;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.measure.IncommensurableException;
@@ -35,7 +34,6 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.model.Option;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
@@ -52,8 +50,6 @@ import jersey.repackaged.com.google.common.collect.ImmutableList;
 @NonNullByDefault
 public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
 
-    private static final ImmutableList<String> ACTIVE_STATE = ImmutableList.of(OPERATION_STATE_DELAYED_START,
-            OPERATION_STATE_RUN, OPERATION_STATE_PAUSE);
     private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
             OPERATION_STATE_READY);
 
@@ -79,28 +75,29 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
 
         // register oven specific update handlers
         handlers.put(CHANNEL_SETPOINT_TEMPERATURE, (channelUID, client, cache) -> {
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                Optional<Option> option = program.getOptions().stream()
-                        .filter(o -> o.getKey().equals(OPTION_SETPOINT_TEMPERATURE)).findFirst();
-                if (option.isPresent()) {
-                    updateState(channelUID,
-                            new QuantityType<>(option.get().getValueAsInt(), mapTemperature(option.get().getUnit())));
-                } else {
-                    updateState(channelUID, UnDefType.NULL);
-                }
+            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
+            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
+                cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Program program = client.getSelectedProgram(getThingHaId());
+                    if (program != null && program.getKey() != null) {
+                        processProgramOptions(program.getOptions());
+                    }
+                    return UnDefType.NULL;
+                });
             }
         });
         handlers.put(CHANNEL_DURATION, (channelUID, client, cache) -> {
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                Optional<Option> option = program.getOptions().stream().filter(o -> o.getKey().equals(OPTION_DURATION))
-                        .findFirst();
-                if (option.isPresent()) {
-                    updateState(channelUID, new QuantityType<>(option.get().getValueAsInt(), SECOND));
-                } else {
-                    updateState(channelUID, UnDefType.NULL);
-                }
+            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_SETPOINT_TEMPERATURE are not
+            // there
+            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
+                    && !getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).isPresent()) {
+                cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Program program = client.getSelectedProgram(getThingHaId());
+                    if (program != null && program.getKey() != null) {
+                        processProgramOptions(program.getOptions());
+                    }
+                    return UnDefType.NULL;
+                });
             }
         });
     }
@@ -161,63 +158,60 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                             OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_STANDBY);
                 }
 
-                // set setpoint temperature
-                if (command instanceof QuantityType && CHANNEL_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
-                    @SuppressWarnings("unchecked")
-                    QuantityType<Temperature> quantity = ((QuantityType<Temperature>) command);
+                String operationState = getOperationState();
+                if (operationState != null && INACTIVE_STATE.contains(operationState)) {
+                    // set setpoint temperature
+                    if (command instanceof QuantityType && CHANNEL_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
+                        @SuppressWarnings("unchecked")
+                        QuantityType<Temperature> quantity = ((QuantityType<Temperature>) command);
 
-                    try {
-                        String value;
-                        String unit;
+                        try {
+                            String value;
+                            String unit;
 
-                        if (quantity.getUnit().equals(SIUnits.CELSIUS)
-                                || quantity.getUnit().equals(ImperialUnits.FAHRENHEIT)) {
-                            unit = quantity.getUnit().toString();
-                            value = String.valueOf(quantity.intValue());
-                        } else {
-                            logger.infoWithHaId(getThingHaId(),
-                                    "Converting target setpoint temperature from {}{} to °C value.",
-                                    quantity.intValue(), quantity.getUnit().toString());
-                            unit = "°C";
-                            value = String.valueOf(
-                                    quantity.getUnit().getConverterToAny(SIUnits.CELSIUS).convert(quantity).intValue());
-                            logger.infoWithHaId(getThingHaId(), "{}{}", value, unit);
-                        }
+                            if (quantity.getUnit().equals(SIUnits.CELSIUS)
+                                    || quantity.getUnit().equals(ImperialUnits.FAHRENHEIT)) {
+                                unit = quantity.getUnit().toString();
+                                value = String.valueOf(quantity.intValue());
+                            } else {
+                                logger.infoWithHaId(getThingHaId(),
+                                        "Converting target setpoint temperature from {}{} to °C value.",
+                                        quantity.intValue(), quantity.getUnit().toString());
+                                unit = "°C";
+                                value = String.valueOf(quantity.getUnit().getConverterToAny(SIUnits.CELSIUS)
+                                        .convert(quantity).intValue());
+                                logger.infoWithHaId(getThingHaId(), "{}{}", value, unit);
+                            }
 
-                        logger.debugWithHaId(getThingHaId(), "Set setpoint temperature to {} {}.", value, unit);
-
-                        String operationState = getOperationState();
-                        if (operationState != null
-                                && (ACTIVE_STATE.contains(operationState) || INACTIVE_STATE.contains(operationState))) {
+                            logger.debugWithHaId(getThingHaId(), "Set setpoint temperature to {} {}.", value, unit);
                             getApiClient().setProgramOptions(getThingHaId(), OPTION_SETPOINT_TEMPERATURE, value, unit,
-                                    true, ACTIVE_STATE.contains(operationState));
+                                    true, false);
+
+                        } catch (IncommensurableException | UnconvertibleException e) {
+                            logger.errorWithHaId(getThingHaId(), "Could not set setpoint! {}", e.getMessage());
                         }
-
-                    } catch (IncommensurableException | UnconvertibleException e) {
-                        logger.errorWithHaId(getThingHaId(), "Could not set setpoint! {}", e.getMessage());
                     }
-                }
 
-                // set duration
-                if (command instanceof QuantityType && CHANNEL_DURATION.equals(channelUID.getId())) {
-                    @SuppressWarnings("unchecked")
-                    QuantityType<Time> quantity = ((QuantityType<Time>) command);
+                    // set duration
+                    if (command instanceof QuantityType && CHANNEL_DURATION.equals(channelUID.getId())) {
+                        @SuppressWarnings("unchecked")
+                        QuantityType<Time> quantity = ((QuantityType<Time>) command);
 
-                    try {
-                        String value = String
-                                .valueOf(quantity.getUnit().getConverterToAny(SECOND).convert(quantity).intValue());
+                        try {
+                            String value = String
+                                    .valueOf(quantity.getUnit().getConverterToAny(SECOND).convert(quantity).intValue());
+                            logger.debugWithHaId(getThingHaId(), "Set duration to {} seconds.", value);
 
-                        logger.debugWithHaId(getThingHaId(), "Set duration to {} seconds.", value);
-
-                        String operationState = getOperationState();
-                        if (operationState != null
-                                && (ACTIVE_STATE.contains(operationState) || INACTIVE_STATE.contains(operationState))) {
                             getApiClient().setProgramOptions(getThingHaId(), OPTION_DURATION, value, "seconds", true,
-                                    ACTIVE_STATE.contains(operationState));
+                                    false);
+                        } catch (IncommensurableException | UnconvertibleException e) {
+                            logger.errorWithHaId(getThingHaId(), "Could not set duration! error: {}", e.getMessage());
                         }
-                    } catch (IncommensurableException | UnconvertibleException e) {
-                        logger.errorWithHaId(getThingHaId(), "Could not set duration! error: {}", e.getMessage());
                     }
+                } else {
+                    logger.debugWithHaId(getThingHaId(),
+                            "Device can not handle command {} in current operation state ({}).", command,
+                            operationState);
                 }
             } catch (CommunicationException e) {
                 logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",

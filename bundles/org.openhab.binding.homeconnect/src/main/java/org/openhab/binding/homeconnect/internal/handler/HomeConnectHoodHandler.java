@@ -59,19 +59,36 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
-        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, updateProgramOptionsAndSelectedProgramStateUpdateHandler());
+        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE,
+                updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler());
 
         // register hood specific update handlers
         handlers.put(CHANNEL_HOOD_INTENSIVE_LEVEL, (channelUID, client, cache) -> {
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                updateProgramOptions(program.getKey());
+            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
+            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
+                cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Program program = client.getSelectedProgram(getThingHaId());
+                    if (program != null && program.getKey() != null) {
+                        updateProgramOptionsStateDescriptions(program.getKey());
+                        processProgramOptions(program.getOptions());
+                    }
+                    return UnDefType.NULL;
+                });
             }
         });
         handlers.put(CHANNEL_HOOD_VENTING_LEVEL, (channelUID, client, cache) -> {
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                updateProgramOptions(program.getKey());
+            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_HOOD_INTENSIVE_LEVEL are not
+            // there
+            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
+                    && !getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL).isPresent()) {
+                cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Program program = client.getSelectedProgram(getThingHaId());
+                    if (program != null && program.getKey() != null) {
+                        updateProgramOptionsStateDescriptions(program.getKey());
+                        processProgramOptions(program.getOptions());
+                    }
+                    return UnDefType.NULL;
+                });
             }
         });
     }
@@ -117,19 +134,19 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
 
                 // program options
                 String operationState = getOperationState();
-                if (OPERATION_STATE_RUN.equals(operationState) || OPERATION_STATE_INACTIVE.equals(operationState)) {
-                    boolean activeState = OPERATION_STATE_RUN.equals(operationState);
-                    logger.debugWithHaId(getThingHaId(), "operation state: {} | active: {}", operationState,
-                            activeState);
-
+                if (OPERATION_STATE_INACTIVE.equals(operationState)) {
                     // set intensive level
                     if (command instanceof StringType && CHANNEL_HOOD_INTENSIVE_LEVEL.equals(channelUID.getId())) {
                         getApiClient().setProgramOptions(getThingHaId(), OPTION_HOOD_INTENSIVE_LEVEL,
-                                command.toFullString(), null, false, activeState);
+                                command.toFullString(), null, false, false);
                     } else if (command instanceof StringType && CHANNEL_HOOD_VENTING_LEVEL.equals(channelUID.getId())) {
                         getApiClient().setProgramOptions(getThingHaId(), OPTION_HOOD_VENTING_LEVEL,
-                                command.toFullString(), null, false, activeState);
+                                command.toFullString(), null, false, false);
                     }
+                } else {
+                    logger.debugWithHaId(getThingHaId(),
+                            "Device can not handle command {} in current operation state ({}).", command,
+                            operationState);
                 }
             } catch (CommunicationException e) {
                 logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",

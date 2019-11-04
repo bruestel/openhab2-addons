@@ -41,8 +41,6 @@ import jersey.repackaged.com.google.common.collect.ImmutableList;
 @NonNullByDefault
 public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
 
-    private static final ImmutableList<String> ACTIVE_STATE = ImmutableList.of(OPERATION_STATE_DELAYED_START,
-            OPERATION_STATE_RUN, OPERATION_STATE_PAUSE);
     private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
             OPERATION_STATE_READY);
 
@@ -64,21 +62,38 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
-        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, updateProgramOptionsAndSelectedProgramStateUpdateHandler());
+        handlers.put(CHANNEL_SELECTED_PROGRAM_STATE,
+                updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler());
 
         // register washer specific handlers
         handlers.put(CHANNEL_WASHER_SPIN_SPEED, (channelUID, client, cache) -> {
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                updateProgramOptions(program.getKey());
+            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
+            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
+                cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Program program = client.getSelectedProgram(getThingHaId());
+                    if (program != null && program.getKey() != null) {
+                        updateProgramOptionsStateDescriptions(program.getKey());
+                        processProgramOptions(program.getOptions());
+                    }
+                    return UnDefType.NULL;
+                });
             }
         });
         handlers.put(CHANNEL_WASHER_TEMPERATURE, (channelUID, client, cache) -> {
-            Program program = client.getSelectedProgram(getThingHaId());
-            if (program != null && program.getKey() != null) {
-                updateProgramOptions(program.getKey());
+            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_WASHER_SPIN_SPEED are not there
+            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
+                    && !getThingChannel(CHANNEL_WASHER_SPIN_SPEED).isPresent()) {
+                cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Program program = client.getSelectedProgram(getThingHaId());
+                    if (program != null && program.getKey() != null) {
+                        updateProgramOptionsStateDescriptions(program.getKey());
+                        processProgramOptions(program.getOptions());
+                    }
+                    return UnDefType.NULL;
+                });
             }
         });
+
     }
 
     @Override
@@ -130,38 +145,35 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
 
             try {
                 // only handle these commands if operation state allows it
-                if (operationState != null
-                        && (ACTIVE_STATE.contains(operationState) || INACTIVE_STATE.contains(operationState))) {
-                    boolean activeState = ACTIVE_STATE.contains(operationState);
-
-                    logger.debugWithHaId(getThingHaId(), "operation state: {} | active: {}", operationState,
-                            activeState);
-
+                if (operationState != null && INACTIVE_STATE.contains(operationState)) {
                     // set temperature option
                     if (command instanceof StringType && CHANNEL_WASHER_TEMPERATURE.equals(channelUID.getId())) {
                         getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE,
-                                command.toFullString(), null, false, activeState);
+                                command.toFullString(), null, false, false);
                     }
 
                     // set spin speed option
                     if (command instanceof StringType && CHANNEL_WASHER_SPIN_SPEED.equals(channelUID.getId())) {
                         getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_SPIN_SPEED,
-                                command.toFullString(), null, false, activeState);
+                                command.toFullString(), null, false, false);
                     }
 
                     // set iDos 1 option
                     if (command instanceof StringType && CHANNEL_WASHER_IDOS1.equals(channelUID.getId())) {
                         getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_1_DOSING_LEVEL,
-                                command.toFullString(), null, false, activeState);
+                                command.toFullString(), null, false, false);
                     }
 
                     // set iDos 2 option
                     if (command instanceof StringType && CHANNEL_WASHER_IDOS2.equals(channelUID.getId())) {
                         getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_2_DOSING_LEVEL,
-                                command.toFullString(), null, false, activeState);
+                                command.toFullString(), null, false, false);
                     }
+                } else {
+                    logger.debugWithHaId(getThingHaId(),
+                            "Device can not handle command {} in current operation state ({}).", command,
+                            operationState);
                 }
-
             } catch (CommunicationException e) {
                 logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
                         command.toFullString(), e.getMessage());

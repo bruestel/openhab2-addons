@@ -61,36 +61,44 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
 
         // register fridge/freezer specific handlers
         handlers.put(CHANNEL_FREEZER_SETPOINT_TEMPERATURE, (channelUID, client, cache) -> {
-            Data data = client.getFreezerSetpointTemperature(getThingHaId());
-            if (data != null && data.getValue() != null) {
-                updateState(channelUID, new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit())));
-            } else {
-                updateState(channelUID, UnDefType.NULL);
-            }
+            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                Data data = client.getFreezerSetpointTemperature(getThingHaId());
+                if (data != null && data.getValue() != null) {
+                    return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
+                } else {
+                    return UnDefType.NULL;
+                }
+            }));
         });
         handlers.put(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE, (channelUID, client, cache) -> {
-            Data data = client.getFridgeSetpointTemperature(getThingHaId());
-            if (data != null && data.getValue() != null) {
-                updateState(channelUID, new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit())));
-            } else {
-                updateState(channelUID, UnDefType.NULL);
-            }
+            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                Data data = client.getFridgeSetpointTemperature(getThingHaId());
+                if (data != null && data.getValue() != null) {
+                    return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
+                } else {
+                    return UnDefType.NULL;
+                }
+            }));
         });
         handlers.put(CHANNEL_REFRIGERATOR_SUPER_MODE, (channelUID, client, cache) -> {
-            Data data = client.getFridgeSuperMode(getThingHaId());
-            if (data != null && data.getValue() != null) {
-                updateState(channelUID, data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF);
-            } else {
-                updateState(channelUID, UnDefType.NULL);
-            }
+            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                Data data = client.getFridgeSuperMode(getThingHaId());
+                if (data != null && data.getValue() != null) {
+                    return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
+                } else {
+                    return UnDefType.NULL;
+                }
+            }));
         });
         handlers.put(CHANNEL_FREEZER_SUPER_MODE, (channelUID, client, cache) -> {
-            Data data = client.getFreezerSuperMode(getThingHaId());
-            if (data != null && data.getValue() != null) {
-                updateState(channelUID, data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF);
-            } else {
-                updateState(channelUID, UnDefType.NULL);
-            }
+            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                Data data = client.getFreezerSuperMode(getThingHaId());
+                if (data != null && data.getValue() != null) {
+                    return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
+                } else {
+                    return UnDefType.NULL;
+                }
+            }));
         });
     }
 
