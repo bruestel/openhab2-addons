@@ -63,11 +63,11 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                 updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler());
 
         // register hood specific update handlers
-        handlers.put(CHANNEL_HOOD_INTENSIVE_LEVEL, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_HOOD_INTENSIVE_LEVEL, (channelUID, cache) -> {
             // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
             if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
                 cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = client.getSelectedProgram(getThingHaId());
+                    Program program = getApiClient().getSelectedProgram(getThingHaId());
                     if (program != null && program.getKey() != null) {
                         updateProgramOptionsStateDescriptions(program.getKey());
                         processProgramOptions(program.getOptions());
@@ -76,13 +76,13 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                 });
             }
         });
-        handlers.put(CHANNEL_HOOD_VENTING_LEVEL, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_HOOD_VENTING_LEVEL, (channelUID, cache) -> {
             // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_HOOD_INTENSIVE_LEVEL are not
             // there
             if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
                     && !getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL).isPresent()) {
                 cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = client.getSelectedProgram(getThingHaId());
+                    Program program = getApiClient().getSelectedProgram(getThingHaId());
                     if (program != null && program.getKey() != null) {
                         updateProgramOptionsStateDescriptions(program.getKey());
                         processProgramOptions(program.getOptions());

@@ -74,11 +74,11 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
 
         // register oven specific update handlers
-        handlers.put(CHANNEL_SETPOINT_TEMPERATURE, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
             // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
             if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
                 cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = client.getSelectedProgram(getThingHaId());
+                    Program program = getApiClient().getSelectedProgram(getThingHaId());
                     if (program != null && program.getKey() != null) {
                         processProgramOptions(program.getOptions());
                     }
@@ -86,13 +86,13 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                 });
             }
         });
-        handlers.put(CHANNEL_DURATION, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_DURATION, (channelUID, cache) -> {
             // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_SETPOINT_TEMPERATURE are not
             // there
             if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
                     && !getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).isPresent()) {
                 cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = client.getSelectedProgram(getThingHaId());
+                    Program program = getApiClient().getSelectedProgram(getThingHaId());
                     if (program != null && program.getKey() != null) {
                         processProgramOptions(program.getOptions());
                     }

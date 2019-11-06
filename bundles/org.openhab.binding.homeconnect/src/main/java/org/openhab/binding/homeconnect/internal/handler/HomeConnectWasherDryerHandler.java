@@ -66,11 +66,11 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
                 updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler());
 
         // register washer specific handlers
-        handlers.put(CHANNEL_WASHER_SPIN_SPEED, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_WASHER_SPIN_SPEED, (channelUID, cache) -> {
             // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
             if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
                 cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = client.getSelectedProgram(getThingHaId());
+                    Program program = getApiClient().getSelectedProgram(getThingHaId());
                     if (program != null && program.getKey() != null) {
                         updateProgramOptionsStateDescriptions(program.getKey());
                         processProgramOptions(program.getOptions());
@@ -79,12 +79,12 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
                 });
             }
         });
-        handlers.put(CHANNEL_WASHER_TEMPERATURE, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_WASHER_TEMPERATURE, (channelUID, cache) -> {
             // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_WASHER_SPIN_SPEED are not there
             if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
                     && !getThingChannel(CHANNEL_WASHER_SPIN_SPEED).isPresent()) {
                 cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = client.getSelectedProgram(getThingHaId());
+                    Program program = getApiClient().getSelectedProgram(getThingHaId());
                     if (program != null && program.getKey() != null) {
                         updateProgramOptionsStateDescriptions(program.getKey());
                         processProgramOptions(program.getOptions());

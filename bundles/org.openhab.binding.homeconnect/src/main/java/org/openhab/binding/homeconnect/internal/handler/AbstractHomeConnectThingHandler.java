@@ -62,7 +62,11 @@ import org.openhab.binding.homeconnect.internal.client.model.Option;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
+import org.slf4j.event.Level;
+
+import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link AbstractHomeConnectThingHandler} is responsible for handling commands, which are
@@ -150,8 +154,14 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
                     if ("start".equalsIgnoreCase(command.toFullString())) {
                         getApiClient().startSelectedProgram(getThingHaId());
-                    } else {
+                    } else if ("stop".equalsIgnoreCase(command.toFullString())) {
                         getApiClient().stopProgram(getThingHaId());
+                    } else if ("selected".equalsIgnoreCase(command.toFullString())) {
+                        getApiClient().getSelectedProgram(getThingHaId());
+                    } else {
+                        logger.log(Type.DEFAULT, Level.INFO, getThingHaId(), getThingLabel(),
+                                ImmutableList.of(command.toFullString()), null, null, "Start custom program");
+                        getApiClient().startCustomProgram(getThingHaId(), command.toFullString());
                     }
                 } else if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
                     getApiClient().setSelectedProgram(getThingHaId(), command.toFullString());
@@ -379,7 +389,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
         if (channelUpdateHandlers.containsKey(channelUID.getId())) {
             try {
-                channelUpdateHandlers.get(channelUID.getId()).handle(channelUID, apiClient, stateCache);
+                channelUpdateHandlers.get(channelUID.getId()).handle(channelUID, stateCache);
             } catch (CommunicationException e) {
                 logger.errorWithHaId(getThingHaId(), "API communication problem while trying to update!", e);
             } catch (AuthorizationException e) {
@@ -628,9 +638,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler defaultDoorStateChannelUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = client.getDoorState(getThingHaId());
+                Data data = getApiClient().getDoorState(getThingHaId());
                 if (data != null && data.getValue() != null) {
                     return STATE_DOOR_OPEN.equals(data.getValue()) ? OpenClosedType.OPEN : OpenClosedType.CLOSED;
                 } else {
@@ -641,9 +651,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler defaultPowerStateChannelUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = client.getPowerState(getThingHaId());
+                Data data = getApiClient().getPowerState(getThingHaId());
                 if (data != null && data.getValue() != null) {
                     return STATE_POWER_ON.equals(data.getValue()) ? OnOffType.ON : OnOffType.OFF;
                 } else {
@@ -654,15 +664,15 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler defaultNoOpUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, UnDefType.NULL);
         };
     }
 
     protected ChannelUpdateHandler defaultOperationStateChannelUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = client.getOperationState(getThingHaId());
+                Data data = getApiClient().getOperationState(getThingHaId());
                 if (data != null && data.getValue() != null) {
                     operationState = data.getValue();
                     return new StringType(mapStringType(data.getValue()));
@@ -675,30 +685,30 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler defaultRemoteControlActiveStateChannelUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache,
-                    () -> client.isRemoteControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF));
+                    () -> getApiClient().isRemoteControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF));
         };
     }
 
     protected ChannelUpdateHandler defaultLocalControlActiveStateChannelUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache,
-                    () -> client.isLocalControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF));
+                    () -> getApiClient().isLocalControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF));
         };
     }
 
     protected ChannelUpdateHandler defaultRemoteStartAllowanceChannelUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache,
-                    () -> client.isRemoteControlStartAllowed(getThingHaId()) ? OnOffType.ON : OnOffType.OFF));
+                    () -> getApiClient().isRemoteControlStartAllowed(getThingHaId()) ? OnOffType.ON : OnOffType.OFF));
         };
     }
 
     protected ChannelUpdateHandler defaultSelectedProgramStateUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Program program = client.getSelectedProgram(getThingHaId());
+                Program program = getApiClient().getSelectedProgram(getThingHaId());
                 if (program != null && program.getKey() != null) {
                     processProgramOptions(program.getOptions());
                     return new StringType(program.getKey());
@@ -710,9 +720,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Program program = client.getSelectedProgram(getThingHaId());
+                Program program = getApiClient().getSelectedProgram(getThingHaId());
 
                 if (program.getKey() != null) {
                     updateProgramOptionsStateDescriptions(program.getKey());
@@ -727,9 +737,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler defaultActiveProgramStateUpdateHandler() {
-        return (channelUID, client, cache) -> {
+        return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Program program = client.getActiveProgram(getThingHaId());
+                Program program = getApiClient().getActiveProgram(getThingHaId());
 
                 if (program != null && program.getKey() != null) {
                     processProgramOptions(program.getOptions());
@@ -961,7 +971,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected interface ChannelUpdateHandler {
-        void handle(ChannelUID channelUID, HomeConnectApiClient client, ExpiringCacheMap<ChannelUID, State> cache)
+        void handle(ChannelUID channelUID, ExpiringCacheMap<ChannelUID, State> cache)
                 throws CommunicationException, AuthorizationException;
     }
 

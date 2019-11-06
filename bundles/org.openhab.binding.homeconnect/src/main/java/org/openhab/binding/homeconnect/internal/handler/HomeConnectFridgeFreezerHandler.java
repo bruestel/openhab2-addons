@@ -60,9 +60,9 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
         handlers.put(CHANNEL_DOOR_STATE, defaultDoorStateChannelUpdateHandler());
 
         // register fridge/freezer specific handlers
-        handlers.put(CHANNEL_FREEZER_SETPOINT_TEMPERATURE, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_FREEZER_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = client.getFreezerSetpointTemperature(getThingHaId());
+                Data data = getApiClient().getFreezerSetpointTemperature(getThingHaId());
                 if (data != null && data.getValue() != null) {
                     return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
                 } else {
@@ -70,9 +70,9 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                 }
             }));
         });
-        handlers.put(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = client.getFridgeSetpointTemperature(getThingHaId());
+                Data data = getApiClient().getFridgeSetpointTemperature(getThingHaId());
                 if (data != null && data.getValue() != null) {
                     return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
                 } else {
@@ -80,9 +80,9 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                 }
             }));
         });
-        handlers.put(CHANNEL_REFRIGERATOR_SUPER_MODE, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_REFRIGERATOR_SUPER_MODE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = client.getFridgeSuperMode(getThingHaId());
+                Data data = getApiClient().getFridgeSuperMode(getThingHaId());
                 if (data != null && data.getValue() != null) {
                     return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
                 } else {
@@ -90,9 +90,9 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                 }
             }));
         });
-        handlers.put(CHANNEL_FREEZER_SUPER_MODE, (channelUID, client, cache) -> {
+        handlers.put(CHANNEL_FREEZER_SUPER_MODE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = client.getFreezerSuperMode(getThingHaId());
+                Data data = getApiClient().getFreezerSuperMode(getThingHaId());
                 if (data != null && data.getValue() != null) {
                     return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
                 } else {

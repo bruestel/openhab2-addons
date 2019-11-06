@@ -362,6 +362,10 @@ public class HomeConnectApiClient {
         putRaw(haId, "/api/homeappliances/" + haId + "/programs/active", selectedProgram);
     }
 
+    public void startCustomProgram(String haId, String json) throws CommunicationException, AuthorizationException {
+        putRaw(haId, "/api/homeappliances/" + haId + "/programs/active", json);
+    }
+
     public void setProgramOptions(String haId, String key, String value, String unit, boolean valueAsInt,
             boolean isProgramActive) throws CommunicationException, AuthorizationException {
         String programState = isProgramActive ? "active" : "selected";

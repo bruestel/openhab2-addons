@@ -17,11 +17,17 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
@@ -32,6 +38,7 @@ import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
+import org.eclipse.smarthome.core.thing.binding.ThingHandlerCallback;
 import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectSseClient;
@@ -40,7 +47,11 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
+import org.slf4j.event.Level;
+
+import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link HomeConnectBridgeHandler} is responsible for handling commands, which are
@@ -52,6 +63,8 @@ import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServl
 public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     private static final int REINITIALIZATION_DELAY = 120;
+    private static final String CLIENT_SECRET = "clientSecret";
+    private static final String CLIENT_ID = "clientId";
 
     private final OAuthFactory oAuthFactory;
     private final BridgeConfigurationServlet bridgeConfigurationServlet;
@@ -91,9 +104,15 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
         String tokenUrl = (config.isSimulator() ? API_SIMULATOR_BASE_URL : API_BASE_URL) + OAUTH_TOKEN_PATH;
         String authorizeUrl = (config.isSimulator() ? API_SIMULATOR_BASE_URL : API_BASE_URL) + OAUTH_AUTHORIZE_PATH;
         String oAuthServiceHandleId = thing.getUID().getAsString() + (config.isSimulator() ? "simulator" : "");
+
         oAuthClientService = oAuthFactory.createOAuthClientService(oAuthServiceHandleId, tokenUrl, authorizeUrl,
                 config.getClientId(), config.getClientSecret(), OAUTH_SCOPE, true);
         this.oAuthServiceHandleId = oAuthServiceHandleId;
+        logger.log(Type.DEFAULT, Level.DEBUG, null, getThing().getLabel(),
+                ImmutableList.of("tokenUrl: " + tokenUrl, "authorizeUrl: " + authorizeUrl,
+                        "oAuthServiceHandleId: " + oAuthServiceHandleId, "scope: " + OAUTH_SCOPE.toString(),
+                        "oAuthClientService: " + oAuthClientService.toString()),
+                null, null, "Initialize oAuth client service.");
 
         // create api client
         apiClient = new HomeConnectApiClient(oAuthClientService, config.isSimulator(), loggingService);
@@ -104,9 +123,9 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
             if (accessTokenResponse == null) {
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING,
-                        "Please authenticate your account at http(s)://<YOUROPENHAB>:<YOURPORT>/homeconnect (e.g. http://192.168.178.100:8080/homeconnect).");
+                        "Please authenticate your account at http(s)://[YOUROPENHAB]:[YOURPORT]/homeconnect (e.g. http://192.168.178.100:8080/homeconnect).");
                 logger.infoWithLabel(getThing().getLabel(),
-                        "Configuration is pending. Please authenticate your account at http(s)://<YOUROPENHAB>:<YOURPORT>/homeconnect (e.g. http://192.168.178.100:8080/homeconnect).");
+                        "Configuration is pending. Please authenticate your account at http(s)://[YOUROPENHAB]:[YOURPORT]/homeconnect (e.g. http://192.168.178.100:8080/homeconnect).");
             } else {
                 apiClient.getHomeAppliances();
                 updateStatus(ThingStatus.ONLINE);
@@ -131,6 +150,55 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
         stopReinitializer();
         cleanup();
+    }
+
+    @Override
+    public void handleConfigurationUpdate(Map<@NonNull String, @NonNull Object> configurationParameters) {
+        if (isModifyingCurrentConfig(configurationParameters)) {
+            List<String> parameters = configurationParameters.entrySet().stream().map((entry) -> {
+                if (CLIENT_ID.equals(entry.getKey()) || CLIENT_SECRET.equals(entry.getKey())) {
+                    return entry.getKey() + ": ***";
+                }
+                return entry.getKey() + ": " + entry.getValue();
+            }).collect(Collectors.toList());
+
+            logger.log(Type.DEFAULT, Level.INFO, null, getThing().getLabel(), parameters, null, null,
+                    "Update bridge configuration.");
+
+            validateConfigurationParameters(configurationParameters);
+            Configuration configuration = editConfiguration();
+            for (Entry<String, Object> configurationParameter : configurationParameters.entrySet()) {
+                configuration.put(configurationParameter.getKey(), configurationParameter.getValue());
+            }
+
+            // invalidate oAuth credentials
+            try {
+                logger.infoWithLabel(getThing().getLabel(), "Clear oAuth credential store.");
+                if (oAuthClientService != null) {
+                    oAuthClientService.remove();
+                }
+            } catch (OAuthException e) {
+                logger.errorWithHaId(getThing().getLabel(), "Could not clear oAuth credentials.", e);
+            }
+
+            if (isInitialized()) {
+                // persist new configuration and reinitialize handler
+                dispose();
+                updateConfiguration(configuration);
+                initialize();
+            } else {
+                // persist new configuration and notify Thing Manager
+                updateConfiguration(configuration);
+                ThingHandlerCallback callback = getCallback();
+                if (callback != null) {
+                    callback.configurationUpdated(this.getThing());
+                } else {
+                    logger.warn(
+                            "Handler {} tried updating its configuration although the handler was already disposed.",
+                            this.getClass().getSimpleName());
+                }
+            }
+        }
     }
 
     /**
