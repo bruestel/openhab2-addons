@@ -75,7 +75,7 @@ public class EmbeddedLoggingService {
     @Activate
     protected void activate(ComponentContext componentContext) {
         Object value = componentContext.getProperties().get(KEY_EMBEDDED_LOGGING);
-        loggingEnabled = (value != null && (boolean) value);
+        loggingEnabled = (value == null || (boolean) value);
 
         if (loggingEnabled) {
             logger.debug("Schedule log cleanup task.");
@@ -84,7 +84,7 @@ public class EmbeddedLoggingService {
             }, CLEANUP_INITIAL_DELAY, CLEANUP_PERIOD, TimeUnit.SECONDS);
         }
 
-        logger.info("Activated embedded logging service. file logging={}", loggingEnabled);
+        logger.debug("Activated embedded logging service. file-logging-enabled: {}", loggingEnabled);
     }
 
     @Deactivate

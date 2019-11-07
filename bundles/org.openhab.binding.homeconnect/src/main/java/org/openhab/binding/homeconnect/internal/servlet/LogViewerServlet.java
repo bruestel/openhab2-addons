@@ -91,7 +91,7 @@ public class LogViewerServlet extends AbstractServlet {
         dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS z");
 
         try {
-            logger.debug("Initialize log viewer servlet... ({})", SERVLET_LOG_VIEWER_PATH);
+            logger.info("Initialize log viewer servlet ({})", SERVLET_LOG_VIEWER_PATH);
             httpService.registerServlet(SERVLET_LOG_VIEWER_PATH, this, null, httpService.createDefaultHttpContext());
         } catch (NamespaceException e) {
             try {
@@ -148,7 +148,7 @@ public class LogViewerServlet extends AbstractServlet {
             response.setContentType("application/zip");
 
             String filePrefix = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm"));
-            response.setHeader("Content-Disposition", "attachment; filename=\"" + filePrefix + ".zip\"");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filePrefix + ".zip.txt\"");
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ZipOutputStream zos = new ZipOutputStream(baos);
