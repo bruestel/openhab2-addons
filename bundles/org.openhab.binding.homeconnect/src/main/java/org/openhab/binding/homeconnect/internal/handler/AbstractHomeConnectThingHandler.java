@@ -259,10 +259,13 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                             .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
                             .toStateDescription();
 
-                    if (stateDescription != null) {
+                    if (stateDescription != null && !stateOptions.isEmpty()) {
                         dynamicStateDescriptionProvider.putStateDescriptions(
                                 getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).get().getUID().getAsString(),
                                 stateDescription);
+                    } else {
+                        logger.debugWithHaId(getThingHaId(), "No state description available.");
+                        removeSelectedProgramStateDescription();
                     }
                 } catch (CommunicationException | AuthorizationException e) {
                     logger.errorWithHaId(getThingHaId(), "Could not fetch available programs. {}", e.getMessage());
@@ -435,7 +438,13 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * @return Unit
      */
     protected Unit<Temperature> mapTemperature(String unit) {
-        return !"°C".equalsIgnoreCase(unit) ? FAHRENHEIT : CELSIUS;
+        if (unit == null) {
+            return CELSIUS;
+        } else if (unit.endsWith("C")) {
+            return CELSIUS;
+        } else {
+            return FAHRENHEIT;
+        }
     }
 
     /**

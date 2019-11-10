@@ -16,6 +16,9 @@ import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.SECOND;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import javax.measure.IncommensurableException;
 import javax.measure.UnconvertibleException;
@@ -24,6 +27,8 @@ import javax.measure.quantity.Time;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.common.ThreadPoolManager;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.QuantityType;
 import org.eclipse.smarthome.core.library.unit.ImperialUnits;
@@ -34,6 +39,7 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
+import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Logger;
@@ -52,14 +58,22 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
 
     private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
             OPERATION_STATE_READY);
+    private static final int CAVITY_TEMPERATURE_SCHEDULER_INITIAL_DELAY = 30;
+    private static final int CAVITY_TEMPERATURE_SCHEDULER_PERIOD = 30;
 
     private final Logger logger;
+    private final ScheduledExecutorService scheduler;
+
+    private @Nullable ScheduledFuture<?> cavityTemperatureFuture;
+    private boolean manuallyUpdateCavityTemperature;
 
     public HomeConnectOvenHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
             EmbeddedLoggingService loggingService) {
         super(thing, dynamicStateDescriptionProvider, loggingService);
         logger = loggingService.getLogger(HomeConnectOvenHandler.class);
+        scheduler = ThreadPoolManager.getScheduledPool(getClass().getSimpleName());
+        manuallyUpdateCavityTemperature = true;
     }
 
     @Override
@@ -100,6 +114,15 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                 });
             }
         });
+        handlers.put(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE, (channelUID, cache) -> {
+            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                Data data = getApiClient().getCurrentCavityTemperature(getThingHaId());
+                if (data != null && data.getName() != null) {
+                    return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
+                }
+                return UnDefType.NULL;
+            }));
+        });
     }
 
     @Override
@@ -114,9 +137,14 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
         handlers.put(EVENT_PROGRAM_PROGRESS, defaultProgramProgressEventHandler());
         handlers.put(EVENT_ELAPSED_PROGRAM_TIME, defaultElapsedProgramTimeEventHandler());
         handlers.put(EVENT_ACTIVE_PROGRAM, defaultActiveProgramEventHandler());
-        handlers.put(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
 
         // register oven specific SSE event handlers
+        handlers.put(EVENT_OPERATION_STATE, event -> {
+            defaultOperationStateEventHandler().handle(event);
+            if (STATE_OPERATION_RUN.equals(event.getValue())) {
+                manuallyUpdateCavityTemperature = true;
+            }
+        });
         handlers.put(EVENT_POWER_STATE, event -> {
             getThingChannel(CHANNEL_POWER_STATE).ifPresent(channel -> updateState(channel.getUID(),
                     STATE_POWER_ON.equals(event.getValue()) ? OnOffType.ON : OnOffType.OFF));
@@ -131,7 +159,9 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                 getThingChannel(CHANNEL_DURATION).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
             }
         });
+
         handlers.put(EVENT_OVEN_CAVITY_TEMPERATURE, event -> {
+            manuallyUpdateCavityTemperature = false;
             getThingChannel(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
                     new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
         });
@@ -222,6 +252,36 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
 
                 handleAuthenticationError(e);
             }
+        }
+    }
+
+    @Override
+    public void initialize() {
+        super.initialize();
+        cavityTemperatureFuture = scheduler.scheduleAtFixedRate(() -> {
+            String operationState = getOperationState();
+            boolean manuallyUpdateCavityTemperature = this.manuallyUpdateCavityTemperature;
+
+            if (operationState != null && STATE_OPERATION_RUN.equals(operationState)) {
+                getThingChannel(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE).ifPresent(c -> {
+                    if (manuallyUpdateCavityTemperature) {
+                        logger.debugWithHaId(getThingHaId(), "Update cavity temperature manually via API.");
+                        updateChannel(c.getUID());
+                    } else {
+                        logger.debugWithHaId(getThingHaId(),
+                                "Update cavity temperature via SSE, don't need to fetch manually.");
+                    }
+                });
+            }
+        }, CAVITY_TEMPERATURE_SCHEDULER_INITIAL_DELAY, CAVITY_TEMPERATURE_SCHEDULER_PERIOD, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public void dispose() {
+        super.dispose();
+        ScheduledFuture<?> cavityTemperatureFuture = this.cavityTemperatureFuture;
+        if (cavityTemperatureFuture != null) {
+            cavityTemperatureFuture.cancel(true);
         }
     }
 

@@ -44,7 +44,7 @@ public class Data {
     }
 
     public int getValueAsInt() {
-        return value != null ? Integer.valueOf(getValue()).intValue() : 0;
+        return value != null ? Float.valueOf(getValue()).intValue() : 0;
     }
 
     public boolean getValueAsBoolean() {

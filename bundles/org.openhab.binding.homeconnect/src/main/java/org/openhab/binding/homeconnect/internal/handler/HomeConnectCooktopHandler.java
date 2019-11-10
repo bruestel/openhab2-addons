@@ -43,7 +43,6 @@ public class HomeConnectCooktopHandler extends AbstractHomeConnectThingHandler {
         // register default update handlers
         handlers.put(CHANNEL_OPERATION_STATE, defaultOperationStateChannelUpdateHandler());
         handlers.put(CHANNEL_POWER_STATE, defaultPowerStateChannelUpdateHandler());
-        handlers.put(CHANNEL_REMOTE_START_ALLOWANCE_STATE, defaultRemoteStartAllowanceChannelUpdateHandler());
         handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_SELECTED_PROGRAM_STATE, defaultSelectedProgramStateUpdateHandler());
@@ -59,8 +58,15 @@ public class HomeConnectCooktopHandler extends AbstractHomeConnectThingHandler {
         handlers.put(EVENT_LOCAL_CONTROL_ACTIVE, defaultBooleanEventHandler(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE));
         handlers.put(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
         handlers.put(EVENT_SELECTED_PROGRAM, defaultSelectedProgramStateEventHandler());
-        handlers.put(EVENT_ACTIVE_PROGRAM, defaultActiveProgramEventHandler());
         handlers.put(EVENT_POWER_STATE, defaultPowerStateEventHandler());
+
+        // specific SSE event handlers
+        handlers.put(EVENT_ACTIVE_PROGRAM, (event) -> {
+            defaultActiveProgramEventHandler().handle(event);
+            if (event.getValue() != null) {
+                getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent((c) -> updateChannel(c.getUID()));
+            }
+        });
     }
 
     @Override

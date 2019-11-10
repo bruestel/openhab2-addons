@@ -285,6 +285,18 @@ public class HomeConnectApiClient {
     }
 
     /**
+     * Get current cavity temperature of oven.
+     *
+     * @param haId home appliance id
+     * @return {@link Data}
+     * @throws CommunicationException
+     * @throws AuthorizationException
+     */
+    public Data getCurrentCavityTemperature(String haId) throws CommunicationException, AuthorizationException {
+        return getStatus(haId, "Cooking.Oven.Status.CurrentCavityTemperature");
+    }
+
+    /**
      * Is remote start allowed?
      *
      * @param haId haId home appliance id
