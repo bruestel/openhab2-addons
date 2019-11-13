@@ -86,7 +86,6 @@ public class BridgeConfigurationServlet extends AbstractServlet {
         } catch (ServletException e) {
             logger.error("Could not register bridge configuration servlet! ({})", SERVLET_BASE_PATH, e);
         }
-
     }
 
     /**
@@ -124,9 +123,8 @@ public class BridgeConfigurationServlet extends AbstractServlet {
     @Override
     protected void doGet(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response)
             throws ServletException, IOException {
-
         if (request == null || response == null) {
-            throw new RuntimeException("Illegal state - Could not handle request!");
+            throw new ServletException("Illegal state - Could not handle request!");
         }
 
         logger.debug("GET {}", SERVLET_BASE_PATH);
@@ -145,7 +143,6 @@ public class BridgeConfigurationServlet extends AbstractServlet {
                 response.sendError(HttpStatus.SC_BAD_REQUEST, "unknown bridge");
             } else {
                 try {
-
                     String currentUrl = request.getScheme() + "://" + request.getServerName()
                             + ("http".equals(request.getScheme()) && request.getServerPort() == 80
                                     || "https".equals(request.getScheme()) && request.getServerPort() == 443 ? ""
@@ -173,7 +170,6 @@ public class BridgeConfigurationServlet extends AbstractServlet {
                     response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, "Could not fetch token!");
                 }
             }
-
         } else {
             // index page
             final HashMap<String, String> replaceMap = new HashMap<>();
@@ -194,9 +190,8 @@ public class BridgeConfigurationServlet extends AbstractServlet {
     @Override
     protected void doPost(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response)
             throws ServletException, IOException {
-
         if (request == null || response == null) {
-            throw new RuntimeException("Illegal state - Could not handle request!");
+            throw new ServletException("Illegal state - Could not handle request!");
         }
 
         logger.debug("POST {}", SERVLET_BASE_PATH);

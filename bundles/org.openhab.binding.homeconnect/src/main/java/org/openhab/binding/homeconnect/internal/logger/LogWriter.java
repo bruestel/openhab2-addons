@@ -34,7 +34,7 @@ import com.google.gson.GsonBuilder;
  *
  * @author Jonas Brüstel - Initial Contribution
  */
-public class Logger {
+public class LogWriter {
 
     private @NonNullByDefault org.slf4j.Logger slf4jLogger;
     private final Gson gson;
@@ -43,7 +43,7 @@ public class Logger {
     private final AtomicLong atomicLong;
     private boolean loggingEnabled;
 
-    protected Logger(Class<?> clazz, boolean loggingEnabled, Storage<String> storage, AtomicLong atomicLong) {
+    protected LogWriter(Class<?> clazz, boolean loggingEnabled, Storage<String> storage, AtomicLong atomicLong) {
         this.slf4jLogger = LoggerFactory.getLogger(clazz);
         this.storage = storage;
         this.className = clazz.getSimpleName();
@@ -199,11 +199,9 @@ public class Logger {
                 || (Level.DEBUG == entry.getLevel() && slf4jLogger.isDebugEnabled())
                 || (Level.INFO == entry.getLevel() && slf4jLogger.isInfoEnabled())
                 || (Level.TRACE == entry.getLevel() && slf4jLogger.isTraceEnabled())) {
-
             String identifier;
             if (entry.getType() == Type.API_CALL) {
                 identifier = "API_CALL";
-
             } else if (entry.getType() == Type.API_ERROR) {
                 identifier = "API_ERROR";
             } else {
@@ -252,7 +250,6 @@ public class Logger {
                 if (entry.getResponse() != null && entry.getResponse().getBody() != null) {
                     sb.append(entry.getResponse().getBody()).append("\n");
                 }
-
             } else {
                 sb.append(entry.getMessage());
             }
@@ -261,40 +258,41 @@ public class Logger {
                 entry.getDetails().forEach(detail -> sb.append("\n").append(detail));
             }
 
+            String format = sb.toString();
             switch (entry.getLevel()) {
                 case TRACE:
                     if (throwable == null) {
-                        slf4jLogger.trace(sb.toString(), identifier);
+                        slf4jLogger.trace(format, identifier);
                     } else {
-                        slf4jLogger.trace(sb.toString(), identifier, throwable);
+                        slf4jLogger.trace(format, identifier, throwable);
                     }
                     break;
                 case DEBUG:
                     if (throwable == null) {
-                        slf4jLogger.debug(sb.toString(), identifier);
+                        slf4jLogger.debug(format, identifier);
                     } else {
-                        slf4jLogger.debug(sb.toString(), identifier, throwable);
+                        slf4jLogger.debug(format, identifier, throwable);
                     }
                     break;
                 case INFO:
                     if (throwable == null) {
-                        slf4jLogger.info(sb.toString(), identifier);
+                        slf4jLogger.info(format, identifier);
                     } else {
-                        slf4jLogger.info(sb.toString(), identifier, throwable);
+                        slf4jLogger.info(format, identifier, throwable);
                     }
                     break;
                 case WARN:
                     if (throwable == null) {
-                        slf4jLogger.warn(sb.toString(), identifier);
+                        slf4jLogger.warn(format, identifier);
                     } else {
-                        slf4jLogger.warn(sb.toString(), identifier, throwable);
+                        slf4jLogger.warn(format, identifier, throwable);
                     }
                     break;
                 case ERROR:
                     if (throwable == null) {
-                        slf4jLogger.error(sb.toString(), identifier);
+                        slf4jLogger.error(format, identifier);
                     } else {
-                        slf4jLogger.error(sb.toString(), identifier, throwable);
+                        slf4jLogger.error(format, identifier, throwable);
                     }
                     break;
             }

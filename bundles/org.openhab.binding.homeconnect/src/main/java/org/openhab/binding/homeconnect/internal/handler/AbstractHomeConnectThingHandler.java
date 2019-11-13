@@ -18,6 +18,7 @@ import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.*;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,12 +62,10 @@ import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.client.model.Option;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 import org.slf4j.event.Level;
-
-import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link AbstractHomeConnectThingHandler} is responsible for handling commands, which are
@@ -84,7 +83,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
     private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
     private final ExpiringCacheMap<ChannelUID, State> stateCache;
-    private final Logger logger;
+    private final LogWriter logger;
 
     public AbstractHomeConnectThingHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
@@ -160,7 +159,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                         getApiClient().getSelectedProgram(getThingHaId());
                     } else {
                         logger.log(Type.DEFAULT, Level.INFO, getThingHaId(), getThingLabel(),
-                                ImmutableList.of(command.toFullString()), null, null, "Start custom program");
+                                Arrays.asList(command.toFullString()), null, null, "Start custom program");
                         getApiClient().startCustomProgram(getThingHaId(), command.toFullString());
                     }
                 } else if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
@@ -819,7 +818,6 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     protected State cachePutIfAbsentAndGet(ChannelUID channelUID, ExpiringCacheMap<ChannelUID, State> cache,
             SupplierWithException<State> supplier) {
-
         return cache.putIfAbsentAndGet(channelUID, () -> {
             try {
                 return supplier.get();

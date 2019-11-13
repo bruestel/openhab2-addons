@@ -14,6 +14,8 @@ package org.openhab.binding.homeconnect.internal.handler;
 
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNull;
@@ -26,10 +28,8 @@ import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
-
-import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link HomeConnectDryerHandler} is responsible for handling commands, which are
@@ -40,10 +40,9 @@ import jersey.repackaged.com.google.common.collect.ImmutableList;
 @NonNullByDefault
 public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
 
-    private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
-            OPERATION_STATE_READY);
+    private static final List<String> INACTIVE_STATE = Arrays.asList(OPERATION_STATE_INACTIVE, OPERATION_STATE_READY);
 
-    private final Logger logger;
+    private final LogWriter logger;
 
     public HomeConnectDryerHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
@@ -97,7 +96,6 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
             try {
                 // only handle these commands if operation state allows it
                 if (operationState != null && INACTIVE_STATE.contains(operationState)) {
-
                     // set drying target option
                     if (command instanceof StringType && CHANNEL_DRYER_DRYING_TARGET.equals(channelUID.getId())) {
                         getApiClient().setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET,

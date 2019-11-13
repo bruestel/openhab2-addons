@@ -79,7 +79,7 @@ public class EmbeddedLoggingService {
 
         if (loggingEnabled) {
             logger.debug("Schedule log cleanup task.");
-            this.cleanupFuture = scheduler.scheduleAtFixedRate(() -> {
+            this.cleanupFuture = scheduler.scheduleWithFixedDelay(() -> {
                 removeOldEntries();
             }, CLEANUP_INITIAL_DELAY, CLEANUP_PERIOD, TimeUnit.SECONDS);
         }
@@ -96,8 +96,8 @@ public class EmbeddedLoggingService {
         }
     }
 
-    public Logger getLogger(Class<?> clazz) {
-        return new Logger(clazz, loggingEnabled, storage, atomicLong);
+    public LogWriter getLogger(Class<?> clazz) {
+        return new LogWriter(clazz, loggingEnabled, storage, atomicLong);
     }
 
     public List<Log> getLogEntries() {
@@ -122,7 +122,7 @@ public class EmbeddedLoggingService {
             }).map(e -> {
                 String serializedObject = e.getValue();
                 if (serializedObject == null) {
-                    throw new RuntimeException("Empty object in log storage");
+                    throw new FatalLoggerException("Empty object in log storage");
                 }
                 return deserialize(serializedObject);
             }).collect(Collectors.toList());

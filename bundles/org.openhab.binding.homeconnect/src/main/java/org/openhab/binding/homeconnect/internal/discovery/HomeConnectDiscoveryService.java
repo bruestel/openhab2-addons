@@ -31,7 +31,7 @@ import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.slf4j.event.Level;
 
@@ -45,7 +45,7 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
     private static final int SEARCH_TIME = 20;
 
     private final HomeConnectBridgeHandler bridgeHandler;
-    private final Logger logger;
+    private final LogWriter logger;
 
     /**
      * Construct an {@link HomeConnectDiscoveryService} with the given

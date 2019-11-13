@@ -13,6 +13,7 @@
 package org.openhab.binding.homeconnect.internal.client;
 
 import static java.net.HttpURLConnection.*;
+import static java.util.Arrays.asList;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.*;
 
@@ -36,7 +37,7 @@ import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.client.model.Option;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.slf4j.event.Level;
 
@@ -44,7 +45,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import jersey.repackaged.com.google.common.collect.ImmutableList;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -66,7 +66,7 @@ public class HomeConnectApiClient {
     private static final int VALUE_TYPE_INT = 1;
     private static final int VALUE_TYPE_BOOLEAN = 2;
 
-    private final Logger logger;
+    private final LogWriter logger;
     private final OkHttpClient client;
     private final String apiUrl;
     private final ConcurrentHashMap<String, List<AvailableProgramOption>> availableProgramOptionsCache;
@@ -100,7 +100,7 @@ public class HomeConnectApiClient {
 
             return mapToHomeAppliances(body);
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, null, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, null, null, asList(e.getStackTrace().toString()),
                     map(request, null), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
@@ -126,7 +126,7 @@ public class HomeConnectApiClient {
 
             return mapToHomeAppliance(body);
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, null), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
@@ -401,7 +401,7 @@ public class HomeConnectApiClient {
 
     public List<AvailableProgramOption> getProgramOptions(String haId, String programKey)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, ImmutableList.of(programKey), null, null,
+        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(programKey), null, null,
                 "getProgramOptions(String haId, String programKey)");
 
         if (availableProgramOptionsCache.containsKey(programKey)) {
@@ -416,7 +416,7 @@ public class HomeConnectApiClient {
         Request request = createGetRequest(path);
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(Arrays.asList(HTTP_OK), request, response, haId);
+            checkResponseCode(asList(HTTP_OK), request, response, haId);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
 
@@ -424,7 +424,7 @@ public class HomeConnectApiClient {
             availableProgramOptionsCache.put(programKey, availableProgramOptions);
             return availableProgramOptions;
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, null), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
@@ -448,8 +448,7 @@ public class HomeConnectApiClient {
     }
 
     private String getRaw(String haId, String path) throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, ImmutableList.of(path), null, null,
-                "getRaw(String haId, String path)");
+        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path), null, null, "getRaw(String haId, String path)");
 
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
@@ -461,7 +460,7 @@ public class HomeConnectApiClient {
                 return body;
             }
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, null), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
@@ -470,11 +469,11 @@ public class HomeConnectApiClient {
 
     private void putRaw(String haId, String path, String requestBodyPayload)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, ImmutableList.of(path, requestBodyPayload), null, null,
+        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path, requestBodyPayload), null, null,
                 "putRaw(String haId, String path, String requestBodyPayload)");
 
-        MediaType JSON = MediaType.parse(BSH_JSON_V1);
-        RequestBody requestBody = RequestBody.create(JSON, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
+        MediaType json = MediaType.parse(BSH_JSON_V1);
+        RequestBody requestBody = RequestBody.create(json, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
 
         Request request = requestBuilder(oAuthClientService).url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
                 .header(ACCEPT, BSH_JSON_V1).put(requestBody).build();
@@ -486,14 +485,14 @@ public class HomeConnectApiClient {
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, requestBodyPayload),
                     map(response, body), null);
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, requestBodyPayload), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
     }
 
     private Program getProgram(String haId, String path) throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, ImmutableList.of(path), null, null,
+        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path), null, null,
                 "getProgram(String haId, String path)");
 
         Request request = createGetRequest(path);
@@ -506,7 +505,7 @@ public class HomeConnectApiClient {
                 return mapToProgram(body);
             }
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, null), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
@@ -515,7 +514,7 @@ public class HomeConnectApiClient {
 
     private List<AvailableProgram> getAvailablePrograms(String haId, String path)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, ImmutableList.of(path), null, null,
+        logger.log(Type.DEFAULT, Level.TRACE, haId, null, Arrays.asList(path), null, null,
                 "getAvailablePrograms(String haId, String path)");
 
         Request request = createGetRequest(path);
@@ -527,14 +526,14 @@ public class HomeConnectApiClient {
 
             return mapToAvailablePrograms(body, haId);
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, null), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
     }
 
     private void sendDelete(String haId, String path) throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, ImmutableList.of(path), null, null,
+        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path), null, null,
                 "sendDelete(String haId, String path)");
 
         Request request = requestBuilder(oAuthClientService).url(apiUrl + path).header(ACCEPT, BSH_JSON_V1).delete()
@@ -543,16 +542,15 @@ public class HomeConnectApiClient {
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_NO_CONTENT, request, response, haId);
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, null), null);
-
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, null), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
     }
 
     private Data getData(String haId, String path) throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, ImmutableList.of(path), null, null,
+        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path), null, null,
                 "getData(String haId, String path)");
 
         Request request = createGetRequest(path);
@@ -564,7 +562,7 @@ public class HomeConnectApiClient {
 
             return mapToState(body);
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, null), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
@@ -572,9 +570,8 @@ public class HomeConnectApiClient {
 
     private void putData(String haId, String path, Data data, int valueType)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null,
-                ImmutableList.of(path, data.toString(), String.valueOf(valueType)), null, null,
-                "putData(String haId, String path, Data data, int valueType)");
+        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path, data.toString(), String.valueOf(valueType)),
+                null, null, "putData(String haId, String path, Data data, int valueType)");
 
         JsonObject innerObject = new JsonObject();
         innerObject.addProperty("key", data.getName());
@@ -597,8 +594,8 @@ public class HomeConnectApiClient {
         dataObject.add("data", innerObject);
         String requestBodyPayload = dataObject.toString();
 
-        MediaType JSON = MediaType.parse(BSH_JSON_V1);
-        RequestBody requestBody = RequestBody.create(JSON, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
+        MediaType json = MediaType.parse(BSH_JSON_V1);
+        RequestBody requestBody = RequestBody.create(json, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
 
         Request request = requestBuilder(oAuthClientService).url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
                 .header(ACCEPT, BSH_JSON_V1).put(requestBody).build();
@@ -608,9 +605,8 @@ public class HomeConnectApiClient {
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, requestBodyPayload),
                     map(response, body), null);
-
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, requestBodyPayload), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
@@ -618,9 +614,8 @@ public class HomeConnectApiClient {
 
     private void putOption(String haId, String path, Option option, boolean asInt)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null,
-                ImmutableList.of(path, option.toString(), String.valueOf(asInt)), null, null,
-                "putOption(String haId, String path, Option option, boolean asInt)");
+        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path, option.toString(), String.valueOf(asInt)), null,
+                null, "putOption(String haId, String path, Option option, boolean asInt)");
 
         JsonObject innerObject = new JsonObject();
         innerObject.addProperty("key", option.getKey());
@@ -648,8 +643,8 @@ public class HomeConnectApiClient {
 
         String requestBodyPayload = dataObject.toString();
 
-        MediaType JSON = MediaType.parse(BSH_JSON_V1);
-        RequestBody requestBody = RequestBody.create(JSON, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
+        MediaType json = MediaType.parse(BSH_JSON_V1);
+        RequestBody requestBody = RequestBody.create(json, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
 
         Request request = requestBuilder(oAuthClientService).url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
                 .header(ACCEPT, BSH_JSON_V1).put(requestBody).build();
@@ -659,9 +654,8 @@ public class HomeConnectApiClient {
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, requestBodyPayload),
                     map(response, body), null);
-
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, ImmutableList.of(e.getStackTrace().toString()),
+            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
                     map(request, requestBodyPayload), null, "IOException: {}", e.getMessage());
             throw new CommunicationException(e);
         }
@@ -669,7 +663,7 @@ public class HomeConnectApiClient {
 
     private void checkResponseCode(int desiredCode, Request request, Response response, String haId)
             throws CommunicationException, AuthorizationException {
-        checkResponseCode(Arrays.asList(desiredCode), request, response, haId);
+        checkResponseCode(asList(desiredCode), request, response, haId);
     }
 
     private void checkResponseCode(List<Integer> desiredCodes, Request request, Response response, String haId)

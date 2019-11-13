@@ -69,7 +69,6 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
             @Reference HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
             @Reference BridgeConfigurationServlet bridgeConfigurationServlet,
             @Reference EmbeddedLoggingService loggingService) {
-
         this.oAuthFactory = oAuthFactory;
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
         this.bridgeConfigurationServlet = bridgeConfigurationServlet;

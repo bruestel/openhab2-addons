@@ -17,6 +17,7 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.formatJsonBody;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
@@ -28,7 +29,7 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 import org.openhab.binding.homeconnect.internal.client.listener.ServerSentEventListener;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.slf4j.event.Level;
 
@@ -38,7 +39,6 @@ import com.google.gson.JsonParser;
 import com.here.oksse.OkSse;
 import com.here.oksse.ServerSentEvent;
 
-import jersey.repackaged.com.google.common.collect.ImmutableList;
 import okhttp3.Request;
 import okhttp3.Response;
 
@@ -63,7 +63,7 @@ public class HomeConnectSseClient {
     private final OAuthClientService oAuthClientService;
     private final HashSet<ServerSentEventListener> eventListeners;
     private final HashMap<ServerSentEventListener, ServerSentEvent> serverSentEventConnections;
-    private final Logger logger;
+    private final LogWriter logger;
 
     public HomeConnectSseClient(OAuthClientService oAuthClientService, boolean simulated,
             EmbeddedLoggingService loggingService) {
@@ -111,8 +111,8 @@ public class HomeConnectSseClient {
                     if (KEEP_ALIVE.equals(event)) {
                         logger.debugWithHaId(haId, "KEEP-ALIVE");
                     } else {
-                        logger.log(Type.DEFAULT, Level.DEBUG, haId, null, ImmutableList.of(formatJsonBody(message)),
-                                null, null, "Received id: {}, event: {}", id, event);
+                        logger.log(Type.DEFAULT, Level.DEBUG, haId, null, Arrays.asList(formatJsonBody(message)), null,
+                                null, "Received id: {}, event: {}", id, event);
                     }
 
                     if (!StringUtils.isEmpty(message) && !EMPTY_EVENT.equals(message)) {
@@ -227,7 +227,6 @@ public class HomeConnectSseClient {
 
                 events.add(new Event(key, value, unit));
             });
-
         } catch (IllegalStateException e) {
             logger.errorWithHaId(haId, "Could not parse event! {}", e.getMessage());
         }

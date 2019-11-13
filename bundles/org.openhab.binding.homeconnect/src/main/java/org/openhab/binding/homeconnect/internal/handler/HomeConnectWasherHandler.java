@@ -14,6 +14,8 @@ package org.openhab.binding.homeconnect.internal.handler;
 
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNull;
@@ -27,10 +29,8 @@ import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationEx
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
-
-import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link HomeConnectWasherHandler} is responsible for handling commands, which are
@@ -41,10 +41,9 @@ import jersey.repackaged.com.google.common.collect.ImmutableList;
 @NonNullByDefault
 public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
 
-    private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
-            OPERATION_STATE_READY);
+    private static final List<String> INACTIVE_STATE = Arrays.asList(OPERATION_STATE_INACTIVE, OPERATION_STATE_READY);
 
-    private final Logger logger;
+    private final LogWriter logger;
 
     public HomeConnectWasherHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,

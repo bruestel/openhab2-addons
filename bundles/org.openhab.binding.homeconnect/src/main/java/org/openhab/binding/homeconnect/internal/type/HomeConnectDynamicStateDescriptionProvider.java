@@ -12,6 +12,7 @@
  */
 package org.openhab.binding.homeconnect.internal.type;
 
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,14 +23,12 @@ import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.type.DynamicStateDescriptionProvider;
 import org.eclipse.smarthome.core.types.StateDescription;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.event.Level;
-
-import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link HomeConnectDynamicStateDescriptionProvider} is responsible for handling dynamic thing values.
@@ -41,7 +40,7 @@ import jersey.repackaged.com.google.common.collect.ImmutableList;
 public class HomeConnectDynamicStateDescriptionProvider implements DynamicStateDescriptionProvider {
 
     private final ConcurrentHashMap<String, StateDescription> stateDescriptions = new ConcurrentHashMap<>();
-    private final Logger logger;
+    private final LogWriter logger;
 
     @Activate
     public HomeConnectDynamicStateDescriptionProvider(@Reference EmbeddedLoggingService loggingService) {
@@ -60,7 +59,7 @@ public class HomeConnectDynamicStateDescriptionProvider implements DynamicStateD
     }
 
     public void putStateDescriptions(String channelUid, StateDescription stateDescription) {
-        logger.log(Type.DEFAULT, Level.DEBUG, null, null, ImmutableList.of(stateDescription.toString()), null, null,
+        logger.log(Type.DEFAULT, Level.DEBUG, null, null, Arrays.asList(stateDescription.toString()), null, null,
                 "Adding state description for channel-uid: {}", channelUid);
         stateDescriptions.put(channelUid, stateDescription);
     }

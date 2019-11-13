@@ -36,17 +36,15 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractServlet extends HttpServlet {
 
-    private final static long serialVersionUID = 1L;
-
-    protected static final String SERVLET_BASE_PATH = "/homeconnect";
-    protected static final String CONTENT_TYPE = "text/html;charset=UTF-8";
+    private static final long serialVersionUID = 1L;
     private static final String TEMPLATE_BASE_PATH = "/templates/";
     private static final Pattern MESSAGE_KEY_PATTERN = Pattern.compile("\\$\\{([^\\}]+)\\}");
+    protected static final String SERVLET_BASE_PATH = "/homeconnect";
+    protected static final String CONTENT_TYPE = "text/html;charset=UTF-8";
 
     private final Logger logger = LoggerFactory.getLogger(AbstractServlet.class);
 
     protected String readHtmlTemplate(String htmlTemplate) throws IOException {
-
         final URL templateUrl = FrameworkUtil.getBundle(getClass()).getEntry(TEMPLATE_BASE_PATH + htmlTemplate);
 
         if (templateUrl == null) {

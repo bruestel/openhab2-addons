@@ -15,6 +15,8 @@ package org.openhab.binding.homeconnect.internal.handler;
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.SECOND;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -42,10 +44,8 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
-
-import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link HomeConnectOvenHandler} is responsible for handling commands, which are
@@ -56,12 +56,11 @@ import jersey.repackaged.com.google.common.collect.ImmutableList;
 @NonNullByDefault
 public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
 
-    private static final ImmutableList<String> INACTIVE_STATE = ImmutableList.of(OPERATION_STATE_INACTIVE,
-            OPERATION_STATE_READY);
+    private static final List<String> INACTIVE_STATE = Arrays.asList(OPERATION_STATE_INACTIVE, OPERATION_STATE_READY);
     private static final int CAVITY_TEMPERATURE_SCHEDULER_INITIAL_DELAY = 30;
     private static final int CAVITY_TEMPERATURE_SCHEDULER_PERIOD = 30;
 
-    private final Logger logger;
+    private final LogWriter logger;
     private final ScheduledExecutorService scheduler;
 
     private @Nullable ScheduledFuture<?> cavityTemperatureFuture;
@@ -258,7 +257,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
     @Override
     public void initialize() {
         super.initialize();
-        cavityTemperatureFuture = scheduler.scheduleAtFixedRate(() -> {
+        cavityTemperatureFuture = scheduler.scheduleWithFixedDelay(() -> {
             String operationState = getOperationState();
             boolean manuallyUpdateCavityTemperature = this.manuallyUpdateCavityTemperature;
 

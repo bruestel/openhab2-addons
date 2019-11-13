@@ -33,7 +33,6 @@ import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
@@ -56,11 +55,10 @@ public class OkHttpHelper {
     private static final String BEARER = "Bearer ";
     private static final int OAUTH_EXPIRE_BUFFER = 10;
 
-    private static final Logger LOG = LoggerFactory.getLogger(OkHttpHelper.class);
-
     public static Builder builder() {
         if (HTTP_PROXY_ENABLED) {
-            LOG.warn("Using http proxy! {}:{}", HTTP_PROXY_HOST, HTTP_PROXY_PORT);
+            LoggerFactory.getLogger(OkHttpHelper.class).warn("Using http proxy! {}:{}", HTTP_PROXY_HOST,
+                    HTTP_PROXY_PORT);
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(HTTP_PROXY_HOST, HTTP_PROXY_PORT));
 
             try {
@@ -94,9 +92,8 @@ public class OkHttpHelper {
                                 return true;
                             }
                         }).proxy(proxy);
-
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new ProxySetupException(e);
             }
         }
 
@@ -131,13 +128,21 @@ public class OkHttpHelper {
                 return new Request.Builder().addHeader(HEADER_AUTHORIZATION,
                         BEARER + accessTokenResponse.getAccessToken());
             } else {
-                LOG.error("No access token available! Fatal error.");
+                LoggerFactory.getLogger(OkHttpHelper.class).error("No access token available! Fatal error.");
                 throw new AuthorizationException("No access token available!");
             }
         } catch (IOException e) {
             throw new CommunicationException(e.getMessage(), e);
         } catch (OAuthException | OAuthResponseException e) {
             throw new AuthorizationException(e.getMessage(), e);
+        }
+    }
+
+    protected class ProxySetupException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public ProxySetupException(Throwable cause) {
+            super(cause);
         }
     }
 }

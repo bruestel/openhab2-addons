@@ -26,7 +26,7 @@ import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 
 /**
@@ -38,7 +38,7 @@ import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDesc
 @NonNullByDefault
 public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandler {
 
-    private final Logger logger;
+    private final LogWriter logger;
 
     public HomeConnectCoffeeMakerHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,

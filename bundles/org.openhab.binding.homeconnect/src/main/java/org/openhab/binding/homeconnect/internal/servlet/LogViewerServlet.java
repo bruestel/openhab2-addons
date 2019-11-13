@@ -104,7 +104,6 @@ public class LogViewerServlet extends AbstractServlet {
         } catch (ServletException e) {
             logger.error("Could not register log viewer servlet! ({})", SERVLET_LOG_VIEWER_PATH, e);
         }
-
     }
 
     @Deactivate
@@ -123,7 +122,7 @@ public class LogViewerServlet extends AbstractServlet {
         logger.debug("GET {}", SERVLET_LOG_VIEWER_PATH);
 
         if (request == null || response == null) {
-            throw new RuntimeException("Illegal state - Could not handle request!");
+            throw new ServletException("Illegal state - Could not handle request!");
         }
 
         // clear storage

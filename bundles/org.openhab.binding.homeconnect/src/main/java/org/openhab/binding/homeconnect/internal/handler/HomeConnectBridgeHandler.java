@@ -17,6 +17,7 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -46,12 +47,10 @@ import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationEx
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.Logger;
+import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
 import org.slf4j.event.Level;
-
-import jersey.repackaged.com.google.common.collect.ImmutableList;
 
 /**
  * The {@link HomeConnectBridgeHandler} is responsible for handling commands, which are
@@ -68,7 +67,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     private final OAuthFactory oAuthFactory;
     private final BridgeConfigurationServlet bridgeConfigurationServlet;
-    private final Logger logger;
+    private final LogWriter logger;
     private final EmbeddedLoggingService loggingService;
 
     private @Nullable ScheduledFuture<?> reinitializationFuture;
@@ -109,7 +108,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
                 config.getClientId(), config.getClientSecret(), OAUTH_SCOPE, true);
         this.oAuthServiceHandleId = oAuthServiceHandleId;
         logger.log(Type.DEFAULT, Level.DEBUG, null, getThing().getLabel(),
-                ImmutableList.of("tokenUrl: " + tokenUrl, "authorizeUrl: " + authorizeUrl,
+                Arrays.asList("tokenUrl: " + tokenUrl, "authorizeUrl: " + authorizeUrl,
                         "oAuthServiceHandleId: " + oAuthServiceHandleId, "scope: " + OAUTH_SCOPE.toString(),
                         "oAuthClientService: " + oAuthClientService.toString()),
                 null, null, "Initialize oAuth client service.");
