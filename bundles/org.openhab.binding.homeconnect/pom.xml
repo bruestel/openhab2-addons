@@ -15,7 +15,7 @@
 	<name>openHAB Add-ons :: Bundles :: Home Connect Binding</name>
 
 	<properties>
-		<bnd.importpackage>android.*;resolution:="optional",com.android.*;resolution:="optional",dalvik.*;resolution:="optional",org.apache.harmony.*;resolution:="optional",org.conscrypt.*;resolution:="optional",sun.*;resolution:="optional",javax.annotation.meta.*;resolution:="optional"</bnd.importpackage>
+		<bnd.importpackage>com.google.gson;version="[2.7.0,3.0.0)",android.*;resolution:="optional",com.android.*;resolution:="optional",dalvik.*;resolution:="optional",org.apache.harmony.*;resolution:="optional",org.conscrypt.*;resolution:="optional",sun.*;resolution:="optional",javax.annotation.meta.*;resolution:="optional"</bnd.importpackage>
 	</properties>
 
 </project>
