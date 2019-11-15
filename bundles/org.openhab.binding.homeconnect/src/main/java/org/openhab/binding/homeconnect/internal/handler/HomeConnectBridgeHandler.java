@@ -50,6 +50,9 @@ import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
+import org.openhab.core.OpenHAB;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.Version;
 import org.slf4j.event.Level;
 
 /**
@@ -94,7 +97,10 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     @Override
     public void initialize() {
-        logger.debugWithLabel(getThing().getLabel(), "Initialize bridge");
+        Version version = FrameworkUtil.getBundle(this.getClass()).getVersion();
+        String openHabVersion = OpenHAB.getVersion();
+        logger.debugWithLabel(getThing().getLabel(), "Initialize bridge (Bundle: {}, openHAB: {})", version.toString(),
+                openHabVersion);
         // let the bridge configuration servlet know about this handler
         bridgeConfigurationServlet.addBridgeHandler(this);
 
