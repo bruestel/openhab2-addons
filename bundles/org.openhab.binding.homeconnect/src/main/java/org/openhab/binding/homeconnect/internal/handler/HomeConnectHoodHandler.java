@@ -26,7 +26,6 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
@@ -61,36 +60,6 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
         handlers.put(CHANNEL_SELECTED_PROGRAM_STATE,
                 updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler());
-
-        // register hood specific update handlers
-        handlers.put(CHANNEL_HOOD_INTENSIVE_LEVEL, (channelUID, cache) -> {
-            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
-            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
-                cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = getApiClient().getSelectedProgram(getThingHaId());
-                    if (program != null && program.getKey() != null) {
-                        updateProgramOptionsStateDescriptions(program.getKey());
-                        processProgramOptions(program.getOptions());
-                    }
-                    return UnDefType.NULL;
-                });
-            }
-        });
-        handlers.put(CHANNEL_HOOD_VENTING_LEVEL, (channelUID, cache) -> {
-            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_HOOD_INTENSIVE_LEVEL are not
-            // there
-            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
-                    && !getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL).isPresent()) {
-                cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = getApiClient().getSelectedProgram(getThingHaId());
-                    if (program != null && program.getKey() != null) {
-                        updateProgramOptionsStateDescriptions(program.getKey());
-                        processProgramOptions(program.getOptions());
-                    }
-                    return UnDefType.NULL;
-                });
-            }
-        });
     }
 
     @Override

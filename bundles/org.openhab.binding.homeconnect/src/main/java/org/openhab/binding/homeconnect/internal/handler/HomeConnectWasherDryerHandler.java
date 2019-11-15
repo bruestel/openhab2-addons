@@ -27,7 +27,6 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
@@ -63,35 +62,6 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
         handlers.put(CHANNEL_SELECTED_PROGRAM_STATE,
                 updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler());
-
-        // register washer specific handlers
-        handlers.put(CHANNEL_WASHER_SPIN_SPEED, (channelUID, cache) -> {
-            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
-            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
-                cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = getApiClient().getSelectedProgram(getThingHaId());
-                    if (program != null && program.getKey() != null) {
-                        updateProgramOptionsStateDescriptions(program.getKey());
-                        processProgramOptions(program.getOptions());
-                    }
-                    return UnDefType.NULL;
-                });
-            }
-        });
-        handlers.put(CHANNEL_WASHER_TEMPERATURE, (channelUID, cache) -> {
-            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_WASHER_SPIN_SPEED are not there
-            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
-                    && !getThingChannel(CHANNEL_WASHER_SPIN_SPEED).isPresent()) {
-                cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = getApiClient().getSelectedProgram(getThingHaId());
-                    if (program != null && program.getKey() != null) {
-                        updateProgramOptionsStateDescriptions(program.getKey());
-                        processProgramOptions(program.getOptions());
-                    }
-                    return UnDefType.NULL;
-                });
-            }
-        });
     }
 
     @Override

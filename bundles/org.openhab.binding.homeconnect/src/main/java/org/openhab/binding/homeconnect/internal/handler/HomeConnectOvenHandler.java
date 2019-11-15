@@ -42,7 +42,6 @@ import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
-import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
@@ -87,32 +86,6 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
 
         // register oven specific update handlers
-        handlers.put(CHANNEL_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
-            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE is not there
-            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()) {
-                cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = getApiClient().getSelectedProgram(getThingHaId());
-                    if (program != null && program.getKey() != null) {
-                        processProgramOptions(program.getOptions());
-                    }
-                    return UnDefType.NULL;
-                });
-            }
-        });
-        handlers.put(CHANNEL_DURATION, (channelUID, cache) -> {
-            // only update channel if channel CHANNEL_SELECTED_PROGRAM_STATE and CHANNEL_SETPOINT_TEMPERATURE are not
-            // there
-            if (!getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).isPresent()
-                    && !getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).isPresent()) {
-                cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                    Program program = getApiClient().getSelectedProgram(getThingHaId());
-                    if (program != null && program.getKey() != null) {
-                        processProgramOptions(program.getOptions());
-                    }
-                    return UnDefType.NULL;
-                });
-            }
-        });
         handlers.put(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
                 Data data = getApiClient().getCurrentCavityTemperature(getThingHaId());
