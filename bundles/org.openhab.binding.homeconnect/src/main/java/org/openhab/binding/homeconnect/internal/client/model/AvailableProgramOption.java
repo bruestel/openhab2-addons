@@ -14,21 +14,24 @@ package org.openhab.binding.homeconnect.internal.client.model;
 
 import java.util.ArrayList;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  * AvailableProgramOption model
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class AvailableProgramOption {
+
+    private final String key;
+    private final ArrayList<String> allowedValues;
 
     public AvailableProgramOption(String key, ArrayList<String> allowedValues) {
         this.key = key;
         this.allowedValues = allowedValues;
     }
-
-    private String key;
-    private ArrayList<String> allowedValues;
 
     public String getKey() {
         return key;

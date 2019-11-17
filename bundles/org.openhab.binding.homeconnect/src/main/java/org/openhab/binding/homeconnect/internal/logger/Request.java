@@ -14,19 +14,23 @@ package org.openhab.binding.homeconnect.internal.logger;
 
 import java.util.HashMap;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  *
  * HTTP request log model.
  *
  * @author Jonas Brüstel - Initial Contribution
  */
+@NonNullByDefault
 public class Request {
     private String url;
     private String method;
     private HashMap<String, String> header;
-    private String body;
+    private @Nullable String body;
 
-    public Request(String url, String method, HashMap<String, String> header, String body) {
+    public Request(String url, String method, HashMap<String, String> header, @Nullable String body) {
         this.url = url;
         this.method = method;
         this.header = header;
@@ -45,7 +49,7 @@ public class Request {
         return header;
     }
 
-    public String getBody() {
+    public @Nullable String getBody() {
         return body;
     }
 

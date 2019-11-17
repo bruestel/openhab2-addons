@@ -41,6 +41,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectSseClient;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Log;
+import org.openhab.binding.homeconnect.internal.logger.Request;
+import org.openhab.binding.homeconnect.internal.logger.Response;
 import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -179,22 +181,26 @@ public class LogViewerServlet extends AbstractServlet {
         replaceMap.put(PLACEHOLDER_KEY_DATE, zdt.format(dtf));
         replaceMap.put(PLACEHOLDER_KEY_CLASS, entry.getClassName().replace("HomeConnect", ""));
         replaceMap.put(PLACEHOLDER_KEY_LEVEL, entry.getLevel().toString());
-        replaceMap.put(PLACEHOLDER_KEY_HA_ID, entry.getHaId() == null ? "" : entry.getHaId());
+        String haId = entry.getHaId();
+        replaceMap.put(PLACEHOLDER_KEY_HA_ID, haId == null ? "" : haId);
 
-        if (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR) {
+        Request request = entry.getRequest();
+        Response response = entry.getResponse();
+        if (request != null && (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR)) {
             StringBuilder sb = new StringBuilder();
-            sb.append(entry.getRequest().getMethod()).append(" ");
-            if (entry.getResponse() != null) {
-                sb.append(entry.getResponse().getCode()).append(" ");
+            sb.append(request.getMethod()).append(" ");
+            if (response != null) {
+                sb.append(response.getCode()).append(" ");
             }
-            sb.append(entry.getRequest().getUrl());
+            sb.append(request.getUrl());
             replaceMap.put(PLACEHOLDER_KEY_MESSAGE, sb.toString());
         } else {
             if (entry.getLabel() != null) {
                 replaceMap.put(PLACEHOLDER_KEY_MESSAGE,
                         (entry.getMessage() == null ? "" : entry.getMessage()) + " (" + entry.getLabel() + ")");
             } else {
-                replaceMap.put(PLACEHOLDER_KEY_MESSAGE, entry.getMessage() == null ? "" : entry.getMessage());
+                String message = entry.getMessage();
+                replaceMap.put(PLACEHOLDER_KEY_MESSAGE, message == null ? "" : message);
             }
         }
 
@@ -224,31 +230,34 @@ public class LogViewerServlet extends AbstractServlet {
         StringBuffer sb = new StringBuffer();
         HashMap<String, String> replaceMap = new HashMap<>();
 
-        if (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR) {
-            entry.getRequest().getHeader().forEach((key, value) -> {
-                if (value != null && value.startsWith("[Bearer ")) {
+        Request request = entry.getRequest();
+        Response response = entry.getResponse();
+        if (request != null && (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR)) {
+            request.getHeader().forEach((key, value) -> {
+                if (value.startsWith("[Bearer ")) {
                     sb.append("> ").append(key).append(": ").append("[Bearer ***]").append("\n");
                 } else {
                     sb.append("> ").append(key).append(": ").append(value).append("\n");
                 }
             });
 
-            if (entry.getRequest() != null && entry.getRequest().getBody() != null) {
-                sb.append(entry.getRequest().getBody()).append("\n");
+            if (entry.getRequest() != null && request.getBody() != null) {
+                sb.append(request.getBody()).append("\n");
             }
 
-            if (entry.getResponse() != null && entry.getResponse().getHeader() != null) {
+            if (response != null) {
                 sb.append("\n");
-                entry.getResponse().getHeader()
+                response.getHeader()
                         .forEach((key, value) -> sb.append("< ").append(key).append(": ").append(value).append("\n"));
             }
-            if (entry.getResponse() != null && entry.getResponse().getBody() != null) {
-                sb.append(entry.getResponse().getBody()).append("\n");
+            if (response != null && response.getBody() != null) {
+                sb.append(response.getBody()).append("\n");
             }
         }
 
-        if (entry.getDetails() != null) {
-            entry.getDetails().forEach(detail -> sb.append("\n").append(detail));
+        List<String> details = entry.getDetails();
+        if (details != null) {
+            details.forEach(detail -> sb.append("\n").append(detail));
         }
 
         String content = sb.toString();

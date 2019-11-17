@@ -12,29 +12,33 @@
  */
 package org.openhab.binding.homeconnect.internal.client.model;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  * Event model
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class Event {
 
-    private String key;
-    private String value;
-    private String unit;
+    private @Nullable final String key;
+    private @Nullable final String value;
+    private @Nullable final String unit;
 
-    public Event(String key, String value, String unit) {
+    public Event(@Nullable String key, @Nullable String value, @Nullable String unit) {
         this.key = key;
         this.value = value;
         this.unit = unit;
     }
 
-    public String getKey() {
+    public @Nullable String getKey() {
         return key;
     }
 
-    public String getValue() {
+    public @Nullable String getValue() {
         return value;
     }
 
@@ -46,7 +50,7 @@ public class Event {
         return value != null ? Float.valueOf(getValue()).intValue() : 0;
     }
 
-    public String getUnit() {
+    public @Nullable String getUnit() {
         return unit;
     }
 

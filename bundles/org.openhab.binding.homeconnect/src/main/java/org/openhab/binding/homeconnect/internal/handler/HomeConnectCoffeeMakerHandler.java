@@ -16,13 +16,13 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
@@ -87,14 +87,16 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
     }
 
     @Override
-    public void handleCommand(@NonNull ChannelUID channelUID, @NonNull Command command) {
+    public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
+            HomeConnectApiClient apiClient = getApiClient();
 
             try {
                 // turn coffee maker on and standby
-                if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())) {
-                    getApiClient().setPowerState(getThingHaId(),
+                if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())
+                        && apiClient != null) {
+                    apiClient.setPowerState(getThingHaId(),
                             OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_STANDBY);
                 }
             } catch (CommunicationException e) {

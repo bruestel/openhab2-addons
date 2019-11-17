@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 import javax.measure.Unit;
 import javax.measure.quantity.Temperature;
 
-import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
 import org.eclipse.smarthome.core.cache.ExpiringCacheMap;
@@ -73,6 +73,7 @@ import org.slf4j.event.Level;
  *
  * @author Jonas Brüstel - Initial contribution
  */
+@NonNullByDefault
 public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler implements ServerSentEventListener {
 
     private static final int CACHE_TTL = 2;
@@ -146,24 +147,28 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         if (isThingReadyToHandleCommand()) {
             logger.debugWithHaId(getThingHaId(), "Handle \"{}\" command ({}).", command, channelUID.getId());
             try {
+                HomeConnectApiClient apiClient = getApiClient();
+
                 if (command instanceof RefreshType) {
                     updateChannel(channelUID);
-                } else if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())) {
+                } else if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())
+                        && apiClient != null) {
                     updateState(channelUID, new StringType(""));
 
                     if ("start".equalsIgnoreCase(command.toFullString())) {
-                        getApiClient().startSelectedProgram(getThingHaId());
+                        apiClient.startSelectedProgram(getThingHaId());
                     } else if ("stop".equalsIgnoreCase(command.toFullString())) {
-                        getApiClient().stopProgram(getThingHaId());
+                        apiClient.stopProgram(getThingHaId());
                     } else if ("selected".equalsIgnoreCase(command.toFullString())) {
-                        getApiClient().getSelectedProgram(getThingHaId());
+                        apiClient.getSelectedProgram(getThingHaId());
                     } else {
                         logger.log(Type.DEFAULT, Level.INFO, getThingHaId(), getThingLabel(),
                                 Arrays.asList(command.toFullString()), null, null, "Start custom program");
-                        getApiClient().startCustomProgram(getThingHaId(), command.toFullString());
+                        apiClient.startCustomProgram(getThingHaId(), command.toFullString());
                     }
-                } else if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())) {
-                    getApiClient().setSelectedProgram(getThingHaId(), command.toFullString());
+                } else if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())
+                        && apiClient != null) {
+                    apiClient.setSelectedProgram(getThingHaId(), command.toFullString());
                 }
             } catch (CommunicationException e) {
                 logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
@@ -178,7 +183,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     @Override
-    public void onEvent(@NonNull Event event) {
+    public void onEvent(Event event) {
         logger.debugWithHaId(getThingHaId(), "{}", event);
 
         if (EVENT_DISCONNECTED.equals(event.getKey())) {
@@ -216,7 +221,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      *
      * @return client instance
      */
-    protected HomeConnectApiClient getApiClient() {
+    protected @Nullable HomeConnectApiClient getApiClient() {
         HomeConnectApiClient apiClient = null;
         Bridge bridge = getBridge();
         if (bridge != null && ThingStatus.ONLINE.equals(bridge.getStatus())) {
@@ -318,7 +323,12 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * @return
      */
     protected Optional<Channel> getThingChannel(String channelId) {
-        return Optional.ofNullable(getThing().getChannel(channelId));
+        Channel channel = getThing().getChannel(channelId);
+        if (channel == null) {
+            return Optional.empty();
+        } else {
+            return Optional.of(channel);
+        }
     }
 
     /**
@@ -328,7 +338,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * @param handlers channel update handlers
      */
     protected abstract void configureChannelUpdateHandlers(
-            final @NonNull ConcurrentHashMap<String, ChannelUpdateHandler> handlers);
+            final ConcurrentHashMap<String, ChannelUpdateHandler> handlers);
 
     /**
      * Configure event handlers. Classes which extend {@link AbstractHomeConnectThingHandler} must implement
@@ -336,7 +346,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      *
      * @param handlers Server-Sent-Event handlers
      */
-    protected abstract void configureEventHandlers(final @NonNull ConcurrentHashMap<String, EventHandler> handlers);
+    protected abstract void configureEventHandlers(final ConcurrentHashMap<String, EventHandler> handlers);
 
     /**
      * Update all channels via API.
@@ -367,7 +377,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      *
      * @param channelUID
      */
-    protected void updateChannel(@NonNull ChannelUID channelUID) {
+    protected void updateChannel(ChannelUID channelUID) {
         logger.traceWithHaId(getThingHaId(), "updateChannel({})", channelUID.getId());
         HomeConnectApiClient apiClient = getApiClient();
 
@@ -436,7 +446,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * @param unit String eg. "°C"
      * @return Unit
      */
-    protected Unit<Temperature> mapTemperature(String unit) {
+    protected Unit<Temperature> mapTemperature(@Nullable String unit) {
         if (unit == null) {
             return CELSIUS;
         } else if (unit.endsWith("C")) {
@@ -457,7 +467,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         if (client != null) {
             try {
                 HomeAppliance homeAppliance = client.getHomeAppliance(getThingHaId());
-                if (homeAppliance == null || !homeAppliance.isConnected()) {
+                if (!homeAppliance.isConnected()) {
                     logger.debugWithHaId(getThingHaId(), "Update status to OFFLINE.");
                     updateStatus(ThingStatus.OFFLINE);
                 } else {
@@ -499,7 +509,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      *
      * @return the human readable label
      */
-    protected String getThingLabel() {
+    protected @Nullable String getThingLabel() {
         return getThing().getLabel();
     }
 
@@ -531,7 +541,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      *
      * @return
      */
-    protected String getOperationState() {
+    protected @Nullable String getOperationState() {
         return operationState;
     }
 
@@ -565,8 +575,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     protected EventHandler defaultOperationStateEventHandler() {
         return event -> {
+            String value = event.getValue();
             getThingChannel(CHANNEL_OPERATION_STATE).ifPresent(channel -> updateState(channel.getUID(),
-                    event.getValue() == null ? UnDefType.NULL : new StringType(mapStringType(event.getValue()))));
+                    value == null ? UnDefType.NULL : new StringType(mapStringType(value))));
 
             if (STATE_OPERATION_FINISHED.equals(event.getValue())) {
                 getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
@@ -585,9 +596,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     protected EventHandler defaultActiveProgramEventHandler() {
         return event -> {
+            String value = event.getValue();
             getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(mapStringType(event.getValue())));
+                updateState(channel.getUID(), value == null ? UnDefType.NULL : new StringType(mapStringType(value)));
             });
             if (event.getValue() == null) {
                 resetProgramStateChannels();
@@ -631,7 +642,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
             // update available program options
             try {
-                updateProgramOptionsStateDescriptions(event.getValue());
+                String programKey = event.getValue();
+                if (programKey != null) {
+                    updateProgramOptionsStateDescriptions(programKey);
+                }
             } catch (CommunicationException | AuthorizationException e) {
                 logger.warn("Could not update program options. {}", e.getMessage());
             }
@@ -648,9 +662,14 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultDoorStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = getApiClient().getDoorState(getThingHaId());
-                if (data != null && data.getValue() != null) {
-                    return STATE_DOOR_OPEN.equals(data.getValue()) ? OpenClosedType.OPEN : OpenClosedType.CLOSED;
+                HomeConnectApiClient apiClient = getApiClient();
+                if (apiClient != null) {
+                    Data data = apiClient.getDoorState(getThingHaId());
+                    if (data.getValue() != null) {
+                        return STATE_DOOR_OPEN.equals(data.getValue()) ? OpenClosedType.OPEN : OpenClosedType.CLOSED;
+                    } else {
+                        return UnDefType.NULL;
+                    }
                 } else {
                     return UnDefType.NULL;
                 }
@@ -661,9 +680,14 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultPowerStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = getApiClient().getPowerState(getThingHaId());
-                if (data != null && data.getValue() != null) {
-                    return STATE_POWER_ON.equals(data.getValue()) ? OnOffType.ON : OnOffType.OFF;
+                HomeConnectApiClient apiClient = getApiClient();
+                if (apiClient != null) {
+                    Data data = apiClient.getPowerState(getThingHaId());
+                    if (data.getValue() != null) {
+                        return STATE_POWER_ON.equals(data.getValue()) ? OnOffType.ON : OnOffType.OFF;
+                    } else {
+                        return UnDefType.NULL;
+                    }
                 } else {
                     return UnDefType.NULL;
                 }
@@ -680,12 +704,19 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultOperationStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Data data = getApiClient().getOperationState(getThingHaId());
-                if (data != null && data.getValue() != null) {
-                    operationState = data.getValue();
-                    return new StringType(mapStringType(data.getValue()));
+                HomeConnectApiClient apiClient = getApiClient();
+                if (apiClient != null) {
+                    Data data = apiClient.getOperationState(getThingHaId());
+
+                    String value = data.getValue();
+                    if (value != null) {
+                        operationState = data.getValue();
+                        return new StringType(mapStringType(value));
+                    } else {
+                        operationState = null;
+                        return UnDefType.NULL;
+                    }
                 } else {
-                    operationState = null;
                     return UnDefType.NULL;
                 }
             }));
@@ -694,35 +725,54 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     protected ChannelUpdateHandler defaultRemoteControlActiveStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
-            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache,
-                    () -> getApiClient().isRemoteControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF));
+            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                HomeConnectApiClient apiClient = getApiClient();
+                if (apiClient != null) {
+                    return apiClient.isRemoteControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF;
+                }
+                return OnOffType.OFF;
+            }));
         };
     }
 
     protected ChannelUpdateHandler defaultLocalControlActiveStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
-            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache,
-                    () -> getApiClient().isLocalControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF));
+            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                HomeConnectApiClient apiClient = getApiClient();
+                if (apiClient != null) {
+                    return apiClient.isLocalControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF;
+                }
+                return OnOffType.OFF;
+            }));
         };
     }
 
     protected ChannelUpdateHandler defaultRemoteStartAllowanceChannelUpdateHandler() {
         return (channelUID, cache) -> {
-            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache,
-                    () -> getApiClient().isRemoteControlStartAllowed(getThingHaId()) ? OnOffType.ON : OnOffType.OFF));
+            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                HomeConnectApiClient apiClient = getApiClient();
+                if (apiClient != null) {
+                    return apiClient.isRemoteControlStartAllowed(getThingHaId()) ? OnOffType.ON : OnOffType.OFF;
+                }
+                return OnOffType.OFF;
+            }));
         };
     }
 
     protected ChannelUpdateHandler defaultSelectedProgramStateUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Program program = getApiClient().getSelectedProgram(getThingHaId());
-                if (program != null && program.getKey() != null) {
-                    processProgramOptions(program.getOptions());
-                    return new StringType(program.getKey());
-                } else {
-                    return UnDefType.NULL;
+                HomeConnectApiClient apiClient = getApiClient();
+                if (apiClient != null) {
+                    Program program = apiClient.getSelectedProgram(getThingHaId());
+                    if (program != null) {
+                        processProgramOptions(program.getOptions());
+                        return new StringType(program.getKey());
+                    } else {
+                        return UnDefType.NULL;
+                    }
                 }
+                return UnDefType.NULL;
             }));
         };
     }
@@ -730,16 +780,20 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Program program = getApiClient().getSelectedProgram(getThingHaId());
+                HomeConnectApiClient apiClient = getApiClient();
+                if (apiClient != null) {
+                    Program program = apiClient.getSelectedProgram(getThingHaId());
 
-                if (program.getKey() != null) {
-                    updateProgramOptionsStateDescriptions(program.getKey());
-                    processProgramOptions(program.getOptions());
+                    if (program != null) {
+                        updateProgramOptionsStateDescriptions(program.getKey());
+                        processProgramOptions(program.getOptions());
 
-                    return new StringType(program.getKey());
-                } else {
-                    return UnDefType.NULL;
+                        return new StringType(program.getKey());
+                    } else {
+                        return UnDefType.NULL;
+                    }
                 }
+                return UnDefType.NULL;
             }));
         };
     }
@@ -747,78 +801,86 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultActiveProgramStateUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                Program program = getApiClient().getActiveProgram(getThingHaId());
+                HomeConnectApiClient apiClient = getApiClient();
+                if (apiClient != null) {
+                    Program program = apiClient.getActiveProgram(getThingHaId());
 
-                if (program != null && program.getKey() != null) {
-                    processProgramOptions(program.getOptions());
-                    return new StringType(mapStringType(program.getKey()));
-                } else {
-                    resetProgramStateChannels();
-                    return UnDefType.NULL;
+                    if (program != null) {
+                        processProgramOptions(program.getOptions());
+                        return new StringType(mapStringType(program.getKey()));
+                    } else {
+                        resetProgramStateChannels();
+                        return UnDefType.NULL;
+                    }
                 }
+                return UnDefType.NULL;
             }));
         };
     }
 
     protected void processProgramOptions(List<Option> options) {
         options.forEach(option -> {
-            switch (option.getKey()) {
-                case OPTION_WASHER_TEMPERATURE:
-                    getThingChannel(CHANNEL_WASHER_TEMPERATURE)
-                            .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
-                    break;
-                case OPTION_WASHER_SPIN_SPEED:
-                    getThingChannel(CHANNEL_WASHER_SPIN_SPEED)
-                            .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
-                    break;
-                case OPTION_WASHER_IDOS_1_DOSING_LEVEL:
-                    getThingChannel(CHANNEL_WASHER_IDOS1)
-                            .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
-                    break;
-                case OPTION_WASHER_IDOS_2_DOSING_LEVEL:
-                    getThingChannel(CHANNEL_WASHER_IDOS2)
-                            .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
-                    break;
-                case OPTION_DRYER_DRYING_TARGET:
-                    getThingChannel(CHANNEL_DRYER_DRYING_TARGET)
-                            .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
-                    break;
-                case OPTION_HOOD_INTENSIVE_LEVEL:
-                    getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL)
-                            .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
-                    break;
-                case OPTION_HOOD_VENTING_LEVEL:
-                    getThingChannel(CHANNEL_HOOD_VENTING_LEVEL)
-                            .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
-                    break;
-                case OPTION_SETPOINT_TEMPERATURE:
-                    getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
-                            new QuantityType<>(option.getValueAsInt(), mapTemperature(option.getUnit()))));
-                    break;
-                case OPTION_DURATION:
-                    getThingChannel(CHANNEL_DURATION).ifPresent(channel -> updateState(channel.getUID(),
-                            new QuantityType<>(option.getValueAsInt(), SECOND)));
-                    break;
-                case OPTION_REMAINING_PROGRAM_TIME:
-                    getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE)
-                            .ifPresent(channel -> updateState(channel.getUID(),
-                                    new QuantityType<>(option.getValueAsInt(), SECOND)));
-                    break;
-                case OPTION_ELAPSED_PROGRAM_TIME:
-                    getThingChannel(CHANNEL_ELAPSED_PROGRAM_TIME).ifPresent(channel -> updateState(channel.getUID(),
-                            new QuantityType<>(option.getValueAsInt(), SECOND)));
-                    break;
-                case OPTION_PROGRAM_PROGRESS:
-                    getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(channel -> updateState(channel.getUID(),
-                            new QuantityType<>(option.getValueAsInt(), PERCENT)));
-                    break;
+            String key = option.getKey();
+            if (key != null) {
+                switch (key) {
+                    case OPTION_WASHER_TEMPERATURE:
+                        getThingChannel(CHANNEL_WASHER_TEMPERATURE)
+                                .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                        break;
+                    case OPTION_WASHER_SPIN_SPEED:
+                        getThingChannel(CHANNEL_WASHER_SPIN_SPEED)
+                                .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                        break;
+                    case OPTION_WASHER_IDOS_1_DOSING_LEVEL:
+                        getThingChannel(CHANNEL_WASHER_IDOS1)
+                                .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                        break;
+                    case OPTION_WASHER_IDOS_2_DOSING_LEVEL:
+                        getThingChannel(CHANNEL_WASHER_IDOS2)
+                                .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                        break;
+                    case OPTION_DRYER_DRYING_TARGET:
+                        getThingChannel(CHANNEL_DRYER_DRYING_TARGET)
+                                .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                        break;
+                    case OPTION_HOOD_INTENSIVE_LEVEL:
+                        getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL)
+                                .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                        break;
+                    case OPTION_HOOD_VENTING_LEVEL:
+                        getThingChannel(CHANNEL_HOOD_VENTING_LEVEL)
+                                .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                        break;
+                    case OPTION_SETPOINT_TEMPERATURE:
+                        getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
+                                new QuantityType<>(option.getValueAsInt(), mapTemperature(option.getUnit()))));
+                        break;
+                    case OPTION_DURATION:
+                        getThingChannel(CHANNEL_DURATION).ifPresent(channel -> updateState(channel.getUID(),
+                                new QuantityType<>(option.getValueAsInt(), SECOND)));
+                        break;
+                    case OPTION_REMAINING_PROGRAM_TIME:
+                        getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE)
+                                .ifPresent(channel -> updateState(channel.getUID(),
+                                        new QuantityType<>(option.getValueAsInt(), SECOND)));
+                        break;
+                    case OPTION_ELAPSED_PROGRAM_TIME:
+                        getThingChannel(CHANNEL_ELAPSED_PROGRAM_TIME).ifPresent(channel -> updateState(channel.getUID(),
+                                new QuantityType<>(option.getValueAsInt(), SECOND)));
+                        break;
+                    case OPTION_PROGRAM_PROGRESS:
+                        getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
+                                .ifPresent(channel -> updateState(channel.getUID(),
+                                        new QuantityType<>(option.getValueAsInt(), PERCENT)));
+                        break;
+                }
             }
         });
     }
 
     protected State cachePutIfAbsentAndGet(ChannelUID channelUID, ExpiringCacheMap<ChannelUID, State> cache,
             SupplierWithException<State> supplier) {
-        return cache.putIfAbsentAndGet(channelUID, () -> {
+        State state = cache.putIfAbsentAndGet(channelUID, () -> {
             try {
                 return supplier.get();
             } catch (CommunicationException e) {
@@ -830,6 +892,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 return UnDefType.NULL;
             }
         });
+        if (state == null) {
+            return UnDefType.NULL;
+        }
+        return state;
     }
 
     protected String convertWasherTemperature(String value) {
@@ -870,120 +936,115 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     protected void updateProgramOptionsStateDescriptions(String programKey)
             throws CommunicationException, AuthorizationException {
-        List<AvailableProgramOption> availableProgramOptions = getApiClient().getProgramOptions(getThingHaId(),
-                programKey);
+        HomeConnectApiClient apiClient = getApiClient();
+        if (apiClient != null) {
+            List<AvailableProgramOption> availableProgramOptions = apiClient.getProgramOptions(getThingHaId(),
+                    programKey);
 
-        Optional<Channel> channelSpinSpeed = getThingChannel(CHANNEL_WASHER_SPIN_SPEED);
-        Optional<Channel> channelTemperature = getThingChannel(CHANNEL_WASHER_TEMPERATURE);
-        Optional<Channel> channelDryingTarget = getThingChannel(CHANNEL_DRYER_DRYING_TARGET);
-        Optional<Channel> channelHoodIntensiveLevel = getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL);
-        Optional<Channel> channelHoodVentingLevel = getThingChannel(CHANNEL_HOOD_VENTING_LEVEL);
+            Optional<Channel> channelSpinSpeed = getThingChannel(CHANNEL_WASHER_SPIN_SPEED);
+            Optional<Channel> channelTemperature = getThingChannel(CHANNEL_WASHER_TEMPERATURE);
+            Optional<Channel> channelDryingTarget = getThingChannel(CHANNEL_DRYER_DRYING_TARGET);
+            Optional<Channel> channelHoodIntensiveLevel = getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL);
+            Optional<Channel> channelHoodVentingLevel = getThingChannel(CHANNEL_HOOD_VENTING_LEVEL);
 
-        if (availableProgramOptions.isEmpty()) {
-            if (channelSpinSpeed.isPresent()) {
-                dynamicStateDescriptionProvider.removeStateDescriptions(channelSpinSpeed.get().getUID().getAsString());
+            if (availableProgramOptions.isEmpty()) {
+                if (channelSpinSpeed.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(channelSpinSpeed.get().getUID().getAsString());
+                }
+                if (channelTemperature.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(channelTemperature.get().getUID().getAsString());
+                }
+                if (channelDryingTarget.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(channelDryingTarget.get().getUID().getAsString());
+                }
+                if (channelHoodIntensiveLevel.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(channelHoodIntensiveLevel.get().getUID().getAsString());
+                }
+                if (channelHoodVentingLevel.isPresent()) {
+                    dynamicStateDescriptionProvider
+                            .removeStateDescriptions(channelHoodVentingLevel.get().getUID().getAsString());
+                }
             }
-            if (channelTemperature.isPresent()) {
-                dynamicStateDescriptionProvider
-                        .removeStateDescriptions(channelTemperature.get().getUID().getAsString());
-            }
-            if (channelDryingTarget.isPresent()) {
-                dynamicStateDescriptionProvider
-                        .removeStateDescriptions(channelDryingTarget.get().getUID().getAsString());
-            }
-            if (channelHoodIntensiveLevel.isPresent()) {
-                dynamicStateDescriptionProvider
-                        .removeStateDescriptions(channelHoodIntensiveLevel.get().getUID().getAsString());
-            }
-            if (channelHoodVentingLevel.isPresent()) {
-                dynamicStateDescriptionProvider
-                        .removeStateDescriptions(channelHoodVentingLevel.get().getUID().getAsString());
-            }
+
+            availableProgramOptions.stream().forEach(option -> {
+                if (OPTION_WASHER_SPIN_SPEED.equals(option.getKey())) {
+                    ArrayList<StateOption> stateOptions = new ArrayList<>();
+
+                    option.getAllowedValues()
+                            .forEach(av -> stateOptions.add(new StateOption(av, convertWasherSpinSpeed(av))));
+                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
+                            .toStateDescription();
+
+                    if (stateDescription != null) {
+                        if (channelSpinSpeed.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(
+                                    channelSpinSpeed.get().getUID().getAsString(), stateDescription);
+                        }
+                    }
+                } else if (OPTION_WASHER_TEMPERATURE.equals(option.getKey())) {
+                    ArrayList<StateOption> stateOptions = new ArrayList<>();
+
+                    option.getAllowedValues()
+                            .forEach(av -> stateOptions.add(new StateOption(av, convertWasherTemperature(av))));
+                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
+                            .toStateDescription();
+
+                    if (stateDescription != null) {
+                        if (channelTemperature.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(
+                                    channelTemperature.get().getUID().getAsString(), stateDescription);
+                        }
+                    }
+                } else if (OPTION_DRYER_DRYING_TARGET.equals(option.getKey())) {
+                    ArrayList<StateOption> stateOptions = new ArrayList<>();
+
+                    option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, mapStringType(av))));
+                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
+                            .toStateDescription();
+
+                    if (stateDescription != null) {
+                        if (channelDryingTarget.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(
+                                    channelDryingTarget.get().getUID().getAsString(), stateDescription);
+                        }
+                    }
+                } else if (OPTION_HOOD_INTENSIVE_LEVEL.equals(option.getKey())) {
+                    ArrayList<StateOption> stateOptions = new ArrayList<>();
+
+                    option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, convertLevel(av))));
+                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
+                            .toStateDescription();
+
+                    if (stateDescription != null) {
+                        if (channelHoodIntensiveLevel.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(
+                                    channelHoodIntensiveLevel.get().getUID().getAsString(), stateDescription);
+                        }
+                    }
+                } else if (OPTION_HOOD_VENTING_LEVEL.equals(option.getKey())) {
+                    ArrayList<StateOption> stateOptions = new ArrayList<>();
+
+                    option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, convertLevel(av))));
+                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
+                            .toStateDescription();
+
+                    if (stateDescription != null) {
+                        if (channelHoodVentingLevel.isPresent()) {
+                            dynamicStateDescriptionProvider.putStateDescriptions(
+                                    channelHoodVentingLevel.get().getUID().getAsString(), stateDescription);
+                        }
+                    }
+                }
+            });
         }
-
-        availableProgramOptions.stream().filter(option -> option.getKey() != null).forEach(option -> {
-            if (OPTION_WASHER_SPIN_SPEED.equals(option.getKey())) {
-                ArrayList<StateOption> stateOptions = new ArrayList<>();
-
-                option.getAllowedValues()
-                        .forEach(av -> stateOptions.add(new StateOption(av, convertWasherSpinSpeed(av))));
-                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
-
-                if (stateDescription != null) {
-                    if (channelSpinSpeed.isPresent()) {
-                        dynamicStateDescriptionProvider
-                                .putStateDescriptions(channelSpinSpeed.get().getUID().getAsString(), stateDescription);
-                    }
-                }
-            } else if (OPTION_WASHER_TEMPERATURE.equals(option.getKey())) {
-                ArrayList<StateOption> stateOptions = new ArrayList<>();
-
-                option.getAllowedValues()
-                        .forEach(av -> stateOptions.add(new StateOption(av, convertWasherTemperature(av))));
-                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
-
-                if (stateDescription != null) {
-                    if (channelTemperature.isPresent()) {
-                        dynamicStateDescriptionProvider.putStateDescriptions(
-                                channelTemperature.get().getUID().getAsString(), stateDescription);
-                    }
-                }
-            } else if (OPTION_DRYER_DRYING_TARGET.equals(option.getKey())) {
-                ArrayList<StateOption> stateOptions = new ArrayList<>();
-
-                option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, mapStringType(av))));
-                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
-
-                if (stateDescription != null) {
-                    if (channelDryingTarget.isPresent()) {
-                        dynamicStateDescriptionProvider.putStateDescriptions(
-                                channelDryingTarget.get().getUID().getAsString(), stateDescription);
-                    }
-                }
-            } else if (OPTION_HOOD_INTENSIVE_LEVEL.equals(option.getKey())) {
-                ArrayList<StateOption> stateOptions = new ArrayList<>();
-
-                option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, convertLevel(av))));
-                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
-
-                if (stateDescription != null) {
-                    if (channelHoodIntensiveLevel.isPresent()) {
-                        dynamicStateDescriptionProvider.putStateDescriptions(
-                                channelHoodIntensiveLevel.get().getUID().getAsString(), stateDescription);
-                    }
-                }
-            } else if (OPTION_HOOD_VENTING_LEVEL.equals(option.getKey())) {
-                ArrayList<StateOption> stateOptions = new ArrayList<>();
-
-                option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, convertLevel(av))));
-                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
-
-                if (stateDescription != null) {
-                    if (channelHoodVentingLevel.isPresent()) {
-                        dynamicStateDescriptionProvider.putStateDescriptions(
-                                channelHoodVentingLevel.get().getUID().getAsString(), stateDescription);
-                    }
-                }
-            }
-        });
-    }
-
-    protected interface EventHandler {
-        void handle(Event event);
-    }
-
-    protected interface ChannelUpdateHandler {
-        void handle(ChannelUID channelUID, ExpiringCacheMap<ChannelUID, State> cache)
-                throws CommunicationException, AuthorizationException;
-    }
-
-    @FunctionalInterface
-    protected interface SupplierWithException<T> {
-        public T get() throws CommunicationException, AuthorizationException;
     }
 }

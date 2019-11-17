@@ -18,13 +18,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
@@ -88,18 +88,20 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
     }
 
     @Override
-    public void handleCommand(@NonNull ChannelUID channelUID, @NonNull Command command) {
+    public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
             String operationState = getOperationState();
+            HomeConnectApiClient apiClient = getApiClient();
 
             try {
                 // only handle these commands if operation state allows it
                 if (operationState != null && INACTIVE_STATE.contains(operationState)) {
                     // set drying target option
-                    if (command instanceof StringType && CHANNEL_DRYER_DRYING_TARGET.equals(channelUID.getId())) {
-                        getApiClient().setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET,
-                                command.toFullString(), null, false, false);
+                    if (command instanceof StringType && CHANNEL_DRYER_DRYING_TARGET.equals(channelUID.getId())
+                            && apiClient != null) {
+                        apiClient.setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET, command.toFullString(),
+                                null, false, false);
                     }
                 } else {
                     logger.debugWithHaId(getThingHaId(),

@@ -12,16 +12,19 @@
  */
 package org.openhab.binding.homeconnect.internal.client.model;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  * AvailableProgram model
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class AvailableProgram {
-    private String key;
-    private boolean available;
-    private String execution;
+    private final String key;
+    private final boolean available;
+    private final String execution;
 
     public AvailableProgram(String key, boolean available, String execution) {
         this.key = key;

@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.thing.Channel;
@@ -48,7 +47,7 @@ public class HomeConnectDynamicStateDescriptionProvider implements DynamicStateD
     }
 
     @Override
-    public @Nullable StateDescription getStateDescription(@NonNull Channel channel,
+    public @Nullable StateDescription getStateDescription(Channel channel,
             @Nullable StateDescription originalStateDescription, @Nullable Locale locale) {
         if (stateDescriptions.containsKey(channel.getUID().getAsString())) {
             logger.log(Type.DEFAULT, Level.DEBUG, null, null,

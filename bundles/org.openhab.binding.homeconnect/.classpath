@@ -29,7 +29,5 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="lib/oksse-1.1.jar"/>
-	<classpathentry kind="lib" path="lib/okhttp-3.14.2.jar"/>
-	<classpathentry kind="lib" path="lib/okio-1.17.2.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.storage.Storage;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectSseClient;
@@ -34,9 +35,10 @@ import com.google.gson.GsonBuilder;
  *
  * @author Jonas Brüstel - Initial Contribution
  */
+@NonNullByDefault
 public class LogWriter {
 
-    private @NonNullByDefault org.slf4j.Logger slf4jLogger;
+    private final org.slf4j.Logger slf4jLogger;
     private final Gson gson;
     private final Storage<String> storage;
     private final String className;
@@ -53,136 +55,136 @@ public class LogWriter {
         gson = new GsonBuilder().create();
     }
 
-    public void log(Type type, Level level, String haId, String label, List<String> details,
-            org.openhab.binding.homeconnect.internal.logger.Request request,
-            org.openhab.binding.homeconnect.internal.logger.Response response, String message, Object... arguments) {
+    public void log(Type type, Level level, @Nullable String haId, @Nullable String label,
+            @Nullable List<String> details, @Nullable Request request, @Nullable Response response,
+            @Nullable String message, Object... arguments) {
         FormattingTuple messageTuple = formatLog(message, arguments);
 
         writeLog(new Log(System.currentTimeMillis(), className, type, level, messageTuple.getMessage(), haId, label,
                 details, request, response), messageTuple.getThrowable());
     }
 
-    public void trace(String message) {
+    public void trace(@Nullable String message) {
         log(Type.DEFAULT, Level.TRACE, null, null, null, null, null, message);
     }
 
-    public void debug(String message) {
+    public void debug(@Nullable String message) {
         log(Type.DEFAULT, Level.DEBUG, null, null, null, null, null, message);
     }
 
-    public void info(String message) {
+    public void info(@Nullable String message) {
         log(Type.DEFAULT, Level.INFO, null, null, null, null, null, message);
     }
 
-    public void warn(String message) {
+    public void warn(@Nullable String message) {
         log(Type.DEFAULT, Level.WARN, null, null, null, null, null, message);
     }
 
-    public void error(String message) {
+    public void error(@Nullable String message) {
         log(Type.DEFAULT, Level.ERROR, null, null, null, null, null, message);
     }
 
-    public void traceWithLabel(String label, String message) {
+    public void traceWithLabel(@Nullable String label, @Nullable String message) {
         log(Type.DEFAULT, Level.TRACE, null, label, null, null, null, message);
     }
 
-    public void debugWithLabel(String label, String message) {
+    public void debugWithLabel(@Nullable String label, @Nullable String message) {
         log(Type.DEFAULT, Level.DEBUG, null, label, null, null, null, message);
     }
 
-    public void infoWithLabel(String label, String message) {
+    public void infoWithLabel(@Nullable String label, @Nullable String message) {
         log(Type.DEFAULT, Level.INFO, null, label, null, null, null, message);
     }
 
-    public void warnWithLabel(String label, String message) {
+    public void warnWithLabel(@Nullable String label, @Nullable String message) {
         log(Type.DEFAULT, Level.WARN, null, label, null, null, null, message);
     }
 
-    public void errorWithLabel(String label, String message) {
+    public void errorWithLabel(@Nullable String label, @Nullable String message) {
         log(Type.DEFAULT, Level.ERROR, null, label, null, null, null, message);
     }
 
-    public void traceWithHaId(String haId, String message) {
+    public void traceWithHaId(@Nullable String haId, @Nullable String message) {
         log(Type.DEFAULT, Level.TRACE, haId, null, null, null, null, message);
     }
 
-    public void debugWithHaId(String haId, String message) {
+    public void debugWithHaId(@Nullable String haId, String message) {
         log(Type.DEFAULT, Level.DEBUG, haId, null, null, null, null, message);
     }
 
-    public void infoWithHaId(String haId, String message) {
+    public void infoWithHaId(@Nullable String haId, @Nullable String message) {
         log(Type.DEFAULT, Level.INFO, haId, null, null, null, null, message);
     }
 
-    public void warnWithHaId(String haId, String message) {
+    public void warnWithHaId(@Nullable String haId, @Nullable String message) {
         log(Type.DEFAULT, Level.WARN, haId, null, null, null, null, message);
     }
 
-    public void errorWithHaId(String haId, String message) {
+    public void errorWithHaId(@Nullable String haId, @Nullable String message) {
         log(Type.DEFAULT, Level.ERROR, haId, null, null, null, null, message);
     }
 
-    public void debug(String message, Object... arguments) {
+    public void debug(@Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.DEBUG, null, null, null, null, null, message, arguments);
     }
 
-    public void info(String message, Object... arguments) {
+    public void info(@Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.INFO, null, null, null, null, null, message, arguments);
     }
 
-    public void trace(String message, Object... arguments) {
+    public void trace(@Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.TRACE, null, null, null, null, null, message, arguments);
     }
 
-    public void warn(String message, Object... arguments) {
+    public void warn(@Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.WARN, null, null, null, null, null, message, arguments);
     }
 
-    public void error(String message, Object... arguments) {
+    public void error(@Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.ERROR, null, null, null, null, null, message, arguments);
     }
 
-    public void debugWithLabel(String label, String message, Object... arguments) {
+    public void debugWithLabel(@Nullable String label, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.DEBUG, null, label, null, null, null, message, arguments);
     }
 
-    public void infoWithLabel(String label, String message, Object... arguments) {
+    public void infoWithLabel(@Nullable String label, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.INFO, null, label, null, null, null, message, arguments);
     }
 
-    public void traceWithLabel(String label, String message, Object... arguments) {
+    public void traceWithLabel(@Nullable String label, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.TRACE, null, label, null, null, null, message, arguments);
     }
 
-    public void warnWithLabel(String label, String message, Object... arguments) {
+    public void warnWithLabel(@Nullable String label, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.WARN, null, label, null, null, null, message, arguments);
     }
 
-    public void errorWithLabel(String label, String message, Object... arguments) {
+    public void errorWithLabel(@Nullable String label, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.ERROR, null, label, null, null, null, message, arguments);
     }
 
-    public void debugWithHaId(String haId, String message, Object... arguments) {
+    public void debugWithHaId(@Nullable String haId, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.DEBUG, haId, null, null, null, null, message, arguments);
     }
 
-    public void infoWithHaId(String haId, String message, Object... arguments) {
+    public void infoWithHaId(@Nullable String haId, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.INFO, haId, null, null, null, null, message, arguments);
     }
 
-    public void traceWithHaId(String haId, String message, Object... arguments) {
+    public void traceWithHaId(@Nullable String haId, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.TRACE, haId, null, null, null, null, message, arguments);
     }
 
-    public void warnWithHaId(String haId, String message, Object... arguments) {
+    public void warnWithHaId(@Nullable String haId, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.WARN, haId, null, null, null, null, message, arguments);
     }
 
-    public void errorWithHaId(String haId, String message, Object... arguments) {
+    public void errorWithHaId(@Nullable String haId, @Nullable String message, Object... arguments) {
         log(Type.DEFAULT, Level.ERROR, haId, null, null, null, null, message, arguments);
     }
 
-    private void writeLog(Log entry, Throwable throwable) {
+    private void writeLog(Log entry, @Nullable Throwable throwable) {
         // log to storage
         try {
             if (loggingEnabled) {
@@ -211,9 +213,9 @@ public class LogWriter {
                     identifier = "FACTORY";
                 } else if (HomeConnectApiClient.class.getSimpleName().equals(entry.getClassName())) {
                     identifier = "API";
-                } else if (entry.getClassName() != null && entry.getClassName().endsWith("BridgeHandler")) {
+                } else if (entry.getClassName().endsWith("BridgeHandler")) {
                     identifier = "BRIDGE";
-                } else if (entry.getClassName() != null && entry.getClassName().endsWith("Handler")) {
+                } else if (entry.getClassName().endsWith("Handler")) {
                     identifier = "HANDLER";
                 } else {
                     identifier = "MISC";
@@ -229,33 +231,37 @@ public class LogWriter {
             StringBuilder sb = new StringBuilder();
             sb.append("[{}] ");
 
-            if (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR) {
-                sb.append(entry.getRequest().getMethod()).append(" ");
-                if (entry.getResponse() != null) {
-                    sb.append(entry.getResponse().getCode()).append(" ");
+            Request request = entry.getRequest();
+            if (request != null && (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR)) {
+                Response response = entry.getResponse();
+
+                sb.append(request.getMethod()).append(" ");
+                if (response != null) {
+                    sb.append(response.getCode()).append(" ");
                 }
-                sb.append(entry.getRequest().getUrl()).append("\n");
-                entry.getRequest().getHeader()
+                sb.append(request.getUrl()).append("\n");
+                request.getHeader()
                         .forEach((key, value) -> sb.append("> ").append(key).append(": ").append(value).append("\n"));
 
-                if (entry.getRequest() != null && entry.getRequest().getBody() != null) {
-                    sb.append(entry.getRequest().getBody()).append("\n");
+                if (entry.getRequest() != null && request.getBody() != null) {
+                    sb.append(request.getBody()).append("\n");
                 }
 
-                if (entry.getResponse() != null && entry.getResponse().getHeader() != null) {
+                if (response != null) {
                     sb.append("\n");
-                    entry.getResponse().getHeader().forEach(
+                    response.getHeader().forEach(
                             (key, value) -> sb.append("< ").append(key).append(": ").append(value).append("\n"));
                 }
-                if (entry.getResponse() != null && entry.getResponse().getBody() != null) {
-                    sb.append(entry.getResponse().getBody()).append("\n");
+                if (response != null && response.getBody() != null) {
+                    sb.append(response.getBody()).append("\n");
                 }
             } else {
                 sb.append(entry.getMessage());
             }
 
-            if (entry.getDetails() != null) {
-                entry.getDetails().forEach(detail -> sb.append("\n").append(detail));
+            List<String> details = entry.getDetails();
+            if (details != null) {
+                details.forEach(detail -> sb.append("\n").append(detail));
             }
 
             String format = sb.toString();
@@ -303,7 +309,7 @@ public class LogWriter {
         return gson.toJson(entry);
     }
 
-    private FormattingTuple formatLog(String format, Object... arguments) {
+    private FormattingTuple formatLog(@Nullable String format, Object... arguments) {
         return MessageFormatter.arrayFormat(format, arguments);
     }
 }

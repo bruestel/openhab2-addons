@@ -12,29 +12,33 @@
  */
 package org.openhab.binding.homeconnect.internal.client.model;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  * Option model
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class Option {
 
-    private String key;
-    private String value;
-    private String unit;
+    private final @Nullable String key;
+    private final @Nullable String value;
+    private final @Nullable String unit;
 
-    public Option(String key, String value, String unit) {
+    public Option(@Nullable String key, @Nullable String value, @Nullable String unit) {
         this.key = key;
         this.value = value;
         this.unit = unit;
     }
 
-    public String getKey() {
+    public @Nullable String getKey() {
         return key;
     }
 
-    public String getValue() {
+    public @Nullable String getValue() {
         return value;
     }
 
@@ -46,7 +50,7 @@ public class Option {
         return value != null ? Integer.valueOf(getValue()).intValue() : 0;
     }
 
-    public String getUnit() {
+    public @Nullable String getUnit() {
         return unit;
     }
 

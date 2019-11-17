@@ -12,7 +12,7 @@
  */
 package org.openhab.binding.homeconnect.internal.client.listener;
 
-import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
 
 /**
@@ -20,6 +20,7 @@ import org.openhab.binding.homeconnect.internal.client.model.Event;
  *
  * @author Jonas Brüstel - Initial contribution
  */
+@NonNullByDefault
 public interface ServerSentEventListener {
 
     /**
@@ -27,7 +28,7 @@ public interface ServerSentEventListener {
      *
      * @param event
      */
-    void onEvent(@NonNull Event event);
+    void onEvent(Event event);
 
     /**
      * If SSE client did a reconnect

@@ -23,6 +23,8 @@ import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
@@ -48,6 +50,7 @@ import okhttp3.Response;
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class HomeConnectSseClient {
 
     private static final String TEXT_EVENT_STREAM = "text/event-stream";
@@ -102,12 +105,13 @@ public class HomeConnectSseClient {
             ServerSentEvent sse = oksse.newServerSentEvent(request, new ServerSentEvent.Listener() {
 
                 @Override
-                public void onOpen(ServerSentEvent sse, Response response) {
+                public void onOpen(@Nullable ServerSentEvent sse, @Nullable Response response) {
                     logger.debugWithHaId(haId, "Channel opened");
                 }
 
                 @Override
-                public void onMessage(ServerSentEvent sse, String id, String event, String message) {
+                public void onMessage(@Nullable ServerSentEvent sse, @Nullable String id, @Nullable String event,
+                        @Nullable String message) {
                     if (KEEP_ALIVE.equals(event)) {
                         logger.debugWithHaId(haId, "KEEP-ALIVE");
                     } else {
@@ -115,7 +119,7 @@ public class HomeConnectSseClient {
                                 null, "Received id: {}, event: {}", id, event);
                     }
 
-                    if (!StringUtils.isEmpty(message) && !EMPTY_EVENT.equals(message)) {
+                    if (message != null && !StringUtils.isEmpty(message) && !EMPTY_EVENT.equals(message)) {
                         ArrayList<Event> events = mapToEvents(message, haId);
                         events.forEach(e -> eventListener.onEvent(e));
                     }
@@ -126,21 +130,22 @@ public class HomeConnectSseClient {
                 }
 
                 @Override
-                public void onComment(ServerSentEvent sse, String comment) {
+                public void onComment(@Nullable ServerSentEvent sse, @Nullable String comment) {
                     logger.debugWithHaId(haId, "Comment received. comment: {}", comment);
                 }
 
                 @Override
-                public boolean onRetryTime(ServerSentEvent sse, long milliseconds) {
+                public boolean onRetryTime(@Nullable ServerSentEvent sse, long milliseconds) {
                     logger.debugWithHaId(haId, "Retry time {}", milliseconds);
                     return true; // True to use the new retry time received by SSE
                 }
 
                 @Override
-                public boolean onRetryError(ServerSentEvent sse, Throwable throwable, Response response) {
+                public boolean onRetryError(@Nullable ServerSentEvent sse, @Nullable Throwable throwable,
+                        @Nullable Response response) {
                     boolean retry = true;
 
-                    logger.warnWithHaId(haId, "Error: {}", throwable.getMessage());
+                    logger.warnWithHaId(haId, "Error: {}", throwable != null ? throwable.getMessage() : "");
 
                     if (response != null) {
                         if (response.code() == HTTP_FORBIDDEN) {
@@ -166,12 +171,12 @@ public class HomeConnectSseClient {
                 }
 
                 @Override
-                public void onClosed(ServerSentEvent sse) {
+                public void onClosed(@Nullable ServerSentEvent sse) {
                     logger.debugWithHaId(haId, "Closed");
                 }
 
                 @Override
-                public Request onPreRetry(ServerSentEvent sse, Request request) {
+                public @Nullable Request onPreRetry(@Nullable ServerSentEvent sse, @Nullable Request request) {
                     eventListener.onReconnect();
 
                     try {

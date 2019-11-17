@@ -14,16 +14,18 @@ package org.openhab.binding.homeconnect.internal.handler;
 
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.StringType;
+import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
@@ -60,6 +62,23 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
         handlers.put(CHANNEL_SELECTED_PROGRAM_STATE,
                 updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler());
+
+        // register hood specific update handlers
+        handlers.put(CHANNEL_HOOD_INTENSIVE_LEVEL, (channelUID, cache) -> {
+            Optional<Channel> channel = getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE);
+            if (channel.isPresent()) {
+                updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler()
+                        .handle(channel.get().getUID(), cache);
+            }
+        });
+        handlers.put(CHANNEL_HOOD_VENTING_LEVEL, (channelUID, cache) -> {
+            Optional<Channel> channel = getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE);
+            if (channel.isPresent()) {
+                updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler()
+                        .handle(channel.get().getUID(), cache);
+            }
+        });
+
     }
 
     @Override
@@ -90,27 +109,29 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
     }
 
     @Override
-    public void handleCommand(@NonNull ChannelUID channelUID, @NonNull Command command) {
+    public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
+            HomeConnectApiClient apiClient = getApiClient();
 
             try {
                 // turn hood on and off
-                if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())) {
-                    getApiClient().setPowerState(getThingHaId(),
+                if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())
+                        && apiClient != null) {
+                    apiClient.setPowerState(getThingHaId(),
                             OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_OFF);
                 }
 
                 // program options
                 String operationState = getOperationState();
-                if (OPERATION_STATE_INACTIVE.equals(operationState)) {
+                if (OPERATION_STATE_INACTIVE.equals(operationState) && apiClient != null) {
                     // set intensive level
                     if (command instanceof StringType && CHANNEL_HOOD_INTENSIVE_LEVEL.equals(channelUID.getId())) {
-                        getApiClient().setProgramOptions(getThingHaId(), OPTION_HOOD_INTENSIVE_LEVEL,
-                                command.toFullString(), null, false, false);
+                        apiClient.setProgramOptions(getThingHaId(), OPTION_HOOD_INTENSIVE_LEVEL, command.toFullString(),
+                                null, false, false);
                     } else if (command instanceof StringType && CHANNEL_HOOD_VENTING_LEVEL.equals(channelUID.getId())) {
-                        getApiClient().setProgramOptions(getThingHaId(), OPTION_HOOD_VENTING_LEVEL,
-                                command.toFullString(), null, false, false);
+                        apiClient.setProgramOptions(getThingHaId(), OPTION_HOOD_VENTING_LEVEL, command.toFullString(),
+                                null, false, false);
                     }
                 } else {
                     logger.debugWithHaId(getThingHaId(),

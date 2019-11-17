@@ -14,6 +14,8 @@ package org.openhab.binding.homeconnect.internal.logger;
 
 import java.util.List;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.slf4j.event.Level;
 
 /**
@@ -22,21 +24,23 @@ import org.slf4j.event.Level;
  *
  * @author Jonas Brüstel - Initial Contribution
  */
+@NonNullByDefault
 public class Log {
 
     private long created;
     private String className;
     private Type type;
     private Level level;
-    private String message;
-    private String haId;
-    private String label;
-    private List<String> details;
-    private Request request;
-    private Response response;
+    private @Nullable String message;
+    private @Nullable String haId;
+    private @Nullable String label;
+    private @Nullable List<String> details;
+    private @Nullable Request request;
+    private @Nullable Response response;
 
-    public Log(long created, String className, Type type, Level level, String message, String haId, String label,
-            List<String> details, Request request, Response response) {
+    public Log(long created, String className, Type type, Level level, @Nullable String message, @Nullable String haId,
+            @Nullable String label, @Nullable List<String> details, @Nullable Request request,
+            @Nullable Response response) {
         this.created = created;
         this.className = className;
         this.type = type;
@@ -65,27 +69,27 @@ public class Log {
         return level;
     }
 
-    public String getMessage() {
+    public @Nullable String getMessage() {
         return message;
     }
 
-    public String getHaId() {
+    public @Nullable String getHaId() {
         return haId;
     }
 
-    public String getLabel() {
+    public @Nullable String getLabel() {
         return label;
     }
 
-    public List<String> getDetails() {
+    public @Nullable List<String> getDetails() {
         return details;
     }
 
-    public Request getRequest() {
+    public @Nullable Request getRequest() {
         return request;
     }
 
-    public Response getResponse() {
+    public @Nullable Response getResponse() {
         return response;
     }
 

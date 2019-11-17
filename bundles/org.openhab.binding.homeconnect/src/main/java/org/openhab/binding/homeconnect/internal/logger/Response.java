@@ -14,18 +14,22 @@ package org.openhab.binding.homeconnect.internal.logger;
 
 import java.util.HashMap;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  *
  * HTTP response log model.
  *
  * @author Jonas Brüstel - Initial Contribution
  */
+@NonNullByDefault
 public class Response {
     private int code;
     private HashMap<String, String> header;
-    private String body;
+    private @Nullable String body;
 
-    public Response(int code, HashMap<String, String> header, String body) {
+    public Response(int code, HashMap<String, String> header, @Nullable String body) {
         super();
         this.code = code;
         this.header = header;
@@ -40,7 +44,7 @@ public class Response {
         return header;
     }
 
-    public String getBody() {
+    public @Nullable String getBody() {
         return body;
     }
 

@@ -12,20 +12,23 @@
  */
 package org.openhab.binding.homeconnect.internal.client.model;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  * Data model
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class Data {
 
-    private String name;
-    private String value;
-    private String unit;
+    private final String name;
+    private final @Nullable String value;
+    private final @Nullable String unit;
 
-    public Data(String name, String value, String unit) {
-        super();
+    public Data(String name, @Nullable String value, @Nullable String unit) {
         this.name = name;
         this.value = value;
         this.unit = unit;
@@ -35,11 +38,11 @@ public class Data {
         return name;
     }
 
-    public String getValue() {
+    public @Nullable String getValue() {
         return value;
     }
 
-    public String getUnit() {
+    public @Nullable String getUnit() {
         return unit;
     }
 

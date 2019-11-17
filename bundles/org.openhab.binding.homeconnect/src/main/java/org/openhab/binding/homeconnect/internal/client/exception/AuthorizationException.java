@@ -12,12 +12,15 @@
  */
 package org.openhab.binding.homeconnect.internal.client.exception;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  * oAuth authorization exception
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class AuthorizationException extends Exception {
 
     private static final long serialVersionUID = 1L;

@@ -25,7 +25,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.core.Configuration;
@@ -158,7 +157,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     }
 
     @Override
-    public void handleConfigurationUpdate(Map<@NonNull String, @NonNull Object> configurationParameters) {
+    public void handleConfigurationUpdate(Map<String, Object> configurationParameters) {
         if (isModifyingCurrentConfig(configurationParameters)) {
             List<String> parameters = configurationParameters.entrySet().stream().map((entry) -> {
                 if (CLIENT_ID.equals(entry.getKey()) || CLIENT_SECRET.equals(entry.getKey())) {

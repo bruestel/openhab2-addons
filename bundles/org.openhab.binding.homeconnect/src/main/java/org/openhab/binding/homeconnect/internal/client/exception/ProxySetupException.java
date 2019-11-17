@@ -15,25 +15,16 @@ package org.openhab.binding.homeconnect.internal.client.exception;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * Invalid oAuth token exception
+ * HTTP proxy setup exception
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
 @NonNullByDefault
-public class InvalidTokenException extends Exception {
-
+public class ProxySetupException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
-    public InvalidTokenException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    public InvalidTokenException(String message) {
-        super(message);
-    }
-
-    public InvalidTokenException(Throwable cause) {
+    public ProxySetupException(Throwable cause) {
         super(cause);
     }
 }

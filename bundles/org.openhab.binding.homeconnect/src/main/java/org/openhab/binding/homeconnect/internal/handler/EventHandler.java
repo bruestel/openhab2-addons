@@ -10,30 +10,17 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.binding.homeconnect.internal.client.exception;
+package org.openhab.binding.homeconnect.internal.handler;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.binding.homeconnect.internal.client.model.Event;
 
 /**
- * Invalid oAuth token exception
+ * The {@link EventHandler} is responsible for handling events, which where send via Server-Sent event interface.
  *
  * @author Jonas Brüstel - Initial contribution
- *
  */
 @NonNullByDefault
-public class InvalidTokenException extends Exception {
-
-    private static final long serialVersionUID = 1L;
-
-    public InvalidTokenException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    public InvalidTokenException(String message) {
-        super(message);
-    }
-
-    public InvalidTokenException(Throwable cause) {
-        super(cause);
-    }
+public interface EventHandler {
+    void handle(Event event);
 }

@@ -27,12 +27,15 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
+import org.openhab.binding.homeconnect.internal.client.exception.ProxySetupException;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
@@ -50,6 +53,7 @@ import okhttp3.Request;
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class OkHttpHelper {
     private static final String HEADER_AUTHORIZATION = "Authorization";
     private static final String BEARER = "Bearer ";
@@ -64,13 +68,13 @@ public class OkHttpHelper {
             try {
                 TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
                     @Override
-                    public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType)
-                            throws CertificateException {
+                    public void checkClientTrusted(java.security.cert.X509Certificate @Nullable [] chain,
+                            @Nullable String authType) throws CertificateException {
                     }
 
                     @Override
-                    public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType)
-                            throws CertificateException {
+                    public void checkServerTrusted(java.security.cert.X509Certificate @Nullable [] chain,
+                            @Nullable String authType) throws CertificateException {
                     }
 
                     @Override
@@ -88,7 +92,7 @@ public class OkHttpHelper {
                         .hostnameVerifier(new HostnameVerifier() {
 
                             @Override
-                            public boolean verify(String hostname, SSLSession session) {
+                            public boolean verify(@Nullable String hostname, @Nullable SSLSession session) {
                                 return true;
                             }
                         }).proxy(proxy);
@@ -100,7 +104,10 @@ public class OkHttpHelper {
         return new OkHttpClient().newBuilder();
     }
 
-    public static String formatJsonBody(String jsonString) {
+    public static String formatJsonBody(@Nullable String jsonString) {
+        if (jsonString == null) {
+            return "";
+        }
         try {
             JsonParser parser = new JsonParser();
             JsonObject json = parser.parse(jsonString).getAsJsonObject();
@@ -135,14 +142,6 @@ public class OkHttpHelper {
             throw new CommunicationException(e.getMessage(), e);
         } catch (OAuthException | OAuthResponseException e) {
             throw new AuthorizationException(e.getMessage(), e);
-        }
-    }
-
-    protected class ProxySetupException extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-
-        public ProxySetupException(Throwable cause) {
-            super(cause);
         }
     }
 }

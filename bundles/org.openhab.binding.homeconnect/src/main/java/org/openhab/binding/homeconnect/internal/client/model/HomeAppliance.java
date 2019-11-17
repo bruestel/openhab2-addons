@@ -12,12 +12,16 @@
  */
 package org.openhab.binding.homeconnect.internal.client.model;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
 /**
  * Home appliance model
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class HomeAppliance {
     private String name;
     private String brand;
@@ -70,12 +74,12 @@ public class HomeAppliance {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((haId == null) ? 0 : haId.hashCode());
+        result = prime * result + haId.hashCode();
         return result;
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(@Nullable Object obj) {
         if (this == obj) {
             return true;
         }
@@ -86,11 +90,7 @@ public class HomeAppliance {
             return false;
         }
         HomeAppliance other = (HomeAppliance) obj;
-        if (haId == null) {
-            if (other.haId != null) {
-                return false;
-            }
-        } else if (!haId.equals(other.haId)) {
+        if (!haId.equals(other.haId)) {
             return false;
         }
         return true;

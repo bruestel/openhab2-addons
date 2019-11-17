@@ -16,15 +16,17 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.core.library.types.StringType;
+import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
@@ -62,6 +64,22 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
         handlers.put(CHANNEL_SELECTED_PROGRAM_STATE,
                 updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler());
+
+        // register washer specific handlers
+        handlers.put(CHANNEL_WASHER_SPIN_SPEED, (channelUID, cache) -> {
+            Optional<Channel> channel = getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE);
+            if (channel.isPresent()) {
+                updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler()
+                        .handle(channel.get().getUID(), cache);
+            }
+        });
+        handlers.put(CHANNEL_WASHER_TEMPERATURE, (channelUID, cache) -> {
+            Optional<Channel> channel = getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE);
+            if (channel.isPresent()) {
+                updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler()
+                        .handle(channel.get().getUID(), cache);
+            }
+        });
     }
 
     @Override
@@ -106,35 +124,36 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
     }
 
     @Override
-    public void handleCommand(@NonNull ChannelUID channelUID, @NonNull Command command) {
+    public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
             String operationState = getOperationState();
+            HomeConnectApiClient apiClient = getApiClient();
 
             try {
                 // only handle these commands if operation state allows it
-                if (operationState != null && INACTIVE_STATE.contains(operationState)) {
+                if (operationState != null && INACTIVE_STATE.contains(operationState) && apiClient != null) {
                     // set temperature option
                     if (command instanceof StringType && CHANNEL_WASHER_TEMPERATURE.equals(channelUID.getId())) {
-                        getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE,
-                                command.toFullString(), null, false, false);
+                        apiClient.setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE, command.toFullString(),
+                                null, false, false);
                     }
 
                     // set spin speed option
                     if (command instanceof StringType && CHANNEL_WASHER_SPIN_SPEED.equals(channelUID.getId())) {
-                        getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_SPIN_SPEED,
-                                command.toFullString(), null, false, false);
+                        apiClient.setProgramOptions(getThingHaId(), OPTION_WASHER_SPIN_SPEED, command.toFullString(),
+                                null, false, false);
                     }
 
                     // set iDos 1 option
                     if (command instanceof StringType && CHANNEL_WASHER_IDOS1.equals(channelUID.getId())) {
-                        getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_1_DOSING_LEVEL,
+                        apiClient.setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_1_DOSING_LEVEL,
                                 command.toFullString(), null, false, false);
                     }
 
                     // set iDos 2 option
                     if (command instanceof StringType && CHANNEL_WASHER_IDOS2.equals(channelUID.getId())) {
-                        getApiClient().setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_2_DOSING_LEVEL,
+                        apiClient.setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_2_DOSING_LEVEL,
                                 command.toFullString(), null, false, false);
                     }
                 } else {

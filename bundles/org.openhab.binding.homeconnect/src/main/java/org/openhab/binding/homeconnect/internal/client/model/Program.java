@@ -14,18 +14,20 @@ package org.openhab.binding.homeconnect.internal.client.model;
 
 import java.util.List;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  * Program model
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class Program {
-    private String key;
-    private List<Option> options;
+    private final String key;
+    private final List<Option> options;
 
     public Program(String key, List<Option> options) {
-        super();
         this.key = key;
         this.options = options;
     }

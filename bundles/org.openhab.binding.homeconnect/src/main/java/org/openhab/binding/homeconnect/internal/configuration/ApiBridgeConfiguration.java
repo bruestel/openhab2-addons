@@ -12,15 +12,18 @@
  */
 package org.openhab.binding.homeconnect.internal.configuration;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  * The {@link ApiBridgeConfiguration} class contains fields mapping thing configuration parameters.
  *
  * @author Jonas Brüstel - Initial contribution
  */
+@NonNullByDefault
 public class ApiBridgeConfiguration {
 
-    private String clientId;
-    private String clientSecret;
+    private @NonNullByDefault({}) String clientId;
+    private @NonNullByDefault({}) String clientSecret;
     private boolean simulator;
 
     public String getClientId() {

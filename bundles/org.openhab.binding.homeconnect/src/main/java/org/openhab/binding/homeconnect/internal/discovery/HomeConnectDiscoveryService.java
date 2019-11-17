@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
 import org.eclipse.smarthome.config.discovery.DiscoveryResult;
 import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
@@ -40,6 +40,7 @@ import org.slf4j.event.Level;
  *
  * @author Jonas Brüstel - Initial contribution
  */
+@NonNullByDefault
 public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
 
     private static final int SEARCH_TIME = 20;
@@ -54,8 +55,7 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
      * @param bridgeHandler bridge handler
      * @param loggingService logging service
      */
-    public HomeConnectDiscoveryService(@NonNull HomeConnectBridgeHandler bridgeHandler,
-            EmbeddedLoggingService loggingService) {
+    public HomeConnectDiscoveryService(HomeConnectBridgeHandler bridgeHandler, EmbeddedLoggingService loggingService) {
         super(DISCOVERABLE_DEVICE_THING_TYPES_UIDS, SEARCH_TIME, true);
         this.bridgeHandler = bridgeHandler;
         this.logger = loggingService.getLogger(HomeConnectDiscoveryService.class);
@@ -69,63 +69,60 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
 
         try {
             List<HomeAppliance> appliances = apiClient.getHomeAppliances();
-            if (appliances != null) {
-                logger.log(Type.DEFAULT, Level.DEBUG, null, null,
-                        appliances.stream().map(appliance -> appliance.toString()).collect(Collectors.toList()), null,
-                        null, "Scan found {} devices.", appliances.size());
+            logger.log(Type.DEFAULT, Level.DEBUG, null, null,
+                    appliances.stream().map(appliance -> appliance.toString()).collect(Collectors.toList()), null, null,
+                    "Scan found {} devices.", appliances.size());
 
-                // add found devices
-                for (HomeAppliance appliance : appliances) {
-                    if (alreadyExists(appliance.getHaId())) {
-                        logger.debug("Device {} ({}) already added as thing.", appliance.getHaId(),
-                                appliance.getType().toUpperCase());
-                    } else if (THING_TYPE_DISHWASHER.getId().equalsIgnoreCase(appliance.getType())
-                            || THING_TYPE_OVEN.getId().equalsIgnoreCase(appliance.getType())
-                            || THING_TYPE_WASHER.getId().equalsIgnoreCase(appliance.getType())
-                            || THING_TYPE_DRYER.getId().equalsIgnoreCase(appliance.getType())
-                            || THING_TYPE_COFFEE_MAKER.getId().equalsIgnoreCase(appliance.getType())
-                            || THING_TYPE_WASHER_DRYER.getId().equalsIgnoreCase(appliance.getType())
-                            || THING_TYPE_HOOD.getId().equalsIgnoreCase(appliance.getType())
-                            || THING_TYPE_COOKTOP.getId().equalsIgnoreCase(appliance.getType())
-                            || THING_TYPE_FRIDGE_FREEZER.getId().equalsIgnoreCase(appliance.getType())) {
-                        logger.info("Found {} ({}).", appliance.getHaId(), appliance.getType().toUpperCase());
-                        bridgeHandler.getThing().getThings().forEach(thing -> thing.getProperties().get(HA_ID));
+            // add found devices
+            for (HomeAppliance appliance : appliances) {
+                if (alreadyExists(appliance.getHaId())) {
+                    logger.debug("Device {} ({}) already added as thing.", appliance.getHaId(),
+                            appliance.getType().toUpperCase());
+                } else if (THING_TYPE_DISHWASHER.getId().equalsIgnoreCase(appliance.getType())
+                        || THING_TYPE_OVEN.getId().equalsIgnoreCase(appliance.getType())
+                        || THING_TYPE_WASHER.getId().equalsIgnoreCase(appliance.getType())
+                        || THING_TYPE_DRYER.getId().equalsIgnoreCase(appliance.getType())
+                        || THING_TYPE_COFFEE_MAKER.getId().equalsIgnoreCase(appliance.getType())
+                        || THING_TYPE_WASHER_DRYER.getId().equalsIgnoreCase(appliance.getType())
+                        || THING_TYPE_HOOD.getId().equalsIgnoreCase(appliance.getType())
+                        || THING_TYPE_COOKTOP.getId().equalsIgnoreCase(appliance.getType())
+                        || THING_TYPE_FRIDGE_FREEZER.getId().equalsIgnoreCase(appliance.getType())) {
+                    logger.info("Found {} ({}).", appliance.getHaId(), appliance.getType().toUpperCase());
+                    bridgeHandler.getThing().getThings().forEach(thing -> thing.getProperties().get(HA_ID));
 
-                        Map<String, Object> properties = new HashMap<>();
-                        properties.put(HA_ID, appliance.getHaId());
-                        String name = appliance.getBrand() + " " + appliance.getName() + " (" + appliance.getHaId()
-                                + ")";
+                    Map<String, Object> properties = new HashMap<>();
+                    properties.put(HA_ID, appliance.getHaId());
+                    String name = appliance.getBrand() + " " + appliance.getName() + " (" + appliance.getHaId() + ")";
 
-                        ThingTypeUID thingTypeUID;
-                        if (THING_TYPE_DISHWASHER.getId().equalsIgnoreCase(appliance.getType())) {
-                            thingTypeUID = THING_TYPE_DISHWASHER;
-                        } else if (THING_TYPE_OVEN.getId().equalsIgnoreCase(appliance.getType())) {
-                            thingTypeUID = THING_TYPE_OVEN;
-                        } else if (THING_TYPE_FRIDGE_FREEZER.getId().equalsIgnoreCase(appliance.getType())) {
-                            thingTypeUID = THING_TYPE_FRIDGE_FREEZER;
-                        } else if (THING_TYPE_DRYER.getId().equalsIgnoreCase(appliance.getType())) {
-                            thingTypeUID = THING_TYPE_DRYER;
-                        } else if (THING_TYPE_COFFEE_MAKER.getId().equalsIgnoreCase(appliance.getType())) {
-                            thingTypeUID = THING_TYPE_COFFEE_MAKER;
-                        } else if (THING_TYPE_HOOD.getId().equalsIgnoreCase(appliance.getType())) {
-                            thingTypeUID = THING_TYPE_HOOD;
-                        } else if (THING_TYPE_WASHER_DRYER.getId().equalsIgnoreCase(appliance.getType())) {
-                            thingTypeUID = THING_TYPE_WASHER_DRYER;
-                        } else if (THING_TYPE_COOKTOP.getId().equalsIgnoreCase(appliance.getType())) {
-                            thingTypeUID = THING_TYPE_COOKTOP;
-                        } else {
-                            thingTypeUID = THING_TYPE_WASHER;
-                        }
-
-                        DiscoveryResult discoveryResult = DiscoveryResultBuilder
-                                .create(new ThingUID(BINDING_ID, appliance.getType(), appliance.getHaId()))
-                                .withThingType(thingTypeUID).withProperties(properties)
-                                .withBridge(bridgeHandler.getThing().getUID()).withLabel(name).build();
-                        thingDiscovered(discoveryResult);
+                    ThingTypeUID thingTypeUID;
+                    if (THING_TYPE_DISHWASHER.getId().equalsIgnoreCase(appliance.getType())) {
+                        thingTypeUID = THING_TYPE_DISHWASHER;
+                    } else if (THING_TYPE_OVEN.getId().equalsIgnoreCase(appliance.getType())) {
+                        thingTypeUID = THING_TYPE_OVEN;
+                    } else if (THING_TYPE_FRIDGE_FREEZER.getId().equalsIgnoreCase(appliance.getType())) {
+                        thingTypeUID = THING_TYPE_FRIDGE_FREEZER;
+                    } else if (THING_TYPE_DRYER.getId().equalsIgnoreCase(appliance.getType())) {
+                        thingTypeUID = THING_TYPE_DRYER;
+                    } else if (THING_TYPE_COFFEE_MAKER.getId().equalsIgnoreCase(appliance.getType())) {
+                        thingTypeUID = THING_TYPE_COFFEE_MAKER;
+                    } else if (THING_TYPE_HOOD.getId().equalsIgnoreCase(appliance.getType())) {
+                        thingTypeUID = THING_TYPE_HOOD;
+                    } else if (THING_TYPE_WASHER_DRYER.getId().equalsIgnoreCase(appliance.getType())) {
+                        thingTypeUID = THING_TYPE_WASHER_DRYER;
+                    } else if (THING_TYPE_COOKTOP.getId().equalsIgnoreCase(appliance.getType())) {
+                        thingTypeUID = THING_TYPE_COOKTOP;
                     } else {
-                        logger.debug("Ignoring unsupported device {} of type {}.", appliance.getHaId(),
-                                appliance.getType());
+                        thingTypeUID = THING_TYPE_WASHER;
                     }
+
+                    DiscoveryResult discoveryResult = DiscoveryResultBuilder
+                            .create(new ThingUID(BINDING_ID, appliance.getType(), appliance.getHaId()))
+                            .withThingType(thingTypeUID).withProperties(properties)
+                            .withBridge(bridgeHandler.getThing().getUID()).withLabel(name).build();
+                    thingDiscovered(discoveryResult);
+                } else {
+                    logger.debug("Ignoring unsupported device {} of type {}.", appliance.getHaId(),
+                            appliance.getType());
                 }
             }
         } catch (Exception e) {

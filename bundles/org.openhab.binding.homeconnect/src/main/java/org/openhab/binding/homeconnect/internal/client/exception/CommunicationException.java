@@ -14,12 +14,15 @@ package org.openhab.binding.homeconnect.internal.client.exception;
 
 import java.util.Date;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  * API communication exception
  *
  * @author Jonas Brüstel - Initial contribution
  *
  */
+@NonNullByDefault
 public class CommunicationException extends Exception {
 
     private static final long serialVersionUID = 1L;

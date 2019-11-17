@@ -10,30 +10,19 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.binding.homeconnect.internal.client.exception;
+package org.openhab.binding.homeconnect.internal.handler;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
+import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 
 /**
- * Invalid oAuth token exception
+ * Custom supplier implementation with exceptions.
  *
  * @author Jonas Brüstel - Initial contribution
- *
  */
 @NonNullByDefault
-public class InvalidTokenException extends Exception {
-
-    private static final long serialVersionUID = 1L;
-
-    public InvalidTokenException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    public InvalidTokenException(String message) {
-        super(message);
-    }
-
-    public InvalidTokenException(Throwable cause) {
-        super(cause);
-    }
+@FunctionalInterface
+public interface SupplierWithException<T> {
+    public T get() throws CommunicationException, AuthorizationException;
 }

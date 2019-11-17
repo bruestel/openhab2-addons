@@ -12,12 +12,15 @@
  */
 package org.openhab.binding.homeconnect.internal.logger;
 
+import org.eclipse.jdt.annotation.NonNullByDefault;
+
 /**
  *
  * Fatal logger exception.
  *
  * @author Jonas Brüstel - Initial Contribution
  */
+@NonNullByDefault
 public class FatalLoggerException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
