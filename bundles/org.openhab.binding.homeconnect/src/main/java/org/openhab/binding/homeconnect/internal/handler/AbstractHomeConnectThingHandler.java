@@ -156,7 +156,25 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     updateState(channelUID, new StringType(""));
 
                     if ("start".equalsIgnoreCase(command.toFullString())) {
-                        apiClient.startSelectedProgram(getThingHaId());
+                        Bridge bridge = getBridge();
+                        if (bridge != null) {
+                            BridgeHandler bridgeHandler = bridge.getHandler();
+                            if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
+                                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
+                                // workaround for api bug
+                                // if simulator, program options have to be passed along with the desired program
+                                // if non simulator, some options throw a "SDK.Error.UnsupportedOption" error
+                                if (homeConnectBridgeHandler.getConfiguration().isSimulator()) {
+                                    apiClient.startSelectedProgram(getThingHaId());
+                                } else {
+                                    Program selectedProgram = apiClient.getSelectedProgram(getThingHaId());
+                                    if (selectedProgram != null) {
+                                        apiClient.startProgram(getThingHaId(), selectedProgram.getKey());
+                                    }
+                                }
+                            }
+                        }
+
                     } else if ("stop".equalsIgnoreCase(command.toFullString())) {
                         apiClient.stopProgram(getThingHaId());
                     } else if ("selected".equalsIgnoreCase(command.toFullString())) {

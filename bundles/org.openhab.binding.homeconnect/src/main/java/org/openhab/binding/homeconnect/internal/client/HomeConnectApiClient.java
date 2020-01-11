@@ -97,7 +97,7 @@ public class HomeConnectApiClient {
         Request request = createGetRequest("/api/homeappliances");
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(HTTP_OK, request, response, null);
+            checkResponseCode(HTTP_OK, request, response, null, null);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, null, null, null, map(request, null), map(response, body), null);
 
@@ -123,7 +123,7 @@ public class HomeConnectApiClient {
         Request request = createGetRequest("/api/homeappliances/" + haId);
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(HTTP_OK, request, response, haId);
+            checkResponseCode(HTTP_OK, request, response, haId, null);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
 
@@ -421,7 +421,7 @@ public class HomeConnectApiClient {
         Request request = createGetRequest(path);
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(asList(HTTP_OK), request, response, haId);
+            checkResponseCode(asList(HTTP_OK), request, response, haId, null);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
 
@@ -457,7 +457,7 @@ public class HomeConnectApiClient {
 
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(Arrays.asList(HTTP_OK), request, response, haId);
+            checkResponseCode(Arrays.asList(HTTP_OK), request, response, haId, null);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
 
@@ -484,7 +484,7 @@ public class HomeConnectApiClient {
                 .header(ACCEPT, BSH_JSON_V1).put(requestBody).build();
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(HTTP_NO_CONTENT, request, response, haId);
+            checkResponseCode(HTTP_NO_CONTENT, request, response, haId, requestBodyPayload);
             String body = response.body().string();
 
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, requestBodyPayload),
@@ -503,7 +503,7 @@ public class HomeConnectApiClient {
 
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(Arrays.asList(HTTP_OK, HTTP_NOT_FOUND), request, response, haId);
+            checkResponseCode(Arrays.asList(HTTP_OK, HTTP_NOT_FOUND), request, response, haId, null);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
 
@@ -526,7 +526,7 @@ public class HomeConnectApiClient {
         Request request = createGetRequest(path);
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(Arrays.asList(HTTP_OK), request, response, haId);
+            checkResponseCode(Arrays.asList(HTTP_OK), request, response, haId, null);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
 
@@ -546,7 +546,7 @@ public class HomeConnectApiClient {
                 .build();
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(HTTP_NO_CONTENT, request, response, haId);
+            checkResponseCode(HTTP_NO_CONTENT, request, response, haId, null);
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, null), null);
         } catch (IOException e) {
             logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
@@ -562,7 +562,7 @@ public class HomeConnectApiClient {
         Request request = createGetRequest(path);
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(HTTP_OK, request, response, haId);
+            checkResponseCode(HTTP_OK, request, response, haId, null);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
 
@@ -607,7 +607,7 @@ public class HomeConnectApiClient {
                 .header(ACCEPT, BSH_JSON_V1).put(requestBody).build();
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(HTTP_NO_CONTENT, request, response, haId);
+            checkResponseCode(HTTP_NO_CONTENT, request, response, haId, requestBodyPayload);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, requestBodyPayload),
                     map(response, body), null);
@@ -656,7 +656,7 @@ public class HomeConnectApiClient {
                 .header(ACCEPT, BSH_JSON_V1).put(requestBody).build();
 
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(HTTP_NO_CONTENT, request, response, haId);
+            checkResponseCode(HTTP_NO_CONTENT, request, response, haId, requestBodyPayload);
             String body = response.body().string();
             logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, requestBodyPayload),
                     map(response, body), null);
@@ -667,13 +667,14 @@ public class HomeConnectApiClient {
         }
     }
 
-    private void checkResponseCode(int desiredCode, Request request, Response response, @Nullable String haId)
-            throws CommunicationException, AuthorizationException {
-        checkResponseCode(asList(desiredCode), request, response, haId);
+    private void checkResponseCode(int desiredCode, Request request, Response response, @Nullable String haId,
+            @Nullable String requestPayload) throws CommunicationException, AuthorizationException {
+        checkResponseCode(asList(desiredCode), request, response, haId, requestPayload);
     }
 
     private void checkResponseCode(List<Integer> desiredCodes, Request request, Response response,
-            @Nullable String haId) throws CommunicationException, AuthorizationException {
+            @Nullable String haId, @Nullable String requestPayload)
+            throws CommunicationException, AuthorizationException {
         if (!desiredCodes.contains(HTTP_UNAUTHORIZED) && response.code() == HTTP_UNAUTHORIZED) {
             logger.debugWithHaId(haId, "Current access token is invalid.");
             throw new AuthorizationException("Token invalid!");
@@ -689,7 +690,7 @@ public class HomeConnectApiClient {
                 logger.errorWithHaId(haId, "Could not get HTTP response body as string.", e);
             }
 
-            logger.log(Type.API_ERROR, Level.WARN, haId, null, null, map(request, null), map(response, body),
+            logger.log(Type.API_ERROR, Level.WARN, haId, null, null, map(request, requestPayload), map(response, body),
                     "Invalid HTTP response code {} (allowed: {})", code, desiredCodes);
             throw new CommunicationException(code, message, body);
         }
