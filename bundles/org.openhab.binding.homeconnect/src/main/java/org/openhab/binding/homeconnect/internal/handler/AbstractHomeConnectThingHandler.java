@@ -17,11 +17,14 @@ import static org.eclipse.smarthome.core.library.unit.SIUnits.CELSIUS;
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.*;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import javax.measure.Unit;
@@ -77,8 +80,13 @@ import org.slf4j.event.Level;
 public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler implements ServerSentEventListener {
 
     private static final int CACHE_TTL = 2;
+    private static final int SSE_KEEP_ALIVE_INITIAL_DELAY = 1;
+    private static final int SSE_KEEP_ALIVE_PERIOD = 1;
+    private static final int SSE_KEEP_ALIVE_RESTART_INTERVAL = 3;
 
     private @Nullable String operationState;
+    private @Nullable LocalDateTime sseLastEventReceived;
+    private @Nullable ScheduledFuture<?> sseMonitorFuture;
 
     private final ConcurrentHashMap<String, EventHandler> eventHandlers;
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
@@ -113,6 +121,21 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
                 HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
                 homeConnectBridgeHandler.registerServerSentEventListener(this);
+
+                logger.debugWithHaId(getThingHaId(), "Start SSE connection monitor of thing handler ({}).",
+                        getThingLabel());
+                this.sseMonitorFuture = scheduler.scheduleWithFixedDelay(() -> {
+                    logger.debugWithHaId(getThingHaId(),
+                            "Check SSE connection ({}). Last event package received at {}.", getThingLabel(),
+                            sseLastEventReceived);
+                    if (sseLastEventReceived != null && ChronoUnit.MINUTES.between(sseLastEventReceived,
+                            LocalDateTime.now()) > SSE_KEEP_ALIVE_RESTART_INTERVAL) {
+                        logger.warnWithHaId(getThingHaId(), "Dead SSE connection detected ({}). Restart handler.",
+                                getThingLabel());
+                        dispose();
+                        initialize();
+                    }
+                }, SSE_KEEP_ALIVE_INITIAL_DELAY, SSE_KEEP_ALIVE_PERIOD, TimeUnit.MINUTES);
             }
         } else {
             logger.debugWithHaId(getThingHaId(), "Bridge is not online ({}), skip initialization of thing handler.",
@@ -130,6 +153,13 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
                 homeConnectBridgeHandler.unregisterServerSentEventListener(this);
             }
+        }
+
+        ScheduledFuture<?> keepAliveMonitorFuture = this.sseMonitorFuture;
+        if (keepAliveMonitorFuture != null) {
+            logger.debug("Dispose SSE connection monitor of thing handler ({}).", getThingLabel());
+            keepAliveMonitorFuture.cancel(true);
+            this.sseMonitorFuture = null;
         }
     }
 
@@ -203,6 +233,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     @Override
     public void onEvent(Event event) {
         logger.debugWithHaId(getThingHaId(), "{}", event);
+        sseLastEventReceived = LocalDateTime.now();
 
         if (EVENT_DISCONNECTED.equals(event.getKey())) {
             logger.infoWithHaId(getThingHaId(), "Received DISCONNECTED event. Set {} to OFFLINE.",
@@ -225,7 +256,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
         if (eventHandlers.containsKey(event.getKey())) {
             eventHandlers.get(event.getKey()).handle(event);
-        } else {
+        } else if (!EVENT_CONNECTED.equals(event.getKey()) && !EVENT_DISCONNECTED.equals(event.getKey())
+                && !EVENT_KEEP_ALIVE.equals(event.getKey())) {
             logger.debugWithHaId(getThingHaId(), "No event handler registered for event {}. Ignore event.", event);
         }
     }

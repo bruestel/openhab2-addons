@@ -125,7 +125,7 @@ public class HomeConnectSseClient {
                         mapToEvents(message, haId).forEach(eventListener::onEvent);
                     }
 
-                    if (CONNECTED.equals(event) || DISCONNECTED.equals(event)) {
+                    if (CONNECTED.equals(event) || DISCONNECTED.equals(event) || KEEP_ALIVE.equals(event)) {
                         eventListener.onEvent(new Event(event, null, null));
                     }
                 }
