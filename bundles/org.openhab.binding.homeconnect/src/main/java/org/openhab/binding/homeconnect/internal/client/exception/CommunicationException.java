@@ -12,6 +12,8 @@
  */
 package org.openhab.binding.homeconnect.internal.client.exception;
 
+import static java.lang.String.format;
+
 import java.util.Date;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -40,7 +42,7 @@ public class CommunicationException extends Exception {
     }
 
     public CommunicationException(int code, String message, String body) {
-        super(String.format("Communication error! response code: %d, message: %s, body: %s (Tried at %s)", code,
-                message, body, new Date()));
+        super(format("Communication error! response code: %d, message: %s, body: %s (Tried at %s)", code, message, body,
+                new Date()));
     }
 }

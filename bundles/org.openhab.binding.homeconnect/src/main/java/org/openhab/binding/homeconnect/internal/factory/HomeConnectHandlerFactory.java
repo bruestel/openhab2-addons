@@ -12,11 +12,17 @@
  */
 package org.openhab.binding.homeconnect.internal.factory;
 
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
-
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Map;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SUPPORTED_DEVICE_THING_TYPES_UIDS;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_API_BRIDGE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_COFFEE_MAKER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_COOKTOP;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_DISHWASHER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_DRYER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_FRIDGE_FREEZER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_HOOD;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_OVEN;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER_DRYER;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -41,12 +47,16 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectOvenHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherDryerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherHandler;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
+import org.openhab.binding.homeconnect.internal.servlet.HomeConnectServlet;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Map;
 
 /**
  * The {@link HomeConnectHandlerFactory} is responsible for creating things and thing
@@ -61,17 +71,17 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
     private final Map<ThingUID, ServiceRegistration<?>> discoveryServiceRegistrations;
     private final OAuthFactory oAuthFactory;
     private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
-    private final BridgeConfigurationServlet bridgeConfigurationServlet;
+    private final HomeConnectServlet homeConnectServlet;
     private final EmbeddedLoggingService loggingService;
 
     @Activate
     public HomeConnectHandlerFactory(@Reference OAuthFactory oAuthFactory,
-            @Reference HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
-            @Reference BridgeConfigurationServlet bridgeConfigurationServlet,
-            @Reference EmbeddedLoggingService loggingService) {
+                                     @Reference HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+                                     @Reference HomeConnectServlet homeConnectServlet,
+                                     @Reference EmbeddedLoggingService loggingService) {
         this.oAuthFactory = oAuthFactory;
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
-        this.bridgeConfigurationServlet = bridgeConfigurationServlet;
+        this.homeConnectServlet = homeConnectServlet;
         this.loggingService = loggingService;
 
         discoveryServiceRegistrations = new HashMap<>();
@@ -88,7 +98,7 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
 
         if (THING_TYPE_API_BRIDGE.equals(thingTypeUID)) {
             HomeConnectBridgeHandler bridgeHandler = new HomeConnectBridgeHandler((Bridge) thing, oAuthFactory,
-                    bridgeConfigurationServlet, loggingService);
+                    homeConnectServlet, loggingService);
 
             // configure discovery service
             HomeConnectDiscoveryService discoveryService = new HomeConnectDiscoveryService(bridgeHandler,

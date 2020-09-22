@@ -12,17 +12,16 @@
  */
 package org.openhab.binding.homeconnect.internal.client;
 
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HTTP_PROXY_ENABLED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HTTP_PROXY_HOST;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HTTP_PROXY_PORT;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.security.cert.CertificateException;
 import java.time.LocalDateTime;
 
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -59,26 +58,25 @@ public class OkHttpHelper {
     private static final String HEADER_AUTHORIZATION = "Authorization";
     private static final String BEARER = "Bearer ";
     private static final int OAUTH_EXPIRE_BUFFER = 10;
-
-    private static JsonParser jsonParser = new JsonParser();
-    private static Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private static Logger logger = LoggerFactory.getLogger(OkHttpHelper.class);
+    private static final JsonParser JSON_PARSER = new JsonParser();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Logger LOGGER = LoggerFactory.getLogger(OkHttpHelper.class);
 
     public static Builder builder() {
         if (HTTP_PROXY_ENABLED) {
-            logger.warn("Using http proxy! {}:{}", HTTP_PROXY_HOST, HTTP_PROXY_PORT);
+            LOGGER.warn("Using http proxy! {}:{}", HTTP_PROXY_HOST, HTTP_PROXY_PORT);
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(HTTP_PROXY_HOST, HTTP_PROXY_PORT));
 
             try {
                 TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
                     @Override
                     public void checkClientTrusted(java.security.cert.X509Certificate @Nullable [] chain,
-                            @Nullable String authType) throws CertificateException {
+                            @Nullable String authType) {
                     }
 
                     @Override
                     public void checkServerTrusted(java.security.cert.X509Certificate @Nullable [] chain,
-                            @Nullable String authType) throws CertificateException {
+                            @Nullable String authType) {
                     }
 
                     @Override
@@ -93,13 +91,7 @@ public class OkHttpHelper {
 
                 return new OkHttpClient().newBuilder()
                         .sslSocketFactory(sslSocketFactory, (X509TrustManager) trustAllCerts[0])
-                        .hostnameVerifier(new HostnameVerifier() {
-
-                            @Override
-                            public boolean verify(@Nullable String hostname, @Nullable SSLSession session) {
-                                return true;
-                            }
-                        }).proxy(proxy);
+                        .hostnameVerifier((hostname, session) -> true).proxy(proxy);
             } catch (Exception e) {
                 throw new ProxySetupException(e);
             }
@@ -113,10 +105,8 @@ public class OkHttpHelper {
             return "";
         }
         try {
-            JsonObject json = jsonParser.parse(jsonString).getAsJsonObject();
-
-            String prettyJson = gson.toJson(json);
-            return prettyJson;
+            JsonObject json = JSON_PARSER.parse(jsonString).getAsJsonObject();
+            return GSON.toJson(json);
         } catch (Exception e) {
             return jsonString;
         }
@@ -125,6 +115,7 @@ public class OkHttpHelper {
     public static Request.Builder requestBuilder(OAuthClientService oAuthClientService)
             throws AuthorizationException, CommunicationException {
         try {
+            @Nullable
             AccessTokenResponse accessTokenResponse = oAuthClientService.getAccessTokenResponse();
 
             // refresh the token if it's about to expire
@@ -137,7 +128,7 @@ public class OkHttpHelper {
                 return new Request.Builder().addHeader(HEADER_AUTHORIZATION,
                         BEARER + accessTokenResponse.getAccessToken());
             } else {
-                LoggerFactory.getLogger(OkHttpHelper.class).error("No access token available! Fatal error.");
+                LOGGER.error("No access token available! Fatal error.");
                 throw new AuthorizationException("No access token available!");
             }
         } catch (IOException e) {

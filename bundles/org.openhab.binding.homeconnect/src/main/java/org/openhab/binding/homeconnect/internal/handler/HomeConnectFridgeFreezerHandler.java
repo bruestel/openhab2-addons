@@ -63,7 +63,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
         // register fridge/freezer specific handlers
         handlers.put(CHANNEL_FREEZER_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Data data = apiClient.getFreezerSetpointTemperature(getThingHaId());
                     if (data.getValue() != null) {
@@ -77,7 +77,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
         });
         handlers.put(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Data data = apiClient.getFridgeSetpointTemperature(getThingHaId());
                     if (data.getValue() != null) {
@@ -91,7 +91,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
         });
         handlers.put(CHANNEL_REFRIGERATOR_SUPER_MODE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Data data = apiClient.getFridgeSuperMode(getThingHaId());
                     if (data.getValue() != null) {
@@ -105,7 +105,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
         });
         handlers.put(CHANNEL_FREEZER_SUPER_MODE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Data data = apiClient.getFreezerSuperMode(getThingHaId());
                     if (data.getValue() != null) {
@@ -142,7 +142,7 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
-            HomeConnectApiClient apiClient = getApiClient();
+            HomeConnectApiClient apiClient = getApiClient().orElse(null);
 
             try {
                 if (apiClient != null && command instanceof QuantityType

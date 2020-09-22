@@ -12,6 +12,12 @@
  */
 package org.openhab.binding.homeconnect.internal.client.model;
 
+import static org.openhab.binding.homeconnect.internal.client.model.EventType.EVENT;
+import static org.openhab.binding.homeconnect.internal.client.model.EventType.NOTIFY;
+import static org.openhab.binding.homeconnect.internal.client.model.EventType.STATUS;
+
+import java.time.LocalDateTime;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
@@ -24,18 +30,84 @@ import org.eclipse.jdt.annotation.Nullable;
 @NonNullByDefault
 public class Event {
 
+    private final String haId;
+    // event type
+    private final EventType type;
+    // event key
     private @Nullable final String key;
+    // user-friendly name of the feature key
+    private @Nullable final String name;
+    // URI of the resource that changed
+    private @Nullable final String uri;
+    // creation time of event
+    private @Nullable final LocalDateTime creation;
+    // level of the event
+    private @Nullable final EventLevel level;
+    // expected activity
+    private @Nullable final EventHandling handling;
+    // new value, e.g. in case of a status update (string, number or boolean)
     private @Nullable final String value;
+    // unit string
     private @Nullable final String unit;
 
-    public Event(@Nullable String key, @Nullable String value, @Nullable String unit) {
+    public Event(final String haId, final EventType type) {
+        this.haId = haId;
+        this.type = type;
+        this.key = null;
+        this.name = null;
+        this.uri = null;
+        this.creation = null;
+        this.level = null;
+        this.handling = null;
+        this.value = null;
+        this.unit = null;
+    }
+
+    public Event(final String haId, final EventType type, @Nullable final String key, @Nullable final String name,
+            @Nullable final String uri, @Nullable final LocalDateTime creation, @Nullable final EventLevel level,
+            @Nullable final EventHandling handling, @Nullable final String value, @Nullable final String unit) {
+        this.haId = haId;
+        this.type = type;
         this.key = key;
+        this.name = name;
+        this.uri = uri;
+        this.creation = creation;
+        this.level = level;
+        this.handling = handling;
         this.value = value;
         this.unit = unit;
     }
 
+    public String getHaId() {
+        return haId;
+    }
+
+    public EventType getType() {
+        return type;
+    }
+
     public @Nullable String getKey() {
         return key;
+    }
+
+    public @Nullable String getName() {
+        return name;
+    }
+
+    public @Nullable String getUri() {
+        return uri;
+    }
+
+    public @Nullable LocalDateTime getCreation() {
+        return creation;
+    }
+
+    public @Nullable EventLevel getLevel() {
+        return level;
+    }
+
+    public @Nullable EventHandling getHandling() {
+        return handling;
     }
 
     public @Nullable String getValue() {
@@ -43,11 +115,11 @@ public class Event {
     }
 
     public boolean getValueAsBoolean() {
-        return value != null ? Boolean.valueOf(getValue()).booleanValue() : false;
+        return Boolean.parseBoolean(value);
     }
 
     public int getValueAsInt() {
-        return value != null ? Float.valueOf(getValue()).intValue() : 0;
+        return value != null ? Float.valueOf(value).intValue() : 0;
     }
 
     public @Nullable String getUnit() {
@@ -56,6 +128,12 @@ public class Event {
 
     @Override
     public String toString() {
-        return "Event [key=" + key + ", value=" + value + ", unit=" + unit + "]";
+        if (STATUS.equals(type) || EVENT.equals(type) || NOTIFY.equals(type)) {
+            return "Event{" + "haId='" + haId + '\'' + ", type=" + type + ", key='" + key + '\'' + ", name='" + name
+                    + '\'' + ", uri='" + uri + '\'' + ", creation=" + creation + ", level=" + level + ", handling="
+                    + handling + ", value='" + value + '\'' + ", unit='" + unit + '\'' + '}';
+        } else {
+            return "Event{" + "haId='" + haId + '\'' + ", type=" + type + '}';
+        }
     }
 }

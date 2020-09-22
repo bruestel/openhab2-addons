@@ -12,6 +12,8 @@
  */
 package org.openhab.binding.homeconnect.internal.client.model;
 
+import static java.lang.Boolean.parseBoolean;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
@@ -47,11 +49,11 @@ public class Data {
     }
 
     public int getValueAsInt() {
-        return value != null ? Float.valueOf(getValue()).intValue() : 0;
+        return value != null ? Float.valueOf(value).intValue() : 0;
     }
 
     public boolean getValueAsBoolean() {
-        return value != null ? Boolean.valueOf(getValue()).booleanValue() : false;
+        return parseBoolean(value);
     }
 
     @Override

@@ -16,29 +16,23 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
 
 /**
- * {@link ServerSentEventListener} inform about new events from Home Connect SSE interface.
+ * {@link HomeConnectEventListener} inform about new events from Home Connect SSE interface.
  *
  * @author Jonas Brüstel - Initial contribution
  */
 @NonNullByDefault
-public interface ServerSentEventListener {
+public interface HomeConnectEventListener {
 
     /**
      * Inform listener about new event
      *
-     * @param event
+     * @param event appliance event listener
      */
     void onEvent(Event event);
 
     /**
-     * If SSE client did a reconnect
+     * If SSE connection was closed
      */
-    default void onReconnect() {
-    }
-
-    /**
-     * If reconnect failed
-     */
-    default void onReconnectFailed() {
+    default void onClosed() {
     }
 }

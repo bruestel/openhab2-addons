@@ -13,7 +13,39 @@
 package org.openhab.binding.homeconnect.internal.handler;
 
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.SECOND;
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ACTIVE_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DOOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DURATION;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ELAPSED_PROGRAM_TIME;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_POWER_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_PROGRAM_PROGRESS_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMAINING_PROGRAM_TIME_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMOTE_CONTROL_ACTIVE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMOTE_START_ALLOWANCE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_SELECTED_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_ACTIVE_PROGRAM;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_DOOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_DURATION;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_ELAPSED_PROGRAM_TIME;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_OVEN_CAVITY_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_POWER_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_PROGRAM_PROGRESS;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMAINING_PROGRAM_TIME;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_ACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_START_ALLOWED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_SELECTED_PROGRAM;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPERATION_STATE_INACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPERATION_STATE_READY;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_DURATION;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_OPERATION_RUN;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_POWER_ON;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_POWER_STANDBY;
 
 import java.util.Arrays;
 import java.util.List;
@@ -90,7 +122,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
         // register oven specific update handlers
         handlers.put(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE, (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Data data = apiClient.getCurrentCavityTemperature(getThingHaId());
                     return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
@@ -167,10 +199,9 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
-            HomeConnectApiClient apiClient = getApiClient();
 
-            try {
-                if (apiClient != null) {
+            getApiClient().ifPresent(apiClient -> {
+                try {
                     // turn coffee maker on and standby
                     if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())) {
                         apiClient.setPowerState(getThingHaId(),
@@ -234,16 +265,17 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                                 "Device can not handle command {} in current operation state ({}).", command,
                                 operationState);
                     }
-                }
-            } catch (CommunicationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
-                        command.toFullString(), e.getMessage());
-            } catch (AuthorizationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
-                        command.toFullString(), e.getMessage());
+                } catch (CommunicationException e) {
+                    logger.warnWithHaId(getThingHaId(),
+                            "Could not handle command {}. API communication problem! error: {}", command.toFullString(),
+                            e.getMessage());
+                } catch (AuthorizationException e) {
+                    logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
+                            command.toFullString(), e.getMessage());
 
-                handleAuthenticationError(e);
-            }
+                    handleAuthenticationError(e);
+                }
+            });
         }
     }
 

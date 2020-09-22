@@ -10,27 +10,27 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.binding.homeconnect.internal.logger;
+package org.openhab.binding.homeconnect.internal.client.model;
 
-import java.util.HashMap;
+import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 /**
  *
- * HTTP request log model.
+ * HTTP request model.
  *
  * @author Jonas Brüstel - Initial Contribution
  */
 @NonNullByDefault
-public class Request {
-    private String url;
-    private String method;
-    private HashMap<String, String> header;
-    private @Nullable String body;
+public class HomeConnectRequest {
+    private final String url;
+    private final String method;
+    private final Map<String, String> header;
+    private @Nullable final String body;
 
-    public Request(String url, String method, HashMap<String, String> header, @Nullable String body) {
+    public HomeConnectRequest(String url, String method, Map<String, String> header, @Nullable String body) {
         this.url = url;
         this.method = method;
         this.header = header;
@@ -45,7 +45,7 @@ public class Request {
         return method;
     }
 
-    public HashMap<String, String> getHeader() {
+    public Map<String, String> getHeader() {
         return header;
     }
 

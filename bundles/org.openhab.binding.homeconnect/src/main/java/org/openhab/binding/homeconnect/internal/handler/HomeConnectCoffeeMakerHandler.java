@@ -22,7 +22,6 @@ import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
-import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
@@ -90,24 +89,26 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
-            HomeConnectApiClient apiClient = getApiClient();
 
-            try {
-                // turn coffee maker on and standby
-                if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())
-                        && apiClient != null) {
-                    apiClient.setPowerState(getThingHaId(),
-                            OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_STANDBY);
+            getApiClient().ifPresent(apiClient -> {
+
+                try {
+                    // turn coffee maker on and standby
+                    if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())) {
+                        apiClient.setPowerState(getThingHaId(),
+                                OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_STANDBY);
+                    }
+                } catch (CommunicationException e) {
+                    logger.warnWithHaId(getThingHaId(),
+                            "Could not handle command {}. API communication problem! error: {}", command.toFullString(),
+                            e.getMessage());
+                } catch (AuthorizationException e) {
+                    logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
+                            command.toFullString(), e.getMessage());
+
+                    handleAuthenticationError(e);
                 }
-            } catch (CommunicationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
-                        command.toFullString(), e.getMessage());
-            } catch (AuthorizationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
-                        command.toFullString(), e.getMessage());
-
-                handleAuthenticationError(e);
-            }
+            });
         }
     }
 

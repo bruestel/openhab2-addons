@@ -41,14 +41,14 @@ import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
 import org.eclipse.smarthome.core.thing.binding.ThingHandlerCallback;
 import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
-import org.openhab.binding.homeconnect.internal.client.HomeConnectSseClient;
+import org.openhab.binding.homeconnect.internal.client.HomeConnectEventSourceClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.logger.Type;
-import org.openhab.binding.homeconnect.internal.servlet.BridgeConfigurationServlet;
+import org.openhab.binding.homeconnect.internal.servlet.HomeConnectServlet;
 import org.openhab.core.OpenHAB;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.Version;
@@ -68,25 +68,23 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     private static final String CLIENT_ID = "clientId";
 
     private final OAuthFactory oAuthFactory;
-    private final BridgeConfigurationServlet bridgeConfigurationServlet;
+    private final HomeConnectServlet homeConnectServlet;
     private final LogWriter logger;
-    private final EmbeddedLoggingService loggingService;
 
     private @Nullable ScheduledFuture<?> reinitializationFuture;
 
     private @NonNullByDefault({}) OAuthClientService oAuthClientService;
     private @NonNullByDefault({}) String oAuthServiceHandleId;
     private @NonNullByDefault({}) HomeConnectApiClient apiClient;
-    private @NonNullByDefault({}) HomeConnectSseClient sseClient;
+    private @NonNullByDefault({}) HomeConnectEventSourceClient eventSourceClient;
 
     public HomeConnectBridgeHandler(Bridge bridge, OAuthFactory oAuthFactory,
-            BridgeConfigurationServlet bridgeConfigurationServlet, EmbeddedLoggingService loggingService) {
+                                    HomeConnectServlet homeConnectServlet, EmbeddedLoggingService loggingService) {
         super(bridge);
 
         this.oAuthFactory = oAuthFactory;
-        this.bridgeConfigurationServlet = bridgeConfigurationServlet;
+        this.homeConnectServlet = homeConnectServlet;
         this.logger = loggingService.getLogger(HomeConnectBridgeHandler.class);
-        this.loggingService = loggingService;
     }
 
     @Override
@@ -101,7 +99,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
         logger.debugWithLabel(getThing().getLabel(), "Initialize bridge (Bundle: {}, openHAB: {})", version.toString(),
                 openHabVersion);
         // let the bridge configuration servlet know about this handler
-        bridgeConfigurationServlet.addBridgeHandler(this);
+        homeConnectServlet.addBridgeHandler(this);
 
         // create oAuth service
         ApiBridgeConfiguration config = getConfiguration();
@@ -119,8 +117,8 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
                 null, null, "Initialize oAuth client service.");
 
         // create api client
-        apiClient = new HomeConnectApiClient(oAuthClientService, config.isSimulator(), loggingService);
-        sseClient = new HomeConnectSseClient(oAuthClientService, config.isSimulator(), loggingService);
+        apiClient = new HomeConnectApiClient(oAuthClientService, config.isSimulator());
+        eventSourceClient = new HomeConnectEventSourceClient(oAuthClientService, config.isSimulator(), scheduler);
 
         try {
             AccessTokenResponse accessTokenResponse = oAuthClientService.getAccessTokenResponse();
@@ -206,39 +204,21 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     }
 
     /**
-     * Allow clients to register (start) SSE listener.
-     *
-     * @param abstractHomeConnectThingHandler
-     */
-    public void registerServerSentEventListener(AbstractHomeConnectThingHandler abstractHomeConnectThingHandler) {
-        if (ThingStatus.ONLINE.equals(getThing().getStatus())) {
-            try {
-                sseClient.registerServerSentEventListener(abstractHomeConnectThingHandler.getThingHaId(),
-                        abstractHomeConnectThingHandler);
-            } catch (CommunicationException | AuthorizationException e) {
-                logger.errorWithLabel(getThing().getLabel(),
-                        "Could not start SSE connection for child handler. handler={} error={}",
-                        abstractHomeConnectThingHandler, e.getMessage());
-            }
-        }
-    }
-
-    /**
-     * Unregister SSE listener.
-     *
-     * @param abstractHomeConnectThingHandler
-     */
-    public void unregisterServerSentEventListener(AbstractHomeConnectThingHandler abstractHomeConnectThingHandler) {
-        sseClient.unregisterServerSentEventListener(abstractHomeConnectThingHandler);
-    }
-
-    /**
      * Get {@link HomeConnectApiClient}.
      *
      * @return api client instance
      */
     public HomeConnectApiClient getApiClient() {
         return apiClient;
+    }
+
+    /**
+     * Get {@link HomeConnectEventSourceClient}.
+     *
+     * @return event source client instance
+     */
+    public HomeConnectEventSourceClient getEventSourceClient() {
+        return eventSourceClient;
     }
 
     /**
@@ -260,13 +240,9 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     }
 
     private void cleanup() {
-        sseClient.dispose();
-
-        if (oAuthServiceHandleId != null) {
-            oAuthFactory.ungetOAuthService(oAuthServiceHandleId);
-        }
-
-        bridgeConfigurationServlet.removeBridgeHandler(this);
+        eventSourceClient.dispose();
+        oAuthFactory.ungetOAuthService(oAuthServiceHandleId);
+        homeConnectServlet.removeBridgeHandler(this);
     }
 
     private synchronized void scheduleReinitialize(int seconds) {

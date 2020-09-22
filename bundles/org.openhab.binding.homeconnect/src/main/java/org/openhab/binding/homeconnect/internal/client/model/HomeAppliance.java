@@ -23,13 +23,13 @@ import org.eclipse.jdt.annotation.Nullable;
  */
 @NonNullByDefault
 public class HomeAppliance {
-    private String name;
-    private String brand;
-    private String vib;
-    private boolean connected;
-    private String type;
-    private String enumber;
-    private String haId;
+    private final String name;
+    private final String brand;
+    private final String vib;
+    private final boolean connected;
+    private final String type;
+    private final String enumber;
+    private final String haId;
 
     public HomeAppliance(String haId, String name, String brand, String vib, boolean connected, String type,
             String enumber) {

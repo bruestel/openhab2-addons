@@ -38,11 +38,11 @@ import javax.xml.bind.DatatypeConverter;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.binding.homeconnect.internal.client.HomeConnectSseClient;
+import org.openhab.binding.homeconnect.internal.client.HomeConnectEventSourceClient;
+import org.openhab.binding.homeconnect.internal.client.model.HomeConnectRequest;
+import org.openhab.binding.homeconnect.internal.client.model.HomeConnectResponse;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.Log;
-import org.openhab.binding.homeconnect.internal.logger.Request;
-import org.openhab.binding.homeconnect.internal.logger.Response;
 import org.openhab.binding.homeconnect.internal.logger.Type;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -184,15 +184,15 @@ public class LogViewerServlet extends AbstractServlet {
         String haId = entry.getHaId();
         replaceMap.put(PLACEHOLDER_KEY_HA_ID, haId == null ? "" : haId);
 
-        Request request = entry.getRequest();
-        Response response = entry.getResponse();
-        if (request != null && (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR)) {
+        HomeConnectRequest homeConnectRequest = entry.getRequest();
+        HomeConnectResponse homeConnectResponse = entry.getResponse();
+        if (homeConnectRequest != null && (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR)) {
             StringBuilder sb = new StringBuilder();
-            sb.append(request.getMethod()).append(" ");
-            if (response != null) {
-                sb.append(response.getCode()).append(" ");
+            sb.append(homeConnectRequest.getMethod()).append(" ");
+            if (homeConnectResponse != null) {
+                sb.append(homeConnectResponse.getCode()).append(" ");
             }
-            sb.append(request.getUrl());
+            sb.append(homeConnectRequest.getUrl());
             replaceMap.put(PLACEHOLDER_KEY_MESSAGE, sb.toString());
         } else {
             if (entry.getLabel() != null) {
@@ -208,7 +208,7 @@ public class LogViewerServlet extends AbstractServlet {
         String stylingType = "default";
         if (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR) {
             stylingType = "api";
-        } else if (HomeConnectSseClient.class.getSimpleName().equals(entry.getClassName())) {
+        } else if (HomeConnectEventSourceClient.class.getSimpleName().equals(entry.getClassName())) {
             stylingType = "sse";
         }
         replaceMap.put(PLACEHOLDER_KEY_STYLING_TYPE, stylingType);
@@ -230,10 +230,10 @@ public class LogViewerServlet extends AbstractServlet {
         StringBuffer sb = new StringBuffer();
         HashMap<String, String> replaceMap = new HashMap<>();
 
-        Request request = entry.getRequest();
-        Response response = entry.getResponse();
-        if (request != null && (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR)) {
-            request.getHeader().forEach((key, value) -> {
+        HomeConnectRequest homeConnectRequest = entry.getRequest();
+        HomeConnectResponse homeConnectResponse = entry.getResponse();
+        if (homeConnectRequest != null && (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR)) {
+            homeConnectRequest.getHeader().forEach((key, value) -> {
                 if (value.startsWith("[Bearer ")) {
                     sb.append("> ").append(key).append(": ").append("[Bearer ***]").append("\n");
                 } else {
@@ -241,17 +241,17 @@ public class LogViewerServlet extends AbstractServlet {
                 }
             });
 
-            if (entry.getRequest() != null && request.getBody() != null) {
-                sb.append(request.getBody()).append("\n");
+            if (entry.getRequest() != null && homeConnectRequest.getBody() != null) {
+                sb.append(homeConnectRequest.getBody()).append("\n");
             }
 
-            if (response != null) {
+            if (homeConnectResponse != null) {
                 sb.append("\n");
-                response.getHeader()
+                homeConnectResponse.getHeader()
                         .forEach((key, value) -> sb.append("< ").append(key).append(": ").append(value).append("\n"));
             }
-            if (response != null && response.getBody() != null) {
-                sb.append(response.getBody()).append("\n");
+            if (homeConnectResponse != null && homeConnectResponse.getBody() != null) {
+                sb.append(homeConnectResponse.getBody()).append("\n");
             }
         }
 

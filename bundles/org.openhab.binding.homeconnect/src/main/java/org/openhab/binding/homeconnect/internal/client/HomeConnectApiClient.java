@@ -12,36 +12,47 @@
  */
 package org.openhab.binding.homeconnect.internal.client;
 
-import static java.net.HttpURLConnection.*;
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
+import static java.net.HttpURLConnection.HTTP_OK;
+import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
+import static java.time.LocalDateTime.now;
 import static java.util.Arrays.asList;
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
-import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.*;
+import static java.util.Collections.singletonList;
+import static java.util.Objects.requireNonNull;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_BASE_URL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_SIMULATOR_BASE_URL;
+import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.formatJsonBody;
+import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.requestBuilder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
+import org.apache.commons.collections4.QueueUtils;
+import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
+import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgram;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
+import org.openhab.binding.homeconnect.internal.client.model.HomeConnectRequest;
+import org.openhab.binding.homeconnect.internal.client.model.HomeConnectResponse;
 import org.openhab.binding.homeconnect.internal.client.model.Option;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
-import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.LogWriter;
-import org.openhab.binding.homeconnect.internal.logger.Type;
-import org.slf4j.event.Level;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -52,6 +63,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 /**
  * Client for Home Connect API.
@@ -64,47 +76,49 @@ public class HomeConnectApiClient {
     private static final String ACCEPT = "Accept";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String BSH_JSON_V1 = "application/vnd.bsh.sdk.v1+json";
+    private static final MediaType BSH_JSON_V1_MEDIA_TYPE = requireNonNull(MediaType.parse(BSH_JSON_V1));
     private static final int REQUEST_READ_TIMEOUT = 30;
     private static final int VALUE_TYPE_STRING = 0;
     private static final int VALUE_TYPE_INT = 1;
     private static final int VALUE_TYPE_BOOLEAN = 2;
+    private static final int COMMUNICATION_QUEUE_SIZE = 50;
 
-    private final LogWriter logger;
+    private final Logger logger;
     private final OkHttpClient client;
     private final String apiUrl;
-    private final ConcurrentHashMap<String, List<AvailableProgramOption>> availableProgramOptionsCache;
+    private final Map<String, List<AvailableProgramOption>> availableProgramOptionsCache;
     private final OAuthClientService oAuthClientService;
+    private final Queue<ApiRequest> communicationQueue;
 
-    public HomeConnectApiClient(OAuthClientService oAuthClientService, boolean simulated,
-            EmbeddedLoggingService loggingService) {
+    public HomeConnectApiClient(OAuthClientService oAuthClientService, boolean simulated) {
         this.oAuthClientService = oAuthClientService;
 
-        availableProgramOptionsCache = new ConcurrentHashMap<String, List<AvailableProgramOption>>();
+        availableProgramOptionsCache = new ConcurrentHashMap<>();
         apiUrl = simulated ? API_SIMULATOR_BASE_URL : API_BASE_URL;
         client = OkHttpHelper.builder().readTimeout(REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).build();
-        logger = loggingService.getLogger(HomeConnectApiClient.class);
+        logger = LoggerFactory.getLogger(HomeConnectApiClient.class);
+        communicationQueue = QueueUtils.synchronizedQueue(new CircularFifoQueue<>(COMMUNICATION_QUEUE_SIZE));
     }
 
     /**
      * Get all home appliances
      *
      * @return list of {@link HomeAppliance}
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public List<HomeAppliance> getHomeAppliances() throws CommunicationException, AuthorizationException {
-        logger.trace("getHomeAppliances()");
         Request request = createGetRequest("/api/homeappliances");
-
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, null, null);
-            String body = response.body().string();
-            logger.log(Type.API_CALL, Level.DEBUG, null, null, null, map(request, null), map(response, body), null);
 
-            return mapToHomeAppliances(body);
+            String responseBody = mapToString(response.body());
+            trackAndLogApiRequest(null, request, null, response, responseBody);
+
+            return mapToHomeAppliances(responseBody);
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, null, null, asList(e.getStackTrace().toString()),
-                    map(request, null), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to fetch home appliances! error={}", e.getMessage());
+            trackAndLogApiRequest(null, request, null, null, null);
             throw new CommunicationException(e);
         }
     }
@@ -114,23 +128,21 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link HomeAppliance}
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public HomeAppliance getHomeAppliance(String haId) throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, null, null, null, "getHomeAppliance(String haId)");
-
         Request request = createGetRequest("/api/homeappliances/" + haId);
-
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, haId, null);
-            String body = response.body().string();
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
 
-            return mapToHomeAppliance(body);
+            String responseBody = mapToString(response.body());
+            trackAndLogApiRequest(haId, request, null, response, responseBody);
+
+            return mapToHomeAppliance(responseBody);
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, null), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to get home appliance! haId={}, error={}", haId, e.getMessage());
+            trackAndLogApiRequest(haId, request, null, null, null);
             throw new CommunicationException(e);
         }
     }
@@ -140,8 +152,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data}
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public Data getPowerState(String haId) throws CommunicationException, AuthorizationException {
         return getSetting(haId, "BSH.Common.Setting.PowerState");
@@ -152,8 +164,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @param state target state
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public void setPowerState(String haId, String state) throws CommunicationException, AuthorizationException {
         putSettings(haId, new Data("BSH.Common.Setting.PowerState", state, null));
@@ -164,8 +176,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data}
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public Data getFreezerSetpointTemperature(String haId) throws CommunicationException, AuthorizationException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer");
@@ -176,8 +188,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @param state new temperature
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public void setFreezerSetpointTemperature(String haId, String state, String unit)
             throws CommunicationException, AuthorizationException {
@@ -190,8 +202,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data} or null in case of communication error
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public Data getFridgeSetpointTemperature(String haId) throws CommunicationException, AuthorizationException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator");
@@ -202,8 +214,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @param state new temperature
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public void setFridgeSetpointTemperature(String haId, String state, String unit)
             throws CommunicationException, AuthorizationException {
@@ -216,8 +228,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data}
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public Data getFridgeSuperMode(String haId) throws CommunicationException, AuthorizationException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator");
@@ -228,8 +240,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @param enable enable or disable fridge super mode
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public void setFridgeSuperMode(String haId, boolean enable) throws CommunicationException, AuthorizationException {
         putSettings(haId,
@@ -242,8 +254,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data}
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public Data getFreezerSuperMode(String haId) throws CommunicationException, AuthorizationException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer");
@@ -254,8 +266,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @param enable enable or disable freezer super mode
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public void setFreezerSuperMode(String haId, boolean enable) throws CommunicationException, AuthorizationException {
         putSettings(haId,
@@ -268,8 +280,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data}
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public Data getDoorState(String haId) throws CommunicationException, AuthorizationException {
         return getStatus(haId, "BSH.Common.Status.DoorState");
@@ -280,8 +292,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data}
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public Data getOperationState(String haId) throws CommunicationException, AuthorizationException {
         return getStatus(haId, "BSH.Common.Status.OperationState");
@@ -292,8 +304,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data}
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public Data getCurrentCavityTemperature(String haId) throws CommunicationException, AuthorizationException {
         return getStatus(haId, "Cooking.Oven.Status.CurrentCavityTemperature");
@@ -303,9 +315,9 @@ public class HomeConnectApiClient {
      * Is remote start allowed?
      *
      * @param haId haId home appliance id
-     * @return
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @return true or false
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public boolean isRemoteControlStartAllowed(String haId) throws CommunicationException, AuthorizationException {
         Data data = getStatus(haId, "BSH.Common.Status.RemoteControlStartAllowed");
@@ -316,9 +328,9 @@ public class HomeConnectApiClient {
      * Is remote control allowed?
      *
      * @param haId haId home appliance id
-     * @return
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @return true or false
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public boolean isRemoteControlActive(String haId) throws CommunicationException, AuthorizationException {
         Data data = getStatus(haId, "BSH.Common.Status.RemoteControlActive");
@@ -329,9 +341,9 @@ public class HomeConnectApiClient {
      * Is local control allowed?
      *
      * @param haId haId home appliance id
-     * @return
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @return true or false
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public boolean isLocalControlActive(String haId) throws CommunicationException, AuthorizationException {
         Data data = getStatus(haId, "BSH.Common.Status.LocalControlActive");
@@ -343,8 +355,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data} or null if there is no active program
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public @Nullable Program getActiveProgram(String haId) throws CommunicationException, AuthorizationException {
         return getProgram(haId, "/api/homeappliances/" + haId + "/programs/active");
@@ -355,8 +367,8 @@ public class HomeConnectApiClient {
      *
      * @param haId home appliance id
      * @return {@link Data} or null if there is no selected program
-     * @throws CommunicationException
-     * @throws AuthorizationException
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
      */
     public @Nullable Program getSelectedProgram(String haId) throws CommunicationException, AuthorizationException {
         return getProgram(haId, "/api/homeappliances/" + haId + "/programs/selected");
@@ -373,6 +385,7 @@ public class HomeConnectApiClient {
     }
 
     public void startSelectedProgram(String haId) throws CommunicationException, AuthorizationException {
+        @Nullable
         String selectedProgram = getRaw(haId, "/api/homeappliances/" + haId + "/programs/selected");
         if (selectedProgram != null) {
             putRaw(haId, "/api/homeappliances/" + haId + "/programs/active", selectedProgram);
@@ -384,7 +397,7 @@ public class HomeConnectApiClient {
     }
 
     public void setProgramOptions(String haId, String key, String value, @Nullable String unit, boolean valueAsInt,
-            boolean isProgramActive) throws CommunicationException, AuthorizationException {
+                                  boolean isProgramActive) throws CommunicationException, AuthorizationException {
         String programState = isProgramActive ? "active" : "selected";
 
         putOption(haId, "/api/homeappliances/" + haId + "/programs/" + programState + "/options",
@@ -406,33 +419,32 @@ public class HomeConnectApiClient {
 
     public List<AvailableProgramOption> getProgramOptions(String haId, String programKey)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(programKey), null, null,
-                "getProgramOptions(String haId, String programKey)");
-
         if (availableProgramOptionsCache.containsKey(programKey)) {
-            logger.log(
-                    Type.DEFAULT, Level.DEBUG, haId, null, availableProgramOptionsCache.get(programKey).stream()
-                            .map(apo -> apo.toString()).collect(Collectors.toList()),
-                    null, null, "Returning cached options for \"{}\".", programKey);
+            logger.debug("Returning cached options for '{}'.", programKey);
             return availableProgramOptionsCache.get(programKey);
         }
 
         String path = "/api/homeappliances/" + haId + "/programs/available/" + programKey;
         Request request = createGetRequest(path);
-
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(asList(HTTP_OK), request, response, haId, null);
-            String body = response.body().string();
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
+            checkResponseCode(HTTP_OK, request, response, haId, null);
 
-            List<AvailableProgramOption> availableProgramOptions = mapToAvailableProgramOption(body, haId);
+            String responseBody = mapToString(response.body());
+            trackAndLogApiRequest(haId, request, null, response, responseBody);
+
+            List<AvailableProgramOption> availableProgramOptions = mapToAvailableProgramOption(responseBody, haId);
             availableProgramOptionsCache.put(programKey, availableProgramOptions);
             return availableProgramOptions;
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, null), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to get program options! haId={}, programKey={}, error={}", haId, programKey,
+                    e.getMessage());
+            trackAndLogApiRequest(haId, request, null, null, null);
             throw new CommunicationException(e);
         }
+    }
+
+    public Queue<ApiRequest> getLatestApiRequests() {
+        return communicationQueue;
     }
 
     private Data getSetting(String haId, String setting) throws CommunicationException, AuthorizationException {
@@ -453,20 +465,19 @@ public class HomeConnectApiClient {
     }
 
     private @Nullable String getRaw(String haId, String path) throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path), null, null, "getRaw(String haId, String path)");
-
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(Arrays.asList(HTTP_OK), request, response, haId, null);
-            String body = response.body().string();
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
+            checkResponseCode(HTTP_OK, request, response, haId, null);
+
+            String responseBody = mapToString(response.body());
+            trackAndLogApiRequest(haId, request, null, response, responseBody);
 
             if (response.code() == HTTP_OK) {
-                return body;
+                return responseBody;
             }
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, null), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to get raw! haId={}, path={}, error={}", haId, path, e.getMessage());
+            trackAndLogApiRequest(haId, request, null, null, null);
             throw new CommunicationException(e);
         }
         return null;
@@ -474,45 +485,38 @@ public class HomeConnectApiClient {
 
     private void putRaw(String haId, String path, String requestBodyPayload)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path, requestBodyPayload), null, null,
-                "putRaw(String haId, String path, String requestBodyPayload)");
-
-        MediaType json = MediaType.parse(BSH_JSON_V1);
-        RequestBody requestBody = RequestBody.create(json, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
+        RequestBody requestBody = RequestBody.create(BSH_JSON_V1_MEDIA_TYPE,
+                requestBodyPayload.getBytes(StandardCharsets.UTF_8));
 
         Request request = requestBuilder(oAuthClientService).url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
                 .header(ACCEPT, BSH_JSON_V1).put(requestBody).build();
-
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_NO_CONTENT, request, response, haId, requestBodyPayload);
-            String body = response.body().string();
 
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, requestBodyPayload),
-                    map(response, body), null);
+            trackAndLogApiRequest(haId, request, requestBodyPayload, response, mapToString(response.body()));
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, requestBodyPayload), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to put raw! haId={}, path={}, payload={}, error={}", haId, path, requestBodyPayload,
+                    e.getMessage());
+            trackAndLogApiRequest(haId, request, requestBodyPayload, null, null);
             throw new CommunicationException(e);
         }
     }
 
     private @Nullable Program getProgram(String haId, String path)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path), null, null,
-                "getProgram(String haId, String path)");
-
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(Arrays.asList(HTTP_OK, HTTP_NOT_FOUND), request, response, haId, null);
-            String body = response.body().string();
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
+            checkResponseCode(asList(HTTP_OK, HTTP_NOT_FOUND), request, response, haId, null);
+
+            String responseBody = mapToString(response.body());
+            trackAndLogApiRequest(haId, request, null, response, responseBody);
 
             if (response.code() == HTTP_OK) {
-                return mapToProgram(body);
+                return mapToProgram(responseBody);
             }
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, null), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to get program! haId={}, path={}, error={}", haId, path, e.getMessage());
+            trackAndLogApiRequest(haId, request, null, null, null);
             throw new CommunicationException(e);
         }
         return null;
@@ -520,65 +524,53 @@ public class HomeConnectApiClient {
 
     private List<AvailableProgram> getAvailablePrograms(String haId, String path)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, Arrays.asList(path), null, null,
-                "getAvailablePrograms(String haId, String path)");
-
         Request request = createGetRequest(path);
-
         try (Response response = client.newCall(request).execute()) {
-            checkResponseCode(Arrays.asList(HTTP_OK), request, response, haId, null);
-            String body = response.body().string();
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
+            checkResponseCode(HTTP_OK, request, response, haId, null);
 
-            return mapToAvailablePrograms(body, haId);
+            String responseBody = mapToString(response.body());
+            trackAndLogApiRequest(haId, request, null, response, responseBody);
+
+            return mapToAvailablePrograms(responseBody, haId);
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, null), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to get available programs! haId={}, path={}, error={}", haId, path, e.getMessage());
+            trackAndLogApiRequest(haId, request, null, null, null);
             throw new CommunicationException(e);
         }
     }
 
     private void sendDelete(String haId, String path) throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path), null, null,
-                "sendDelete(String haId, String path)");
-
         Request request = requestBuilder(oAuthClientService).url(apiUrl + path).header(ACCEPT, BSH_JSON_V1).delete()
                 .build();
-
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_NO_CONTENT, request, response, haId, null);
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, null), null);
+
+            trackAndLogApiRequest(haId, request, null, response, mapToString(response.body()));
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, null), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to send delete! haId={}, path={}, error={}", haId, path, e.getMessage());
+            trackAndLogApiRequest(haId, request, null, null, null);
             throw new CommunicationException(e);
         }
     }
 
     private Data getData(String haId, String path) throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path), null, null,
-                "getData(String haId, String path)");
-
         Request request = createGetRequest(path);
-
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, haId, null);
-            String body = response.body().string();
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, null), map(response, body), null);
 
-            return mapToState(body);
+            String responseBody = mapToString(response.body());
+            trackAndLogApiRequest(haId, request, null, response, responseBody);
+
+            return mapToState(responseBody);
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, null), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to get data! haId={}, path={}, error={}", haId, path, e.getMessage());
+            trackAndLogApiRequest(haId, request, null, null, null);
             throw new CommunicationException(e);
         }
     }
 
     private void putData(String haId, String path, Data data, int valueType)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path, data.toString(), String.valueOf(valueType)),
-                null, null, "putData(String haId, String path, Data data, int valueType)");
-
         JsonObject innerObject = new JsonObject();
         innerObject.addProperty("key", data.getName());
 
@@ -600,29 +592,25 @@ public class HomeConnectApiClient {
         dataObject.add("data", innerObject);
         String requestBodyPayload = dataObject.toString();
 
-        MediaType json = MediaType.parse(BSH_JSON_V1);
-        RequestBody requestBody = RequestBody.create(json, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
+        RequestBody requestBody = RequestBody.create(BSH_JSON_V1_MEDIA_TYPE,
+                requestBodyPayload.getBytes(StandardCharsets.UTF_8));
 
         Request request = requestBuilder(oAuthClientService).url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
                 .header(ACCEPT, BSH_JSON_V1).put(requestBody).build();
-
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_NO_CONTENT, request, response, haId, requestBodyPayload);
-            String body = response.body().string();
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, requestBodyPayload),
-                    map(response, body), null);
+
+            trackAndLogApiRequest(haId, request, requestBodyPayload, response, mapToString(response.body()));
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, requestBodyPayload), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to put data! haId={}, path={}, data={}, valueType={}, error={}", haId, path, data,
+                    valueType, e.getMessage());
+            trackAndLogApiRequest(haId, request, requestBodyPayload, null, null);
             throw new CommunicationException(e);
         }
     }
 
     private void putOption(String haId, String path, Option option, boolean asInt)
             throws CommunicationException, AuthorizationException {
-        logger.log(Type.DEFAULT, Level.TRACE, haId, null, asList(path, option.toString(), String.valueOf(asInt)), null,
-                null, "putOption(String haId, String path, Option option, boolean asInt)");
-
         JsonObject innerObject = new JsonObject();
         innerObject.addProperty("key", option.getKey());
 
@@ -649,69 +637,83 @@ public class HomeConnectApiClient {
 
         String requestBodyPayload = dataObject.toString();
 
-        MediaType json = MediaType.parse(BSH_JSON_V1);
-        RequestBody requestBody = RequestBody.create(json, requestBodyPayload.getBytes(StandardCharsets.UTF_8));
+        RequestBody requestBody = RequestBody.create(BSH_JSON_V1_MEDIA_TYPE,
+                requestBodyPayload.getBytes(StandardCharsets.UTF_8));
 
         Request request = requestBuilder(oAuthClientService).url(apiUrl + path).header(CONTENT_TYPE, BSH_JSON_V1)
                 .header(ACCEPT, BSH_JSON_V1).put(requestBody).build();
-
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_NO_CONTENT, request, response, haId, requestBodyPayload);
-            String body = response.body().string();
-            logger.log(Type.API_CALL, Level.DEBUG, haId, null, null, map(request, requestBodyPayload),
-                    map(response, body), null);
+
+            trackAndLogApiRequest(haId, request, requestBodyPayload, response, mapToString(response.body()));
         } catch (IOException e) {
-            logger.log(Type.API_ERROR, Level.ERROR, haId, null, asList(e.getStackTrace().toString()),
-                    map(request, requestBodyPayload), null, "IOException: {}", e.getMessage());
+            logger.warn("Failed to put option! haId={}, path={}, option={}, asInt={}, error={}", haId, path, option, asInt,
+                    e.getMessage());
+            trackAndLogApiRequest(haId, request, requestBodyPayload, null, null);
             throw new CommunicationException(e);
         }
     }
 
     private void checkResponseCode(int desiredCode, Request request, Response response, @Nullable String haId,
-            @Nullable String requestPayload) throws CommunicationException, AuthorizationException {
-        checkResponseCode(asList(desiredCode), request, response, haId, requestPayload);
+                                   @Nullable String requestPayload) throws CommunicationException, AuthorizationException {
+        checkResponseCode(singletonList(desiredCode), request, response, haId, requestPayload);
     }
 
     private void checkResponseCode(List<Integer> desiredCodes, Request request, Response response,
-            @Nullable String haId, @Nullable String requestPayload)
+                                   @Nullable String haId, @Nullable String requestPayload)
             throws CommunicationException, AuthorizationException {
+
         if (!desiredCodes.contains(HTTP_UNAUTHORIZED) && response.code() == HTTP_UNAUTHORIZED) {
-            logger.debugWithHaId(haId, "Current access token is invalid.");
+            logger.debug("Current access token is invalid.");
+            String responseBody = "";
+            try {
+                responseBody = mapToString(response.body());
+            } catch (IOException e) {
+                logger.error("Could not get HTTP response body as string.", e);
+            }
+            trackAndLogApiRequest(haId, request, requestPayload, response, responseBody);
             throw new AuthorizationException("Token invalid!");
         }
 
         if (!desiredCodes.contains(response.code())) {
             int code = response.code();
             String message = response.message();
-            String body = "";
-            try {
-                body = response.body().string();
-            } catch (IOException e) {
-                logger.errorWithHaId(haId, "Could not get HTTP response body as string.", e);
-            }
 
-            logger.log(Type.API_ERROR, Level.WARN, haId, null, null, map(request, requestPayload), map(response, body),
-                    "Invalid HTTP response code {} (allowed: {})", code, desiredCodes);
-            throw new CommunicationException(code, message, body);
+            logger.warn("Invalid HTTP response code {} (allowed: {})", code, desiredCodes);
+            String responseBody = "";
+            try {
+                responseBody = mapToString(response.body());
+            } catch (IOException e) {
+                logger.error("Could not get HTTP response body as string.", e);
+            }
+            trackAndLogApiRequest(haId, request, requestPayload, response, responseBody);
+            throw new CommunicationException(code, message, responseBody);
         }
     }
 
+    private String mapToString(@Nullable ResponseBody responseBody) throws IOException {
+        if (responseBody != null) {
+            return responseBody.string();
+        }
+        return "";
+    }
+
     private Program mapToProgram(String json) {
-        final ArrayList<Option> optionList = new ArrayList<>();
-        Program result = null;
-
+        ArrayList<Option> optionList = new ArrayList<>();
         JsonObject responseObject = new JsonParser().parse(json).getAsJsonObject();
-
         JsonObject data = responseObject.getAsJsonObject("data");
-        result = new Program(data.get("key").getAsString(), optionList);
+        Program result = new Program(data.get("key").getAsString(), optionList);
         JsonArray options = data.getAsJsonArray("options");
 
         options.forEach(option -> {
             JsonObject obj = (JsonObject) option;
 
+            @Nullable
             String key = obj.get("key") != null ? obj.get("key").getAsString() : null;
+            @Nullable
             String value = obj.get("value") != null && !obj.get("value").isJsonNull() ? obj.get("value").getAsString()
                     : null;
+            @Nullable
             String unit = obj.get("unit") != null ? obj.get("unit").getAsString() : null;
 
             optionList.add(new Option(key, value, unit));
@@ -729,10 +731,11 @@ public class HomeConnectApiClient {
             JsonArray programs = responseObject.getAsJsonObject("data").getAsJsonArray("programs");
             programs.forEach(program -> {
                 JsonObject obj = (JsonObject) program;
+                @Nullable
                 String key = obj.get("key") != null ? obj.get("key").getAsString() : null;
                 JsonObject constraints = obj.getAsJsonObject("constraints");
-                boolean available = constraints.get("available") != null ? constraints.get("available").getAsBoolean()
-                        : false;
+                boolean available = constraints.get("available") != null && constraints.get("available").getAsBoolean();
+                @Nullable
                 String execution = constraints.get("execution") != null ? constraints.get("execution").getAsString()
                         : null;
 
@@ -741,7 +744,7 @@ public class HomeConnectApiClient {
                 }
             });
         } catch (Exception e) {
-            logger.errorWithHaId(haId, "Could not parse available programs response! {}", e.getMessage());
+            logger.error("Could not parse available programs response! haId={}, error={}", haId, e.getMessage());
         }
 
         return result;
@@ -756,6 +759,7 @@ public class HomeConnectApiClient {
             JsonArray options = responseObject.getAsJsonObject("data").getAsJsonArray("options");
             options.forEach(option -> {
                 JsonObject obj = (JsonObject) option;
+                @Nullable
                 String key = obj.get("key") != null ? obj.get("key").getAsString() : null;
                 ArrayList<String> allowedValues = new ArrayList<>();
                 obj.getAsJsonObject("constraints").getAsJsonArray("allowedvalues")
@@ -766,7 +770,7 @@ public class HomeConnectApiClient {
                 }
             });
         } catch (Exception e) {
-            logger.errorWithHaId(haId, "Could not parse available program options response! {}", e.getMessage());
+            logger.warn("Could not parse available program options response! haId={}, error={}", haId, e.getMessage());
         }
 
         return result;
@@ -805,6 +809,7 @@ public class HomeConnectApiClient {
 
         JsonObject data = responseObject.getAsJsonObject("data");
 
+        @Nullable
         String unit = data.get("unit") != null ? data.get("unit").getAsString() : null;
 
         return new Data(data.get("key").getAsString(), data.get("value").getAsString(), unit);
@@ -814,20 +819,68 @@ public class HomeConnectApiClient {
         return requestBuilder(oAuthClientService).url(apiUrl + path).header(ACCEPT, BSH_JSON_V1).get().build();
     }
 
-    private org.openhab.binding.homeconnect.internal.logger.Request map(Request request, @Nullable String requestBody) {
+    private void trackAndLogApiRequest(@Nullable String haId, Request request, @Nullable String requestBody,
+                                       @Nullable Response response, @Nullable String responseBody) {
+        HomeConnectRequest homeConnectRequest = map(request, requestBody);
+        @Nullable
+        HomeConnectResponse homeConnectResponse = response != null ? map(response, responseBody) : null;
+
+        logApiRequest(haId, homeConnectRequest, homeConnectResponse);
+        trackApiRequest(homeConnectRequest, homeConnectResponse);
+    }
+
+    private void logApiRequest(@Nullable String haId, HomeConnectRequest homeConnectRequest,
+                               @Nullable HomeConnectResponse homeConnectResponse) {
+        if (logger.isDebugEnabled()) {
+            StringBuilder sb = new StringBuilder();
+
+            if (haId != null) {
+                sb.append("[").append(haId).append("] ");
+            }
+
+            sb.append(homeConnectRequest.getMethod()).append(" ");
+            if (homeConnectResponse != null) {
+                sb.append(homeConnectResponse.getCode()).append(" ");
+            }
+            sb.append(homeConnectRequest.getUrl()).append("\n");
+            homeConnectRequest.getHeader()
+                    .forEach((key, value) -> sb.append("> ").append(key).append(": ").append(value).append("\n"));
+
+            if (homeConnectRequest.getBody() != null) {
+                sb.append(homeConnectRequest.getBody()).append("\n");
+            }
+
+            if (homeConnectResponse != null) {
+                sb.append("\n");
+                homeConnectResponse.getHeader()
+                        .forEach((key, value) -> sb.append("< ").append(key).append(": ").append(value).append("\n"));
+            }
+            if (homeConnectResponse != null && homeConnectResponse.getBody() != null) {
+                sb.append(homeConnectResponse.getBody()).append("\n");
+            }
+
+            logger.debug(sb.toString());
+        }
+    }
+
+    private void trackApiRequest(HomeConnectRequest homeConnectRequest,
+                                 @Nullable HomeConnectResponse homeConnectResponse) {
+        communicationQueue.add(new ApiRequest(now(), homeConnectRequest, homeConnectResponse));
+    }
+
+    private HomeConnectRequest map(Request request, @Nullable String requestBody) {
         HashMap<String, String> headers = new HashMap<>();
         request.headers().toMultimap().forEach((key, values) -> headers.put(key, values.toString()));
 
-        return new org.openhab.binding.homeconnect.internal.logger.Request(request.url().toString(), request.method(),
-                headers, requestBody != null ? formatJsonBody(requestBody) : null);
+        return new HomeConnectRequest(request.url().toString(), request.method(), headers,
+                requestBody != null ? formatJsonBody(requestBody) : null);
     }
 
-    private org.openhab.binding.homeconnect.internal.logger.Response map(Response response,
-            @Nullable String responseBody) {
+    private HomeConnectResponse map(Response response, @Nullable String responseBody) {
         HashMap<String, String> headers = new HashMap<>();
         response.headers().toMultimap().forEach((key, values) -> headers.put(key, values.toString()));
 
-        return new org.openhab.binding.homeconnect.internal.logger.Response(response.code(), headers,
+        return new HomeConnectResponse(response.code(), headers,
                 responseBody != null ? formatJsonBody(responseBody) : null);
     }
 }

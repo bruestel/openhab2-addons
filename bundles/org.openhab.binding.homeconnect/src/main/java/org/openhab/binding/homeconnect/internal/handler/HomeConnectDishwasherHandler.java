@@ -62,7 +62,7 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
 
     @Override
     protected void configureEventHandlers(ConcurrentHashMap<String, EventHandler> handlers) {
-        // register default SSE event handlers
+        // register default event handlers
         handlers.put(EVENT_DOOR_STATE, defaultDoorStateEventHandler());
         handlers.put(EVENT_REMOTE_CONTROL_ACTIVE, defaultBooleanEventHandler(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE));
         handlers.put(EVENT_REMOTE_CONTROL_START_ALLOWED,
@@ -79,7 +79,7 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
-            HomeConnectApiClient apiClient = getApiClient();
+            HomeConnectApiClient apiClient = getApiClient().orElse(null);
 
             try {
                 // turn dishwasher on and off

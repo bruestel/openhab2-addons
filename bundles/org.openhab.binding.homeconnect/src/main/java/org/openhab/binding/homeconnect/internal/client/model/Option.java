@@ -43,11 +43,11 @@ public class Option {
     }
 
     public boolean getValueAsBoolean() {
-        return value != null ? Boolean.valueOf(getValue()).booleanValue() : false;
+        return Boolean.parseBoolean(value);
     }
 
     public int getValueAsInt() {
-        return value != null ? Integer.valueOf(getValue()).intValue() : 0;
+        return value != null ? Integer.parseInt(value) : 0;
     }
 
     public @Nullable String getUnit() {

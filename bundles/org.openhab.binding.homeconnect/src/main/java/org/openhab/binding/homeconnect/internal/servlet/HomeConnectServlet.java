@@ -1,0 +1,285 @@
+package org.openhab.binding.homeconnect.internal.servlet;
+
+import static org.apache.commons.lang.StringUtils.isEmpty;
+
+import org.apache.commons.httpclient.HttpStatus;
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
+import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
+import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
+import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ServiceScope;
+import org.osgi.service.http.HttpService;
+import org.osgi.service.http.NamespaceException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.WebContext;
+import org.thymeleaf.templatemode.TemplateMode;
+import org.thymeleaf.templateresolver.ServletContextTemplateResolver;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ *
+ * Home Connect servlet.
+ *
+ * @author Jonas Brüstel - Initial Contribution
+ */
+@NonNullByDefault
+@Component(service = HomeConnectServlet.class, scope = ServiceScope.SINGLETON, immediate = true)
+public class HomeConnectServlet extends HttpServlet {
+
+    private static final String SLASH = "/";
+    private static final String SERVLET_NAME = "homeconnect";
+    private static final String SERVLET_PATH = SLASH + SERVLET_NAME;
+    private static final String ASSETS_PATH = SERVLET_PATH + "/asset";
+    private static final String ROOT_PATH = SLASH;
+    private static final String APPLIANCES_PATH = "/appliances";
+    private static final String BRIDGES_PATH = "/bridges";
+    private static final String REQUEST_LOG_PATH = "/log/requests";
+    private static final String PARAM_CODE = "code";
+    private static final String PARAM_STATE = "state";
+    private static final String PARAM_ACTION = "action";
+    private static final String PARAM_BRIDGE_ID = "bridgeId";
+    private static final String ACTION_AUTHORIZE = "authorize";
+    private static final String ACTION_CLEAR_CREDENTIALS = "clearCredentials";
+
+    private final Logger logger;
+    private final HttpService httpService;
+    private final TemplateEngine templateEngine;
+    private final Set<HomeConnectBridgeHandler> bridgeHandlers;
+
+    @Activate
+    public HomeConnectServlet(@Reference HttpService httpService) {
+        logger = LoggerFactory.getLogger(HomeConnectServlet.class);
+        bridgeHandlers = new CopyOnWriteArraySet<>();
+        this.httpService = httpService;
+
+        // register servlet
+        try {
+            logger.info("Initialize log viewer servlet ({})", SERVLET_PATH);
+            httpService.registerServlet(SERVLET_PATH, this, null, httpService.createDefaultHttpContext());
+            httpService.registerResources(ASSETS_PATH, "assets", null);
+        } catch (NamespaceException e) {
+            try {
+                httpService.unregister(SERVLET_PATH);
+                httpService.unregister(ASSETS_PATH);
+                httpService.registerServlet(SERVLET_PATH, this, null, httpService.createDefaultHttpContext());
+                httpService.registerResources(ASSETS_PATH, "assets", null);
+            } catch (ServletException | NamespaceException ex) {
+                logger.error("Could not register Home Connect servlet! ({})", SERVLET_PATH, ex);
+            }
+        } catch (ServletException e) {
+            logger.error("Could not register Home Connect servlet! ({})", SERVLET_PATH, e);
+        }
+
+        // setup template engine
+        ServletContextTemplateResolver templateResolver = new ServletContextTemplateResolver(getServletContext());
+        templateResolver.setTemplateMode(TemplateMode.HTML);
+        templateResolver.setPrefix("/templates/");
+        templateResolver.setSuffix(".html");
+        templateResolver.setCacheable(true);
+        templateEngine = new TemplateEngine();
+        templateEngine.setTemplateResolver(templateResolver);
+    }
+
+    @Deactivate
+    protected void dispose() {
+        try {
+            logger.info("Unregister Home Connect servlet ({}).", SERVLET_PATH);
+            httpService.unregister(SERVLET_PATH);
+            httpService.unregister(ASSETS_PATH);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Could not unregister Home Connect servlet. Failed wth {}", e.getMessage());
+        }
+    }
+
+    @Override
+    protected void doGet(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response)
+            throws IOException {
+        if (request == null || response == null) {
+            return;
+        }
+        String path = request.getPathInfo();
+
+        if (path == null || path.isEmpty() || path.equals(ROOT_PATH)) {
+            String code = request.getParameter(PARAM_CODE);
+            String state = request.getParameter(PARAM_STATE);
+            if (!isEmpty(code) && !isEmpty(state)) {
+                getBridgeAuthenticationPage(request, response, code, state);
+            } else {
+                getDashboardPage(request, response);
+            }
+        } else if (pathMatches(path, BRIDGES_PATH)) {
+            getBridgesPage(request, response);
+        } else if (pathMatches(path, APPLIANCES_PATH)) {
+            getAppliancesPage(request, response);
+        } else if (pathMatches(path, REQUEST_LOG_PATH)) {
+            getRequestLogPage(request, response);
+        } else {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+        }
+    }
+
+    @Override
+    protected void doPost(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response) throws IOException {
+        if (request == null || response == null) {
+            return;
+        }
+        String path = request.getPathInfo();
+
+        if (path != null && pathMatches(path, BRIDGES_PATH)) {
+            postBridgesPage(request, response);
+        } else {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+        }
+    }
+
+    /**
+     * Add Home Connect bridge handler to configuration servlet, to allow user to authenticate against Home Connect API.
+     *
+     * @param bridgeHandler bridge handler
+     */
+    public void addBridgeHandler(HomeConnectBridgeHandler bridgeHandler) {
+        bridgeHandlers.add(bridgeHandler);
+    }
+
+    /**
+     * Remove Home Connect bridge handler from configuration servlet.
+     *
+     * @param bridgeHandler bridge handler
+     */
+    public void removeBridgeHandler(HomeConnectBridgeHandler bridgeHandler) {
+        bridgeHandlers.remove(bridgeHandler);
+    }
+
+    private void getDashboardPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        WebContext context = new WebContext(request, response, request.getServletContext());
+        context.setVariable("test", "Hello World");
+        templateEngine.process("dashboard", context, response.getWriter());
+    }
+
+    private void getAppliancesPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        WebContext context = new WebContext(request, response, request.getServletContext());
+        context.setVariable("test", "Hello World");
+        templateEngine.process("appliances", context, response.getWriter());
+    }
+
+    private void getBridgesPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        WebContext context = new WebContext(request, response, request.getServletContext());
+        context.setVariable("bridgeHandlers", bridgeHandlers);
+        templateEngine.process("bridges", context, response.getWriter());
+    }
+
+    private void postBridgesPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        @Nullable String action = request.getParameter(PARAM_ACTION);
+        @Nullable String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
+        Optional<HomeConnectBridgeHandler> bridgeHandlerOptional = bridgeHandlers.stream()
+                .filter(homeConnectBridgeHandler -> homeConnectBridgeHandler.getThing().getUID().toString().equals(bridgeId))
+                .findFirst();
+
+        if (bridgeHandlerOptional.isPresent() && (ACTION_AUTHORIZE.equals(action) || ACTION_CLEAR_CREDENTIALS.equals(action))) {
+            HomeConnectBridgeHandler bridgeHandler = bridgeHandlerOptional.get();
+            if (ACTION_AUTHORIZE.equals(action)) {
+                try {
+                String authorizationUrl = bridgeHandler
+                        .getOAuthClientService()
+                        .getAuthorizationUrl(null, null, bridgeHandler.getThing().getUID().getAsString());
+                logger.debug("Generated authorization url: {}", authorizationUrl);
+
+                response.sendRedirect(authorizationUrl);
+                } catch (OAuthException e) {
+                    logger.error("Could not create authorization url!", e);
+                    response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, "Could not create authorization url!");
+                }
+            } else {
+                logger.info("Remove access token for '{}' bridge.", bridgeHandler.getThing().getLabel());
+                try {
+                    bridgeHandler.getOAuthClientService().remove();
+                } catch (OAuthException e) {
+                    logger.error("Could not clear oAuth credentials.", e);
+                }
+                bridgeHandler.dispose();
+                bridgeHandler.initialize();
+
+                WebContext context = new WebContext(request, response, request.getServletContext());
+                context.setVariable("action", bridgeHandler.getThing().getUID().getAsString() + ACTION_CLEAR_CREDENTIALS);
+                context.setVariable("bridgeHandlers", bridgeHandlers);
+                templateEngine.process("bridges", context, response.getWriter());
+            }
+        } else {
+            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge or action is missing!");
+        }
+    }
+
+    private void getRequestLogPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        ArrayList<Queue<ApiRequest>> requestQueues = new ArrayList<>();
+        bridgeHandlers.forEach(homeConnectBridgeHandler -> {
+            requestQueues.add(homeConnectBridgeHandler.getApiClient().getLatestApiRequests());
+        });
+
+        WebContext context = new WebContext(request, response, request.getServletContext());
+        context.setVariable("bridgeHandlers", bridgeHandlers);
+        templateEngine.process("log-requests", context, response.getWriter());
+    }
+
+    private void getBridgeAuthenticationPage(HttpServletRequest request, HttpServletResponse response, String code,
+                                             String state) throws IOException {
+        // callback handling from authorization server
+        logger.debug("[oAuth] redirect from authorization server (code={}, state={}).", code, state);
+
+        Optional<HomeConnectBridgeHandler> bridgeHandler = getBridgeHandler(state);
+        if (bridgeHandler.isPresent()) {
+            try {
+                AccessTokenResponse accessTokenResponse = bridgeHandler.get().getOAuthClientService()
+                        .getAccessTokenResponseByAuthorizationCode(code, null);
+
+                logger.debug("access token response: {}", accessTokenResponse);
+
+                // inform bridge
+                bridgeHandler.get().dispose();
+                bridgeHandler.get().initialize();
+
+                WebContext context = new WebContext(request, response, request.getServletContext());
+                context.setVariable("action", bridgeHandler.get().getThing().getUID().getAsString() + ACTION_AUTHORIZE);
+                context.setVariable("bridgeHandlers", bridgeHandlers);
+                templateEngine.process("bridges", context, response.getWriter());
+            } catch (OAuthException | OAuthResponseException e) {
+                logger.error("Could not fetch token!", e);
+                response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, "Could not fetch token!");
+            }
+        } else {
+            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
+        }
+    }
+
+    private boolean pathMatches(String path, String targetPath) {
+        return path.equals(targetPath) || path.equals(targetPath + SLASH);
+    }
+
+    private Optional<HomeConnectBridgeHandler> getBridgeHandler(String bridgeUid) {
+        for (HomeConnectBridgeHandler handler : bridgeHandlers) {
+            if (handler.getThing().getUID().getAsString().equals(bridgeUid)) {
+                return Optional.of(handler);
+            }
+        }
+        return Optional.empty();
+    }
+}

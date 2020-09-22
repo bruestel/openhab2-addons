@@ -19,7 +19,9 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.storage.Storage;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
-import org.openhab.binding.homeconnect.internal.client.HomeConnectSseClient;
+import org.openhab.binding.homeconnect.internal.client.HomeConnectEventSourceClient;
+import org.openhab.binding.homeconnect.internal.client.model.HomeConnectRequest;
+import org.openhab.binding.homeconnect.internal.client.model.HomeConnectResponse;
 import org.openhab.binding.homeconnect.internal.factory.HomeConnectHandlerFactory;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -56,12 +58,12 @@ public class LogWriter {
     }
 
     public void log(Type type, Level level, @Nullable String haId, @Nullable String label,
-            @Nullable List<String> details, @Nullable Request request, @Nullable Response response,
-            @Nullable String message, Object... arguments) {
+            @Nullable List<String> details, @Nullable HomeConnectRequest homeConnectRequest,
+            @Nullable HomeConnectResponse homeConnectResponse, @Nullable String message, Object... arguments) {
         FormattingTuple messageTuple = formatLog(message, arguments);
 
         writeLog(new Log(System.currentTimeMillis(), className, type, level, messageTuple.getMessage(), haId, label,
-                details, request, response), messageTuple.getThrowable());
+                details, homeConnectRequest, homeConnectResponse), messageTuple.getThrowable());
     }
 
     public void trace(@Nullable String message) {
@@ -207,7 +209,7 @@ public class LogWriter {
             } else if (entry.getType() == Type.API_ERROR) {
                 identifier = "API_ERROR";
             } else {
-                if (HomeConnectSseClient.class.getSimpleName().equals(entry.getClassName())) {
+                if (HomeConnectEventSourceClient.class.getSimpleName().equals(entry.getClassName())) {
                     identifier = "SSE";
                 } else if (HomeConnectHandlerFactory.class.getSimpleName().equals(entry.getClassName())) {
                     identifier = "FACTORY";
@@ -231,29 +233,29 @@ public class LogWriter {
             StringBuilder sb = new StringBuilder();
             sb.append("[{}] ");
 
-            Request request = entry.getRequest();
-            if (request != null && (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR)) {
-                Response response = entry.getResponse();
+            HomeConnectRequest homeConnectRequest = entry.getRequest();
+            if (homeConnectRequest != null && (entry.getType() == Type.API_CALL || entry.getType() == Type.API_ERROR)) {
+                HomeConnectResponse homeConnectResponse = entry.getResponse();
 
-                sb.append(request.getMethod()).append(" ");
-                if (response != null) {
-                    sb.append(response.getCode()).append(" ");
+                sb.append(homeConnectRequest.getMethod()).append(" ");
+                if (homeConnectResponse != null) {
+                    sb.append(homeConnectResponse.getCode()).append(" ");
                 }
-                sb.append(request.getUrl()).append("\n");
-                request.getHeader()
+                sb.append(homeConnectRequest.getUrl()).append("\n");
+                homeConnectRequest.getHeader()
                         .forEach((key, value) -> sb.append("> ").append(key).append(": ").append(value).append("\n"));
 
-                if (entry.getRequest() != null && request.getBody() != null) {
-                    sb.append(request.getBody()).append("\n");
+                if (entry.getRequest() != null && homeConnectRequest.getBody() != null) {
+                    sb.append(homeConnectRequest.getBody()).append("\n");
                 }
 
-                if (response != null) {
+                if (homeConnectResponse != null) {
                     sb.append("\n");
-                    response.getHeader().forEach(
+                    homeConnectResponse.getHeader().forEach(
                             (key, value) -> sb.append("< ").append(key).append(": ").append(value).append("\n"));
                 }
-                if (response != null && response.getBody() != null) {
-                    sb.append(response.getBody()).append("\n");
+                if (homeConnectResponse != null && homeConnectResponse.getBody() != null) {
+                    sb.append(homeConnectResponse.getBody()).append("\n");
                 }
             } else {
                 sb.append(entry.getMessage());

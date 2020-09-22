@@ -25,7 +25,6 @@ import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
-import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
@@ -111,41 +110,43 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
-            HomeConnectApiClient apiClient = getApiClient();
+            getApiClient().ifPresent(apiClient -> {
 
-            try {
-                // turn hood on and off
-                if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())
-                        && apiClient != null) {
-                    apiClient.setPowerState(getThingHaId(),
-                            OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_OFF);
-                }
-
-                // program options
-                String operationState = getOperationState();
-                if (OPERATION_STATE_INACTIVE.equals(operationState) && apiClient != null) {
-                    // set intensive level
-                    if (command instanceof StringType && CHANNEL_HOOD_INTENSIVE_LEVEL.equals(channelUID.getId())) {
-                        apiClient.setProgramOptions(getThingHaId(), OPTION_HOOD_INTENSIVE_LEVEL, command.toFullString(),
-                                null, false, false);
-                    } else if (command instanceof StringType && CHANNEL_HOOD_VENTING_LEVEL.equals(channelUID.getId())) {
-                        apiClient.setProgramOptions(getThingHaId(), OPTION_HOOD_VENTING_LEVEL, command.toFullString(),
-                                null, false, false);
+                try {
+                    // turn hood on and off
+                    if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())) {
+                        apiClient.setPowerState(getThingHaId(),
+                                OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_OFF);
                     }
-                } else {
-                    logger.debugWithHaId(getThingHaId(),
-                            "Device can not handle command {} in current operation state ({}).", command,
-                            operationState);
-                }
-            } catch (CommunicationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
-                        command.toFullString(), e.getMessage());
-            } catch (AuthorizationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
-                        command.toFullString(), e.getMessage());
 
-                handleAuthenticationError(e);
-            }
+                    // program options
+                    String operationState = getOperationState();
+                    if (OPERATION_STATE_INACTIVE.equals(operationState)) {
+                        // set intensive level
+                        if (command instanceof StringType && CHANNEL_HOOD_INTENSIVE_LEVEL.equals(channelUID.getId())) {
+                            apiClient.setProgramOptions(getThingHaId(), OPTION_HOOD_INTENSIVE_LEVEL,
+                                    command.toFullString(), null, false, false);
+                        } else if (command instanceof StringType
+                                && CHANNEL_HOOD_VENTING_LEVEL.equals(channelUID.getId())) {
+                            apiClient.setProgramOptions(getThingHaId(), OPTION_HOOD_VENTING_LEVEL,
+                                    command.toFullString(), null, false, false);
+                        }
+                    } else {
+                        logger.debugWithHaId(getThingHaId(),
+                                "Device can not handle command {} in current operation state ({}).", command,
+                                operationState);
+                    }
+                } catch (CommunicationException e) {
+                    logger.warnWithHaId(getThingHaId(),
+                            "Could not handle command {}. API communication problem! error: {}", command.toFullString(),
+                            e.getMessage());
+                } catch (AuthorizationException e) {
+                    logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
+                            command.toFullString(), e.getMessage());
+
+                    handleAuthenticationError(e);
+                }
+            });
         }
     }
 

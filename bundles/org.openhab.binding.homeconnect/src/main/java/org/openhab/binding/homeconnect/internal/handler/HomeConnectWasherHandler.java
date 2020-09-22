@@ -128,7 +128,7 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
             String operationState = getOperationState();
-            HomeConnectApiClient apiClient = getApiClient();
+            HomeConnectApiClient apiClient = getApiClient().orElse(null);
 
             try {
                 // only handle these commands if operation state allows it

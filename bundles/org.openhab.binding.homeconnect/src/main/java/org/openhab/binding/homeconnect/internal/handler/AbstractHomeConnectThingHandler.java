@@ -14,17 +14,59 @@ package org.openhab.binding.homeconnect.internal.handler;
 
 import static org.eclipse.smarthome.core.library.unit.ImperialUnits.FAHRENHEIT;
 import static org.eclipse.smarthome.core.library.unit.SIUnits.CELSIUS;
-import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.*;
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
+import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.PERCENT;
+import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.SECOND;
+import static org.eclipse.smarthome.core.thing.ThingStatus.OFFLINE;
+import static org.eclipse.smarthome.core.thing.ThingStatus.ONLINE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ACTIVE_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_BASIC_ACTIONS_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DOOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DRYER_DRYING_TARGET;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DURATION;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ELAPSED_PROGRAM_TIME;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_HOOD_INTENSIVE_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_HOOD_VENTING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_LOCAL_CONTROL_ACTIVE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_POWER_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_PROGRAM_PROGRESS_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMAINING_PROGRAM_TIME_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMOTE_CONTROL_ACTIVE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMOTE_START_ALLOWANCE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_SELECTED_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_IDOS1;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_IDOS2;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_SPIN_SPEED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HA_ID;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_DRYER_DRYING_TARGET;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_DURATION;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_ELAPSED_PROGRAM_TIME;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_HOOD_INTENSIVE_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_HOOD_VENTING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_PROGRAM_PROGRESS;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_REMAINING_PROGRAM_TIME;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_IDOS_1_DOSING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_IDOS_2_DOSING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_SPIN_SPEED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_DOOR_OPEN;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_EVENT_PRESENT_STATE_OFF;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_OPERATION_FINISHED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_OPERATION_READY;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_OPERATION_RUN;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_POWER_ON;
+import static org.openhab.binding.homeconnect.internal.client.model.EventType.CONNECTED;
+import static org.openhab.binding.homeconnect.internal.client.model.EventType.DISCONNECTED;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import javax.measure.Unit;
@@ -42,7 +84,6 @@ import org.eclipse.smarthome.core.thing.Bridge;
 import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
-import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.ThingStatusInfo;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
@@ -55,9 +96,10 @@ import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
 import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
+import org.openhab.binding.homeconnect.internal.client.HomeConnectEventSourceClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.listener.ServerSentEventListener;
+import org.openhab.binding.homeconnect.internal.client.listener.HomeConnectEventListener;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
@@ -77,16 +119,11 @@ import org.slf4j.event.Level;
  * @author Jonas Brüstel - Initial contribution
  */
 @NonNullByDefault
-public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler implements ServerSentEventListener {
+public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler implements HomeConnectEventListener {
 
-    private static final int CACHE_TTL = 2;
-    private static final int SSE_KEEP_ALIVE_INITIAL_DELAY = 1;
-    private static final int SSE_KEEP_ALIVE_PERIOD = 1;
-    private static final int SSE_KEEP_ALIVE_RESTART_INTERVAL = 3;
+    private static final int CACHE_TTL = 2; // in seconds
 
     private @Nullable String operationState;
-    private @Nullable LocalDateTime sseLastEventReceived;
-    private @Nullable ScheduledFuture<?> sseMonitorFuture;
 
     private final ConcurrentHashMap<String, EventHandler> eventHandlers;
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
@@ -112,55 +149,21 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     public void initialize() {
         logger.debugWithHaId(getThingHaId(), "Initialize thing handler ({}).", getThingLabel());
 
-        Bridge bridge = getBridge();
-        if (bridge != null && ThingStatus.ONLINE.equals(bridge.getStatus())) {
-            refreshThingStatus();
+        if (isBridgeOnline()) {
+            refreshThingStatus(); // set ONLINE / OFFLINE
             updateSelectedProgramStateDescription();
             updateChannels();
-            BridgeHandler bridgeHandler = bridge.getHandler();
-            if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
-                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
-                homeConnectBridgeHandler.registerServerSentEventListener(this);
-
-                logger.debugWithHaId(getThingHaId(), "Start SSE connection monitor of thing handler ({}).",
-                        getThingLabel());
-                this.sseMonitorFuture = scheduler.scheduleWithFixedDelay(() -> {
-                    logger.debugWithHaId(getThingHaId(),
-                            "Check SSE connection ({}). Last event package received at {}.", getThingLabel(),
-                            sseLastEventReceived);
-                    if (sseLastEventReceived != null && ChronoUnit.MINUTES.between(sseLastEventReceived,
-                            LocalDateTime.now()) > SSE_KEEP_ALIVE_RESTART_INTERVAL) {
-                        logger.warnWithHaId(getThingHaId(), "Dead SSE connection detected ({}). Restart handler.",
-                                getThingLabel());
-                        dispose();
-                        initialize();
-                    }
-                }, SSE_KEEP_ALIVE_INITIAL_DELAY, SSE_KEEP_ALIVE_PERIOD, TimeUnit.MINUTES);
-            }
+            registerEventListener();
         } else {
-            logger.debugWithHaId(getThingHaId(), "Bridge is not online ({}), skip initialization of thing handler.",
+            logger.debugWithHaId(getThingHaId(), "Bridge is offline ({}), skip initialization of thing handler.",
                     getThingLabel());
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
+            updateStatus(OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
         }
     }
 
     @Override
     public void dispose() {
-        Bridge bridge = getBridge();
-        if (bridge != null) {
-            BridgeHandler bridgeHandler = bridge.getHandler();
-            if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
-                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
-                homeConnectBridgeHandler.unregisterServerSentEventListener(this);
-            }
-        }
-
-        ScheduledFuture<?> keepAliveMonitorFuture = this.sseMonitorFuture;
-        if (keepAliveMonitorFuture != null) {
-            logger.debug("Dispose SSE connection monitor of thing handler ({}).", getThingLabel());
-            keepAliveMonitorFuture.cancel(true);
-            this.sseMonitorFuture = null;
-        }
+        unregisterEventListener();
     }
 
     @Override
@@ -177,7 +180,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         if (isThingReadyToHandleCommand()) {
             logger.debugWithHaId(getThingHaId(), "Handle \"{}\" command ({}).", command, channelUID.getId());
             try {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
 
                 if (command instanceof RefreshType) {
                     updateChannel(channelUID);
@@ -232,40 +235,58 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     @Override
     public void onEvent(Event event) {
-        logger.debugWithHaId(getThingHaId(), "{}", event);
-        sseLastEventReceived = LocalDateTime.now();
-
-        if (EVENT_DISCONNECTED.equals(event.getKey())) {
+        if (DISCONNECTED.equals(event.getType())) {
             logger.infoWithHaId(getThingHaId(), "Received DISCONNECTED event. Set {} to OFFLINE.",
                     getThing().getLabel());
-            updateStatus(ThingStatus.OFFLINE);
+            updateStatus(OFFLINE);
             resetChannelsOnOfflineEvent();
             resetProgramStateChannels();
-        } else if (EVENT_CONNECTED.equals(event.getKey()) && ThingStatus.ONLINE.equals(getThing().getStatus())) {
+        } else if (CONNECTED.equals(event.getType()) && isThingOnline()) {
             logger.infoWithHaId(getThingHaId(), "Received CONNECTED event. Update power state channel.");
             getThingChannel(CHANNEL_POWER_STATE).ifPresent(c -> updateChannel(c.getUID()));
-        } else if (!ThingStatus.ONLINE.equals(getThing().getStatus())) {
-            updateStatus(ThingStatus.ONLINE);
+        } else if (isThingOffline()) {
+            updateStatus(ONLINE);
             logger.infoWithHaId(getThingHaId(), "Set {} to ONLINE and update channels.", getThing().getLabel());
             updateChannels();
         }
 
-        if (EVENT_OPERATION_STATE.contentEquals(event.getKey())) {
+        if (EVENT_OPERATION_STATE.equals(event.getKey())) {
             operationState = event.getValue() == null ? null : event.getValue();
         }
 
-        if (eventHandlers.containsKey(event.getKey())) {
+        if (event.getKey() != null && eventHandlers.containsKey(event.getKey())) {
             eventHandlers.get(event.getKey()).handle(event);
-        } else if (!EVENT_CONNECTED.equals(event.getKey()) && !EVENT_DISCONNECTED.equals(event.getKey())
-                && !EVENT_KEEP_ALIVE.equals(event.getKey())) {
-            logger.debugWithHaId(getThingHaId(), "No event handler registered for event {}. Ignore event.", event);
         }
     }
 
     @Override
-    public void onReconnectFailed() {
-        logger.errorWithHaId(getThingHaId(), "SSE connection was closed due to authentication problems!");
-        handleAuthenticationError(new AuthorizationException("SSE connection was killed!"));
+    public void onClosed() {
+        unregisterEventListener();
+        refreshThingStatus();
+        registerEventListener();
+    }
+
+    /**
+     * Register event listener.
+     */
+    protected void registerEventListener() {
+        if (isBridgeOnline() && isThingOnline()) {
+            getEventSourceClient().ifPresent(client -> {
+                try {
+                    client.registerEventListener(getThingHaId(), this);
+                } catch (CommunicationException | AuthorizationException e) {
+                    logger.errorWithLabel(getThing().getLabel(), "Could not open event source connection. error={}",
+                            e.getMessage());
+                }
+            });
+        }
+    }
+
+    /**
+     * Unregister event listener.
+     */
+    protected void unregisterEventListener() {
+        getEventSourceClient().ifPresent(client -> client.unregisterEventListener(this));
     }
 
     /**
@@ -273,18 +294,17 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      *
      * @return client instance
      */
-    protected @Nullable HomeConnectApiClient getApiClient() {
-        HomeConnectApiClient apiClient = null;
-        Bridge bridge = getBridge();
-        if (bridge != null && ThingStatus.ONLINE.equals(bridge.getStatus())) {
-            BridgeHandler bridgeHandler = bridge.getHandler();
-            if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
-                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
-                apiClient = homeConnectBridgeHandler.getApiClient();
-            }
-        }
+    protected Optional<@Nullable HomeConnectApiClient> getApiClient() {
+        return getBridgeHandler().map(HomeConnectBridgeHandler::getApiClient);
+    }
 
-        return apiClient;
+    /**
+     * Get {@link HomeConnectEventSourceClient}.
+     *
+     * @return client instance if present
+     */
+    protected Optional<@Nullable HomeConnectEventSourceClient> getEventSourceClient() {
+        return getBridgeHandler().map(HomeConnectBridgeHandler::getEventSourceClient);
     }
 
     /**
@@ -292,18 +312,14 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      */
     protected void updateSelectedProgramStateDescription() {
         logger.debugWithHaId(getThingHaId(), "updateSelectedProgramStateDescription()");
-        Bridge bridge = getBridge();
-        if (bridge == null || ThingStatus.OFFLINE.equals(bridge.getStatus())) {
-            return;
-        }
 
-        if (ThingStatus.OFFLINE.equals(getThing().getStatus())) {
+        if (isBridgeOffline() || isThingOffline()) {
             return;
         }
 
         // exclude fridge/freezer as they don't have programs
         if (!(this instanceof HomeConnectFridgeFreezerHandler)) {
-            HomeConnectApiClient apiClient = getApiClient();
+            HomeConnectApiClient apiClient = getApiClient().orElse(null);
             if (apiClient != null) {
                 try {
                     ArrayList<StateOption> stateOptions = new ArrayList<>();
@@ -355,17 +371,74 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             logger.warnWithHaId(getThingHaId(), "BridgeHandler not found. Cannot handle command without bridge.");
             return false;
         }
-        if (ThingStatus.OFFLINE.equals(bridge.getStatus())) {
+
+        if (isBridgeOffline()) {
             logger.debugWithHaId(getThingHaId(), "Bridge is OFFLINE. Ignore command.");
             return false;
         }
 
-        if (ThingStatus.OFFLINE.equals(getThing().getStatus())) {
+        if (isThingOffline()) {
             logger.debugWithHaId(getThingHaId(), "{} is OFFLINE. Ignore command.", getThing().getLabel());
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Checks if bridge is online and set.
+     *
+     * @return
+     */
+    protected boolean isBridgeOnline() {
+        Bridge bridge = getBridge();
+        if (bridge != null && ONLINE.equals(bridge.getStatus())) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Checks if bridge is offline or not set.
+     *
+     * @return
+     */
+    protected boolean isBridgeOffline() {
+        return !isBridgeOnline();
+    }
+
+    /**
+     * Checks if thing is online.
+     *
+     * @return
+     */
+    protected boolean isThingOnline() {
+        return OFFLINE.equals(getThing().getStatus());
+    }
+
+    /**
+     * Checks if thing is offline.
+     *
+     * @return
+     */
+    protected boolean isThingOffline() {
+        return !isThingOnline();
+    }
+
+    /**
+     * Get {@link HomeConnectBridgeHandler}.
+     * 
+     * @return
+     */
+    protected Optional<HomeConnectBridgeHandler> getBridgeHandler() {
+        Bridge bridge = getBridge();
+        if (bridge != null) {
+            BridgeHandler bridgeHandler = bridge.getHandler();
+            if (bridgeHandler != null && bridgeHandler instanceof HomeConnectBridgeHandler) {
+                return Optional.of((HomeConnectBridgeHandler) bridgeHandler);
+            }
+        }
+        return Optional.empty();
     }
 
     /**
@@ -407,20 +480,15 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected void updateChannels() {
         logger.traceWithHaId(getThingHaId(), "updateChannels()");
 
-        Bridge bridge = getBridge();
-        if (bridge == null || ThingStatus.OFFLINE.equals(bridge.getStatus())) {
+        if (isBridgeOffline()) {
             logger.warnWithHaId(getThingHaId(), "Bridge handler not found or offline. Stopping update of channels.");
-            return;
-        }
-
-        if (ThingStatus.OFFLINE.equals(getThing().getStatus())) {
+        } else if (isThingOffline()) {
             logger.debugWithHaId(getThingHaId(), "{} offline. Stopping update of channels.", getThing().getLabel());
-            return;
-        }
-
-        List<Channel> channels = getThing().getChannels();
-        for (Channel channel : channels) {
-            updateChannel(channel.getUID());
+        } else {
+            List<Channel> channels = getThing().getChannels();
+            for (Channel channel : channels) {
+                updateChannel(channel.getUID());
+            }
         }
     }
 
@@ -431,7 +499,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      */
     protected void updateChannel(ChannelUID channelUID) {
         logger.traceWithHaId(getThingHaId(), "updateChannel({})", channelUID.getId());
-        HomeConnectApiClient apiClient = getApiClient();
+        HomeConnectApiClient apiClient = getApiClient().orElse(null);
 
         if (apiClient == null) {
             logger.errorWithHaId(getThingHaId(), "Cannot update channel. No instance of api client found!");
@@ -439,13 +507,13 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         }
 
         Bridge bridge = getBridge();
-        if (bridge == null || ThingStatus.OFFLINE.equals(bridge.getStatus())) {
+        if (!isBridgeOnline()) {
             logger.warnWithHaId(getThingHaId(), "BridgeHandler not found or offline. Stopping update of channel {}.",
                     channelUID);
             return;
         }
 
-        if (ThingStatus.OFFLINE.equals(getThing().getStatus())) {
+        if (!isThingOnline()) {
             logger.debugWithHaId(getThingHaId(), "{} offline. Stopping update of channel {}.", getThing().getLabel(),
                     channelUID);
             return;
@@ -532,36 +600,36 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * @return status has changed
      */
     protected void refreshThingStatus() {
-        HomeConnectApiClient client = getApiClient();
+        HomeConnectApiClient client = getApiClient().orElse(null);
 
         if (client != null) {
             try {
                 HomeAppliance homeAppliance = client.getHomeAppliance(getThingHaId());
                 if (!homeAppliance.isConnected()) {
                     logger.debugWithHaId(getThingHaId(), "Update status to OFFLINE.");
-                    updateStatus(ThingStatus.OFFLINE);
+                    updateStatus(OFFLINE);
                 } else {
                     logger.debugWithHaId(getThingHaId(), "Update status to ONLINE.");
-                    updateStatus(ThingStatus.ONLINE);
+                    updateStatus(ONLINE);
                 }
             } catch (CommunicationException | RuntimeException e) {
                 logger.debugWithHaId(getThingHaId(),
                         "Update status to OFFLINE. Home Connect service is not reachable or a problem occurred! ({}).",
                         e.getMessage());
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                updateStatus(OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                         "Home Connect service is not reachable or a problem occurred! (" + e.getMessage() + ").");
             } catch (AuthorizationException e) {
                 logger.debugWithHaId(getThingHaId(),
                         "Update status to OFFLINE. Home Connect service is not reachable or a problem occurred! ({}).",
                         e.getMessage());
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                updateStatus(OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                         "Home Connect service is not reachable or a problem occurred! (" + e.getMessage() + ").");
 
                 handleAuthenticationError(e);
             }
         } else {
             logger.debugWithHaId(getThingHaId(), "Update status to OFFLINE (BRIDGE_UNINITIALIZED)");
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED);
+            updateStatus(OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED);
         }
     }
 
@@ -729,10 +797,11 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         };
     }
 
+    // TODO move to separate class and export as static
     protected ChannelUpdateHandler defaultDoorStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Data data = apiClient.getDoorState(getThingHaId());
                     if (data.getValue() != null) {
@@ -750,7 +819,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultPowerStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Data data = apiClient.getPowerState(getThingHaId());
                     if (data.getValue() != null) {
@@ -774,7 +843,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultOperationStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Data data = apiClient.getOperationState(getThingHaId());
 
@@ -796,7 +865,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultRemoteControlActiveStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     return apiClient.isRemoteControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF;
                 }
@@ -808,7 +877,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultLocalControlActiveStateChannelUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     return apiClient.isLocalControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF;
                 }
@@ -820,7 +889,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultRemoteStartAllowanceChannelUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     return apiClient.isRemoteControlStartAllowed(getThingHaId()) ? OnOffType.ON : OnOffType.OFF;
                 }
@@ -832,7 +901,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultSelectedProgramStateUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Program program = apiClient.getSelectedProgram(getThingHaId());
                     if (program != null) {
@@ -850,7 +919,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Program program = apiClient.getSelectedProgram(getThingHaId());
 
@@ -871,7 +940,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected ChannelUpdateHandler defaultActiveProgramStateUpdateHandler() {
         return (channelUID, cache) -> {
             updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient();
+                HomeConnectApiClient apiClient = getApiClient().orElse(null);
                 if (apiClient != null) {
                     Program program = apiClient.getActiveProgram(getThingHaId());
 
@@ -1006,7 +1075,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     protected void updateProgramOptionsStateDescriptions(String programKey)
             throws CommunicationException, AuthorizationException {
-        HomeConnectApiClient apiClient = getApiClient();
+        HomeConnectApiClient apiClient = getApiClient().orElse(null);
         if (apiClient != null) {
             List<AvailableProgramOption> availableProgramOptions = apiClient.getProgramOptions(getThingHaId(),
                     programKey);

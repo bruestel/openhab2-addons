@@ -16,6 +16,8 @@ import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.homeconnect.internal.client.model.HomeConnectRequest;
+import org.openhab.binding.homeconnect.internal.client.model.HomeConnectResponse;
 import org.slf4j.event.Level;
 
 /**
@@ -35,12 +37,12 @@ public class Log {
     private @Nullable String haId;
     private @Nullable String label;
     private @Nullable List<String> details;
-    private @Nullable Request request;
-    private @Nullable Response response;
+    private @Nullable HomeConnectRequest homeConnectRequest;
+    private @Nullable HomeConnectResponse homeConnectResponse;
 
     public Log(long created, String className, Type type, Level level, @Nullable String message, @Nullable String haId,
-            @Nullable String label, @Nullable List<String> details, @Nullable Request request,
-            @Nullable Response response) {
+            @Nullable String label, @Nullable List<String> details, @Nullable HomeConnectRequest homeConnectRequest,
+            @Nullable HomeConnectResponse homeConnectResponse) {
         this.created = created;
         this.className = className;
         this.type = type;
@@ -49,8 +51,8 @@ public class Log {
         this.haId = haId;
         this.label = label;
         this.details = details;
-        this.request = request;
-        this.response = response;
+        this.homeConnectRequest = homeConnectRequest;
+        this.homeConnectResponse = homeConnectResponse;
     }
 
     public long getCreated() {
@@ -85,18 +87,18 @@ public class Log {
         return details;
     }
 
-    public @Nullable Request getRequest() {
-        return request;
+    public @Nullable HomeConnectRequest getRequest() {
+        return homeConnectRequest;
     }
 
-    public @Nullable Response getResponse() {
-        return response;
+    public @Nullable HomeConnectResponse getResponse() {
+        return homeConnectResponse;
     }
 
     @Override
     public String toString() {
         return "Log [created=" + created + ", className=" + className + ", type=" + type + ", level=" + level
                 + ", message=" + message + ", haId=" + haId + ", label=" + label + ", details=" + details + ", request="
-                + request + ", response=" + response + "]";
+                + homeConnectRequest + ", response=" + homeConnectResponse + "]";
     }
 }

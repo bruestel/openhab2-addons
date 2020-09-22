@@ -14,7 +14,7 @@ https://github.com/openhab/openhab2-addons
 
 == Third-party Content
 
-okhttp
+okhttp / okhttp-sse
 * License: Apache License 2.0
 * Project: https://square.github.io/okhttp/
 * Source:  https://github.com/square/okhttp
@@ -28,3 +28,9 @@ okSse
 * License: Apache License 2.0
 * Project: https://github.com/heremaps/oksse
 * Source:  https://github.com/heremaps/oksse
+
+TODO andere abhängigkeiten aus maven
+
+feather icon
+bootstrap etc.
+chartjs
