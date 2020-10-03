@@ -25,15 +25,9 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.formatJsonBody;
 import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.requestBuilder;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import org.apache.commons.collections4.QueueUtils;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
@@ -54,9 +48,15 @@ import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -90,7 +90,7 @@ public class HomeConnectApiClient {
     private final OAuthClientService oAuthClientService;
     private final Queue<ApiRequest> communicationQueue;
 
-    public HomeConnectApiClient(OAuthClientService oAuthClientService, boolean simulated) {
+    public HomeConnectApiClient(OAuthClientService oAuthClientService, boolean simulated, @Nullable List<ApiRequest> apiRequestHistory) {
         this.oAuthClientService = oAuthClientService;
 
         availableProgramOptionsCache = new ConcurrentHashMap<>();
@@ -98,6 +98,9 @@ public class HomeConnectApiClient {
         client = OkHttpHelper.builder().readTimeout(REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).build();
         logger = LoggerFactory.getLogger(HomeConnectApiClient.class);
         communicationQueue = QueueUtils.synchronizedQueue(new CircularFifoQueue<>(COMMUNICATION_QUEUE_SIZE));
+        if (apiRequestHistory != null) {
+            communicationQueue.addAll(apiRequestHistory);
+        }
     }
 
     /**
@@ -443,6 +446,10 @@ public class HomeConnectApiClient {
         }
     }
 
+    /**
+     * Get latest API requests.
+     * @return thread safe queue
+     */
     public Queue<ApiRequest> getLatestApiRequests() {
         return communicationQueue;
     }

@@ -12,18 +12,11 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
-
-import java.io.IOException;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_BASE_URL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_SIMULATOR_BASE_URL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OAUTH_AUTHORIZE_PATH;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OAUTH_SCOPE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OAUTH_TOKEN_PATH;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -44,6 +37,7 @@ import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectEventSourceClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
+import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.LogWriter;
@@ -53,6 +47,18 @@ import org.openhab.core.OpenHAB;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.Version;
 import org.slf4j.event.Level;
+
+import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * The {@link HomeConnectBridgeHandler} is responsible for handling commands, which are
@@ -72,6 +78,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     private final LogWriter logger;
 
     private @Nullable ScheduledFuture<?> reinitializationFuture;
+    private @Nullable List<ApiRequest> apiRequestHistory;
 
     private @NonNullByDefault({}) OAuthClientService oAuthClientService;
     private @NonNullByDefault({}) String oAuthServiceHandleId;
@@ -117,7 +124,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
                 null, null, "Initialize oAuth client service.");
 
         // create api client
-        apiClient = new HomeConnectApiClient(oAuthClientService, config.isSimulator());
+        apiClient = new HomeConnectApiClient(oAuthClientService, config.isSimulator(), apiRequestHistory);
         eventSourceClient = new HomeConnectEventSourceClient(oAuthClientService, config.isSimulator(), scheduler);
 
         try {
@@ -240,6 +247,10 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     }
 
     private void cleanup() {
+        apiRequestHistory = new ArrayList<>();
+        apiRequestHistory.addAll(apiClient.getLatestApiRequests());
+        apiClient.getLatestApiRequests().remove();
+
         eventSourceClient.dispose();
         oAuthFactory.ungetOAuthService(oAuthServiceHandleId);
         homeConnectServlet.removeBridgeHandler(this);

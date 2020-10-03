@@ -1,6 +1,12 @@
 package org.openhab.binding.homeconnect.internal.servlet;
 
+import static java.time.ZonedDateTime.now;
 import static org.apache.commons.lang.StringUtils.isEmpty;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 
 import org.apache.commons.httpclient.HttpStatus;
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -21,13 +27,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.WebContext;
+import org.thymeleaf.extras.java8time.dialect.Java8TimeDialect;
 import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ServletContextTemplateResolver;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -35,6 +43,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.MediaType;
 
 /**
  *
@@ -56,20 +65,24 @@ public class HomeConnectServlet extends HttpServlet {
     private static final String REQUEST_LOG_PATH = "/log/requests";
     private static final String PARAM_CODE = "code";
     private static final String PARAM_STATE = "state";
+    private static final String PARAM_EXPORT = "export";
     private static final String PARAM_ACTION = "action";
     private static final String PARAM_BRIDGE_ID = "bridgeId";
     private static final String ACTION_AUTHORIZE = "authorize";
     private static final String ACTION_CLEAR_CREDENTIALS = "clearCredentials";
+    private static final DateTimeFormatter FILE_EXPORT_DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm");
 
     private final Logger logger;
     private final HttpService httpService;
     private final TemplateEngine templateEngine;
     private final Set<HomeConnectBridgeHandler> bridgeHandlers;
+    private final Gson gson;
 
     @Activate
     public HomeConnectServlet(@Reference HttpService httpService) {
         logger = LoggerFactory.getLogger(HomeConnectServlet.class);
         bridgeHandlers = new CopyOnWriteArraySet<>();
+        gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) -> new JsonPrimitive(src.format(DateTimeFormatter.ISO_DATE_TIME))).create();
         this.httpService = httpService;
 
         // register servlet
@@ -97,6 +110,7 @@ public class HomeConnectServlet extends HttpServlet {
         templateResolver.setSuffix(".html");
         templateResolver.setCacheable(true);
         templateEngine = new TemplateEngine();
+        templateEngine.addDialect(new Java8TimeDialect());
         templateEngine.setTemplateResolver(templateResolver);
     }
 
@@ -132,7 +146,13 @@ public class HomeConnectServlet extends HttpServlet {
         } else if (pathMatches(path, APPLIANCES_PATH)) {
             getAppliancesPage(request, response);
         } else if (pathMatches(path, REQUEST_LOG_PATH)) {
-            getRequestLogPage(request, response);
+            String export = request.getParameter(PARAM_EXPORT);
+            String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
+            if (!isEmpty(export) && !isEmpty(bridgeId)) {
+                getRequestLogExport(request, response, bridgeId);
+            } else {
+                getRequestLogPage(request, response);
+            }
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
@@ -199,12 +219,12 @@ public class HomeConnectServlet extends HttpServlet {
             HomeConnectBridgeHandler bridgeHandler = bridgeHandlerOptional.get();
             if (ACTION_AUTHORIZE.equals(action)) {
                 try {
-                String authorizationUrl = bridgeHandler
-                        .getOAuthClientService()
-                        .getAuthorizationUrl(null, null, bridgeHandler.getThing().getUID().getAsString());
-                logger.debug("Generated authorization url: {}", authorizationUrl);
+                    String authorizationUrl = bridgeHandler
+                            .getOAuthClientService()
+                            .getAuthorizationUrl(null, null, bridgeHandler.getThing().getUID().getAsString());
+                    logger.debug("Generated authorization url: {}", authorizationUrl);
 
-                response.sendRedirect(authorizationUrl);
+                    response.sendRedirect(authorizationUrl);
                 } catch (OAuthException e) {
                     logger.error("Could not create authorization url!", e);
                     response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, "Could not create authorization url!");
@@ -230,14 +250,26 @@ public class HomeConnectServlet extends HttpServlet {
     }
 
     private void getRequestLogPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        ArrayList<Queue<ApiRequest>> requestQueues = new ArrayList<>();
-        bridgeHandlers.forEach(homeConnectBridgeHandler -> {
-            requestQueues.add(homeConnectBridgeHandler.getApiClient().getLatestApiRequests());
-        });
+        ArrayList<ApiRequest> requests = new ArrayList<>();
+        bridgeHandlers.forEach(homeConnectBridgeHandler -> requests.addAll(homeConnectBridgeHandler.getApiClient().getLatestApiRequests()));
 
         WebContext context = new WebContext(request, response, request.getServletContext());
         context.setVariable("bridgeHandlers", bridgeHandlers);
+        context.setVariable("requests",  gson.toJson(requests));
         templateEngine.process("log-requests", context, response.getWriter());
+    }
+
+    private void getRequestLogExport(HttpServletRequest request, HttpServletResponse response, String bridgeId) throws IOException {
+        Optional<HomeConnectBridgeHandler> bridgeHandler = getBridgeHandler(bridgeId);
+        if (bridgeHandler.isPresent()) {
+            response.setContentType(MediaType.APPLICATION_JSON);
+            String filePrefix = now().format(FILE_EXPORT_DTF) + "_" + bridgeId;
+            response.setHeader("Content-disposition", "attachment; filename=" + filePrefix + ".json");
+
+            response.getWriter().write(gson.toJson(bridgeHandler.get().getApiClient().getLatestApiRequests()));
+        } else {
+            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
+        }
     }
 
     private void getBridgeAuthenticationPage(HttpServletRequest request, HttpServletResponse response, String code,
