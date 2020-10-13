@@ -413,7 +413,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * @return
      */
     protected boolean isThingOnline() {
-        return OFFLINE.equals(getThing().getStatus());
+        return ONLINE.equals(getThing().getStatus());
     }
 
     /**
@@ -427,7 +427,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
     /**
      * Get {@link HomeConnectBridgeHandler}.
-     * 
+     *
      * @return
      */
     protected Optional<HomeConnectBridgeHandler> getBridgeHandler() {
@@ -638,7 +638,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      *
      * @return home appliance id
      */
-    protected String getThingHaId() {
+    public String getThingHaId() {
         return getThing().getConfiguration().get(HA_ID).toString();
     }
 

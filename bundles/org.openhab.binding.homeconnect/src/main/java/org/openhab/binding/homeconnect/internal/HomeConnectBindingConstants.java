@@ -50,7 +50,6 @@ public class HomeConnectBindingConstants {
     public static final String EVENT_POWER_STATE = "BSH.Common.Setting.PowerState";
     public static final String EVENT_CONNECTED = "CONNECTED";
     public static final String EVENT_DISCONNECTED = "DISCONNECTED";
-    public static final String EVENT_KEEP_ALIVE = "KEEP-ALIVE";
     public static final String EVENT_DOOR_STATE = "BSH.Common.Status.DoorState";
     public static final String EVENT_OPERATION_STATE = "BSH.Common.Status.OperationState";
     public static final String EVENT_ACTIVE_PROGRAM = "BSH.Common.Root.ActiveProgram";

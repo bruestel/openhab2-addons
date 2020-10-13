@@ -7,10 +7,36 @@
 
     $(".redirectUri").text(window.location.href.substring(0, window.location.href.lastIndexOf('/homeconnect') + 12));
 
+    $('#apiDetailModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget);
+        var thingId = button.data('thing-id');
+        var action = button.data('api-action');
+        var titleText = button.data('title');
+        var modal = $(this);
+        var title = modal.find('.modal-title');
+        var subTitle = modal.find('.modal-subtitle');
+        var responseBodyElement = modal.find('.modal-response-body');
+
+        responseBodyElement.text('Loading...');
+        title.text(titleText);
+        subTitle.text(thingId);
+        modal.modal('handleUpdate');
+
+        let jqxhr = $.get( 'appliances?thingId=' + thingId + '&action=' + action, function(data) {
+            responseBodyElement.text(JSON.stringify(data,null,'\t'));
+        });
+        jqxhr.fail(function(data) {
+            responseBodyElement.text(JSON.stringify(data,null,'\t'));
+        })
+        jqxhr.always(function() {
+            modal.modal('handleUpdate');
+        });
+    })
+
     $('#requestDetailModal').on('show.bs.modal', function (event) {
         var button = $(event.relatedTarget);
         var requestId = button.data('request-id');
-        var request = requests.find(item=>item.id==requestId);
+        var request = requests.find(item => item.id == requestId);
         var requestHeader = request.homeConnectRequest.header;
         var requestBody = request.homeConnectRequest.body;
         var modal = $(this);
@@ -57,57 +83,65 @@
             requestHeaderElement.append($('<div class="w-100"></div>'));
         });
 
-
         modal.modal('handleUpdate');
     })
 
-    $('.reload-page').click(function() {
+    $('.reload-page').click(function () {
         location.reload();
     });
 
-    // // Graphs
-    // var ctx = document.getElementById('myChart')
-    // // eslint-disable-next-line no-unused-vars
-    // var myChart = new Chart(ctx, {
-    //     type: 'line',
-    //     data: {
-    //         labels: [
-    //             'Sunday',
-    //             'Monday',
-    //             'Tuesday',
-    //             'Wednesday',
-    //             'Thursday',
-    //             'Friday',
-    //             'Saturday'
-    //         ],
-    //         datasets: [{
-    //             data: [
-    //                 15339,
-    //                 21345,
-    //                 18483,
-    //                 24003,
-    //                 23489,
-    //                 24092,
-    //                 12034
-    //             ],
-    //             lineTension: 0,
-    //             backgroundColor: 'transparent',
-    //             borderColor: '#007bff',
-    //             borderWidth: 4,
-    //             pointBackgroundColor: '#007bff'
-    //         }]
-    //     },
-    //     options: {
-    //         scales: {
-    //             yAxes: [{
-    //                 ticks: {
-    //                     beginAtZero: false
-    //                 }
-    //             }]
-    //         },
-    //         legend: {
-    //             display: false
-    //         }
-    //     }
-    // })
+    $('.request-chart').each(function(index, element) {
+        var bridgeId = $(this).data('bridge-id');
+        var chartElement = element;
+
+        function makeplot(bridgeId, chartElement) {
+            Plotly.d3.csv('homeconnect/bridges?bridgeId=' + bridgeId + '&action=request-csv', function (data) {
+                processData(data, chartElement)
+            });
+        }
+
+        function processData(allRows, chartElement) {
+            console.log(allRows);
+            var x = [], y = [], standardDeviation = [];
+
+            for (var i = 0; i < allRows.length; i++) {
+                var row = allRows[i];
+                x.push( row['time'] );
+                y.push( row['requests'] );
+            }
+            console.log( 'X',x, 'Y',y, 'SD',standardDeviation );
+            makePlotly( x, y, standardDeviation, chartElement );
+        }
+
+        function makePlotly( x, y, standard_deviation, chartElement ){
+            var traces = [{
+                x: x,
+                y: y,
+                type: 'histogram',
+                histfunc: 'sum',
+                xbins: {
+                    size: 1000
+                }
+            }];
+
+            Plotly.newPlot(chartElement, traces,
+                           {
+                               xaxis: {
+                                   rangemode: 'nonnegative',
+                                   autorange: true,
+                                   title: '',
+                                   type: 'date'
+                               },
+                               yaxis: {
+                                   title: 'Requests'
+                               }
+                           },
+                           {
+                               displayModeBar: false,
+                               responsive: true
+                           });
+        };
+
+        makeplot(bridgeId, chartElement);
+    });
 }())

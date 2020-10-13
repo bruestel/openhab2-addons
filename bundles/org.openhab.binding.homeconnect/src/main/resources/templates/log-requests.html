@@ -17,7 +17,7 @@
             </div>
 
 
-            <div th:each="bridgeHandler: ${bridgeHandlers}" th:with="thing=${bridgeHandler.getThing()}, queue=${bridgeHandler.getApiClient().getLatestApiRequests()}, status=${bridgeHandler.getThing().getStatus().toString()}, uid=${bridgeHandler.getThing().getUID().getAsString()}">
+            <div class="mb-4" th:each="bridgeHandler: ${bridgeHandlers}" th:with="thing=${bridgeHandler.getThing()}, queue=${bridgeHandler.getApiClient().getLatestApiRequests()}, status=${bridgeHandler.getThing().getStatus().toString()}, uid=${bridgeHandler.getThing().getUID().getAsString()}">
                 <h2 th:text="${thing.getLabel() + ' (' + uid + ')'}" style="display: inline-block;">Section title</h2>
                 <div class="btn-toolbar float-right">
                     <button type="button" class="btn btn-sm btn-outline-secondary reload-page mr-2"><span data-feather="refresh-cw"></span></button>
@@ -38,9 +38,9 @@
                         <tbody>
                         <tr th:each="entry: ${queue}">
                             <td th:text="${#temporals.format(entry.time, 'yyyy-MM-dd HH:mm:ss.SSS')}">27.04.2020 14:30</td>
-                            <td class="text-center"><span th:if="${entry.response}" class="badge" th:classappend="|${entry.response.code >=300 ? 'badge-danger' : ''} ${entry.response.code >=200 && entry.response.code <300 ? 'badge-success' : ''}|" th:text="${entry.response.code}">200</span></td>
+                            <td class="text-center"><span th:if="${entry.response}" class="badge" th:classappend="|${entry.response.code >= 300 && entry.response.code != 404 ? 'badge-danger' : ''} ${entry.response.code >=200 && entry.response.code < 300 ? 'badge-success' : ''} ${entry.response.code == 404 ? 'badge-warning' : ''}|" th:text="${entry.response.code}">200</span></td>
                             <td class="text-center" th:text="${entry.request.method}">GET</td>
-                            <td th:text="${entry.request.url}">/bla/bla?w92374=34</td>
+                            <td th:text="${entry.request.getShortUrl()}">/bla/bla?w92374=34</td>
                             <td class="text-center">
                                 <button type="button" class="btn btn-info btn-sm py-0" style="font-size: 0.8em;" th:attr="data-request-id=${entry.id}" data-toggle="modal" data-target="#requestDetailModal">
                                 Details

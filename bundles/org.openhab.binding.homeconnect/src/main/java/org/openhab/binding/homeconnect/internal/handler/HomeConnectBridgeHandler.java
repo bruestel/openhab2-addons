@@ -38,6 +38,7 @@ import org.openhab.binding.homeconnect.internal.client.HomeConnectEventSourceCli
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
+import org.openhab.binding.homeconnect.internal.client.model.Event;
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
 import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.logger.LogWriter;
@@ -79,6 +80,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     private @Nullable ScheduledFuture<?> reinitializationFuture;
     private @Nullable List<ApiRequest> apiRequestHistory;
+    private @Nullable List<Event> eventHistory;
 
     private @NonNullByDefault({}) OAuthClientService oAuthClientService;
     private @NonNullByDefault({}) String oAuthServiceHandleId;
@@ -125,7 +127,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
         // create api client
         apiClient = new HomeConnectApiClient(oAuthClientService, config.isSimulator(), apiRequestHistory);
-        eventSourceClient = new HomeConnectEventSourceClient(oAuthClientService, config.isSimulator(), scheduler);
+        eventSourceClient = new HomeConnectEventSourceClient(oAuthClientService, config.isSimulator(), scheduler, eventHistory);
 
         try {
             AccessTokenResponse accessTokenResponse = oAuthClientService.getAccessTokenResponse();
@@ -229,6 +231,17 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     }
 
     /**
+     * Get children of bridge
+     *
+     * @return list of child handlers
+     */
+    public List<AbstractHomeConnectThingHandler> getThingHandler() {
+        return getThing().getThings().stream()
+                .filter(thing -> thing.getHandler() instanceof AbstractHomeConnectThingHandler)
+                .map(thing -> (AbstractHomeConnectThingHandler) thing.getHandler())
+                .collect(Collectors.toList());
+    }
+    /**
      * Get {@link ApiBridgeConfiguration}.
      *
      * @return bridge configuration (clientId, clientSecret, etc.)
@@ -249,9 +262,13 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     private void cleanup() {
         apiRequestHistory = new ArrayList<>();
         apiRequestHistory.addAll(apiClient.getLatestApiRequests());
-        apiClient.getLatestApiRequests().remove();
+        apiClient.getLatestApiRequests().clear();
 
+        eventHistory = new ArrayList<>();
+        eventHistory.addAll(eventSourceClient.getLatestEvents());
+        eventSourceClient.getLatestEvents().clear();
         eventSourceClient.dispose();
+
         oAuthFactory.ungetOAuthService(oAuthServiceHandleId);
         homeConnectServlet.removeBridgeHandler(this);
     }

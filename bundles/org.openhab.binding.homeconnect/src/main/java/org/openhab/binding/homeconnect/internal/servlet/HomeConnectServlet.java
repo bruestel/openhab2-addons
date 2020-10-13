@@ -1,7 +1,13 @@
 package org.openhab.binding.homeconnect.internal.servlet;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.ZonedDateTime.now;
 import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_DOOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_POWER_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_ACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_START_ALLOWED;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -14,7 +20,10 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
+import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
+import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
+import org.openhab.binding.homeconnect.internal.handler.AbstractHomeConnectThingHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -32,6 +41,8 @@ import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ServletContextTemplateResolver;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -63,13 +74,26 @@ public class HomeConnectServlet extends HttpServlet {
     private static final String APPLIANCES_PATH = "/appliances";
     private static final String BRIDGES_PATH = "/bridges";
     private static final String REQUEST_LOG_PATH = "/log/requests";
+    private static final String EVENT_LOG_PATH = "/log/events";
+    private static final String DEFAULT_CONTENT_TYPE = "text/html; charset=UTF-8";
     private static final String PARAM_CODE = "code";
     private static final String PARAM_STATE = "state";
     private static final String PARAM_EXPORT = "export";
     private static final String PARAM_ACTION = "action";
     private static final String PARAM_BRIDGE_ID = "bridgeId";
+    private static final String PARAM_THING_ID = "thingId";
     private static final String ACTION_AUTHORIZE = "authorize";
     private static final String ACTION_CLEAR_CREDENTIALS = "clearCredentials";
+    private static final String ACTION_SHOW_DETAILS = "show-details";
+    private static final String ACTION_ALL_PROGRAMS = "all-programs";
+    private static final String ACTION_AVAILABLE_PROGRAMS = "available-programs";
+    private static final String ACTION_SELECTED_PROGRAM = "selected-program";
+    private static final String ACTION_ACTIVE_PROGRAM = "active-program";
+    private static final String ACTION_OPERATION_STATE = "operation-state";
+    private static final String ACTION_POWER_STATE = "power-state";
+    private static final String ACTION_DOOR_STATE = "door-state";
+    private static final String ACTION_REMOTE_START_ALLOWED = "remote-control-start-allowed";
+    private static final String ACTION_REMOTE_CONTROL_ACTIVE = "remote-control-active";
     private static final DateTimeFormatter FILE_EXPORT_DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm");
 
     private final Logger logger;
@@ -131,8 +155,10 @@ public class HomeConnectServlet extends HttpServlet {
         if (request == null || response == null) {
             return;
         }
-        String path = request.getPathInfo();
+        response.setContentType(DEFAULT_CONTENT_TYPE);
+        response.setCharacterEncoding(UTF_8.name());
 
+        String path = request.getPathInfo();
         if (path == null || path.isEmpty() || path.equals(ROOT_PATH)) {
             String code = request.getParameter(PARAM_CODE);
             String state = request.getParameter(PARAM_STATE);
@@ -142,16 +168,36 @@ public class HomeConnectServlet extends HttpServlet {
                 getDashboardPage(request, response);
             }
         } else if (pathMatches(path, BRIDGES_PATH)) {
-            getBridgesPage(request, response);
+            String action = request.getParameter(PARAM_ACTION);
+            String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
+            if (!isEmpty(action) && !isEmpty(bridgeId)) {
+                getApiRequestsPerSecondCsv(response, bridgeId);
+            } else {
+                getBridgesPage(request, response);
+            }
         } else if (pathMatches(path, APPLIANCES_PATH)) {
-            getAppliancesPage(request, response);
+            String action = request.getParameter(PARAM_ACTION);
+            String thingId = request.getParameter(PARAM_THING_ID);
+            if (!isEmpty(action) && !isEmpty(thingId)) {
+                processApplianceActions(response, action, thingId);
+            } else {
+                getAppliancesPage(request, response);
+            }
         } else if (pathMatches(path, REQUEST_LOG_PATH)) {
             String export = request.getParameter(PARAM_EXPORT);
             String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
             if (!isEmpty(export) && !isEmpty(bridgeId)) {
-                getRequestLogExport(request, response, bridgeId);
+                getRequestLogExport(response, bridgeId);
             } else {
                 getRequestLogPage(request, response);
+            }
+        } else if (pathMatches(path, EVENT_LOG_PATH)) {
+            String export = request.getParameter(PARAM_EXPORT);
+            String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
+            if (!isEmpty(export) && !isEmpty(bridgeId)) {
+                getEventLogExport(response, bridgeId);
+            } else {
+                getEventLogPage(request, response);
             }
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
@@ -163,8 +209,11 @@ public class HomeConnectServlet extends HttpServlet {
         if (request == null || response == null) {
             return;
         }
-        String path = request.getPathInfo();
 
+        response.setContentType("text/html; charset=UTF-8");
+        response.setCharacterEncoding("UTF-8");
+
+        String path = request.getPathInfo();
         if (path != null && pathMatches(path, BRIDGES_PATH)) {
             postBridgesPage(request, response);
         } else {
@@ -191,15 +240,110 @@ public class HomeConnectServlet extends HttpServlet {
     }
 
     private void getDashboardPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        WebContext context = new WebContext(request, response, request.getServletContext());
-        context.setVariable("test", "Hello World");
-        templateEngine.process("dashboard", context, response.getWriter());
+        if (bridgeHandlers.isEmpty()) {
+            getBridgesPage(request, response);
+        } else {
+            WebContext context = new WebContext(request, response, request.getServletContext());
+            context.setVariable("bridgeHandlers", bridgeHandlers);
+            templateEngine.process("dashboard", context, response.getWriter());
+        }
+    }
+
+    private void getApiRequestsPerSecondCsv(HttpServletResponse response, String bridgeId) throws IOException {
+        Optional<HomeConnectBridgeHandler> bridgeHandler = getBridgeHandler(bridgeId);
+        if (bridgeHandler.isPresent()) {
+            response.setContentType("text/csv");
+            PrintWriter writer = response.getWriter();
+
+            writer.println(String.format("%s,%s", "time", "requests"));
+            bridgeHandler.get().getApiClient().getLatestApiRequests().forEach(apiRequest -> {
+                writer.println(String.format("%s,%s", apiRequest.getTime(), 1));
+            });
+            writer.println(String.format("%s,%s", LocalDateTime.now(), 0));
+        } else {
+            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
+        }
     }
 
     private void getAppliancesPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
         WebContext context = new WebContext(request, response, request.getServletContext());
-        context.setVariable("test", "Hello World");
+        context.setVariable("bridgeHandlers", bridgeHandlers);
         templateEngine.process("appliances", context, response.getWriter());
+    }
+
+    private void processApplianceActions(HttpServletResponse response,
+                                         String action, String thingId) throws IOException {
+        Optional<HomeConnectBridgeHandler> bridgeHandler = getBridgeHandlerForThing(thingId);
+        Optional<AbstractHomeConnectThingHandler> thingHandler = getThingHandler(thingId);
+
+        if (bridgeHandler.isPresent() && thingHandler.isPresent()) {
+            try {
+                response.setContentType(MediaType.APPLICATION_JSON);
+                String haId = thingHandler.get().getThingHaId();
+
+                switch (action) {
+                    case ACTION_SHOW_DETAILS: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId);
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    case ACTION_ALL_PROGRAMS: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/programs");
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    case ACTION_AVAILABLE_PROGRAMS: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/programs/available");
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    case ACTION_SELECTED_PROGRAM: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/programs/selected");
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    case ACTION_ACTIVE_PROGRAM: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/programs/active");
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    case ACTION_OPERATION_STATE: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/status/" + EVENT_OPERATION_STATE);
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    case ACTION_POWER_STATE: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/settings/" + EVENT_POWER_STATE);
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    case ACTION_DOOR_STATE: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/status/" + EVENT_DOOR_STATE);
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    case ACTION_REMOTE_START_ALLOWED: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/status/" + EVENT_REMOTE_CONTROL_START_ALLOWED);
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    case ACTION_REMOTE_CONTROL_ACTIVE: {
+                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/status/" + EVENT_REMOTE_CONTROL_ACTIVE);
+                        response.getWriter().write(actionResponse != null ? actionResponse : "{}");
+                        break;
+                    }
+                    default:
+                        response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown action");
+                        break;
+                }
+            } catch (CommunicationException | AuthorizationException e) {
+                logger.warn("Could not execute request! thingId={}, action={}, error={}", thingId, action,
+                        e.getMessage());
+                response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        } else {
+            response.sendError(HttpStatus.SC_BAD_REQUEST, "Thing or bridge not found!");
+        }
     }
 
     private void getBridgesPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -259,14 +403,35 @@ public class HomeConnectServlet extends HttpServlet {
         templateEngine.process("log-requests", context, response.getWriter());
     }
 
-    private void getRequestLogExport(HttpServletRequest request, HttpServletResponse response, String bridgeId) throws IOException {
+    private void getRequestLogExport(HttpServletResponse response, String bridgeId) throws IOException {
         Optional<HomeConnectBridgeHandler> bridgeHandler = getBridgeHandler(bridgeId);
         if (bridgeHandler.isPresent()) {
             response.setContentType(MediaType.APPLICATION_JSON);
-            String filePrefix = now().format(FILE_EXPORT_DTF) + "_" + bridgeId;
-            response.setHeader("Content-disposition", "attachment; filename=" + filePrefix + ".json");
+            String fileName = String.format("%s__%s__requests.json", now().format(FILE_EXPORT_DTF),
+                    bridgeId.replaceAll("[^a-zA-Z0-9]", "_"));
+            response.setHeader("Content-disposition", "attachment; filename=" + fileName);
 
             response.getWriter().write(gson.toJson(bridgeHandler.get().getApiClient().getLatestApiRequests()));
+        } else {
+            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
+        }
+    }
+
+    private void getEventLogPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        WebContext context = new WebContext(request, response, request.getServletContext());
+        context.setVariable("bridgeHandlers", bridgeHandlers);
+        templateEngine.process("log-events", context, response.getWriter());
+    }
+
+    private void getEventLogExport(HttpServletResponse response, String bridgeId) throws IOException {
+        Optional<HomeConnectBridgeHandler> bridgeHandler = getBridgeHandler(bridgeId);
+        if (bridgeHandler.isPresent()) {
+            response.setContentType(MediaType.APPLICATION_JSON);
+            String fileName = String.format("%s__%s__events.json", now().format(FILE_EXPORT_DTF),
+                    bridgeId.replaceAll("[^a-zA-Z0-9]", "_"));
+            response.setHeader("Content-disposition", "attachment; filename=" + fileName);
+
+            response.getWriter().write(gson.toJson(bridgeHandler.get().getEventSourceClient().getLatestEvents()));
         } else {
             response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
         }
@@ -310,6 +475,28 @@ public class HomeConnectServlet extends HttpServlet {
         for (HomeConnectBridgeHandler handler : bridgeHandlers) {
             if (handler.getThing().getUID().getAsString().equals(bridgeUid)) {
                 return Optional.of(handler);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<AbstractHomeConnectThingHandler> getThingHandler(String thingUid) {
+        for (HomeConnectBridgeHandler handler : bridgeHandlers) {
+            for (AbstractHomeConnectThingHandler thingHandler : handler.getThingHandler()) {
+                if (thingHandler.getThing().getUID().getAsString().equals(thingUid)) {
+                    return Optional.of(thingHandler);
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<HomeConnectBridgeHandler> getBridgeHandlerForThing(String thingUid) {
+        for (HomeConnectBridgeHandler handler : bridgeHandlers) {
+            for (AbstractHomeConnectThingHandler thingHandler : handler.getThingHandler()) {
+                if (thingHandler.getThing().getUID().getAsString().equals(thingUid)) {
+                    return Optional.of(handler);
+                }
             }
         }
         return Optional.empty();

@@ -12,6 +12,9 @@
  */
 package org.openhab.binding.homeconnect.internal.client.model;
 
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_BASE_URL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_SIMULATOR_BASE_URL;
+
 import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -39,6 +42,10 @@ public class HomeConnectRequest {
 
     public String getUrl() {
         return url;
+    }
+
+    public String getShortUrl() {
+        return url.replace(API_BASE_URL, "").replace(API_SIMULATOR_BASE_URL, "");
     }
 
     public String getMethod() {

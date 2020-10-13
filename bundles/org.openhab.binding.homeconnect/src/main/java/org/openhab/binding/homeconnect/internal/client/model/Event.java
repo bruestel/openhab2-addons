@@ -56,7 +56,7 @@ public class Event {
         this.key = null;
         this.name = null;
         this.uri = null;
-        this.creation = null;
+        this.creation = LocalDateTime.now();
         this.level = null;
         this.handling = null;
         this.value = null;

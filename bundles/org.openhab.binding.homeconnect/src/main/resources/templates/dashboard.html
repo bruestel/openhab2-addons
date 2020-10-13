@@ -15,6 +15,15 @@
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h1 class="h2">Dashboard</h1>
             </div>
+            <div th:each="bridgeHandler: ${bridgeHandlers}" th:with="thing=${bridgeHandler.getThing()}, queue=${bridgeHandler.getEventSourceClient().getLatestEvents()}, status=${bridgeHandler.getThing().getStatus().toString()}, uid=${bridgeHandler.getThing().getUID().getAsString()}">
+                <h2 th:text="${thing.getLabel() + ' (' + uid + ')'}" style="display: inline-block;">Bridge xy</h2>
+                <h4 class="text-muted">API requests per second</h4>
+                <div class="request-chart" th:attr="data-bridge-id=${uid}"></div>
+            </div>
+
+
+
+
         </main>
     </div>
 </div>

@@ -15,8 +15,110 @@
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h1 class="h2">Appliances</h1>
             </div>
+
+            <div th:each="bridgeHandler: ${bridgeHandlers}">
+                <div th:each="thingHandler: ${bridgeHandler.getThingHandler()}">
+                    <div class="card mb-3" th:with="events=${bridgeHandler.getEventSourceClient().getLatestEvents(thingHandler.getThingHaId())}, thing=${thingHandler.getThing()}, status=${thingHandler.getThing().getStatus().toString()}, uid=${thingHandler.getThing().getUID().getAsString()}, haId=${thingHandler.getThingHaId()}">
+                        <div class="card-body">
+                            <section th:id="${uid}">
+                                <h5 class="card-title" th:text="${thing.getLabel()}">Card title</h5>
+                            </section>
+                            <h6 class="card-subtitle mb-2 text-muted" th:text="${uid}">Card subtitle</h6>
+
+                            <dl class="row">
+                                <dt class="col-sm-2">Bridge</dt>
+                                <dd class="col-sm-8" th:text="${bridgeHandler.getThing().getLabel() + ' (' + bridgeHandler.getThing().getUID().getAsString() + ')'}">1234567890</dd>
+                                <div class="w-100"></div>
+
+                                <dt class="col-sm-2">HaId</dt>
+                                <dd class="col-sm-8" th:text="${haId}">1234567890</dd>
+                                <div class="w-100"></div>
+
+                                <dt class="col-sm-2">Status</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge" th:classappend="|${status == 'UNINITIALIZED' ? 'badge-warning' : ''} ${status == 'OFFLINE' ? 'badge-danger' : ''} ${status == 'ONLINE' ? 'badge-success' : ''}|" th:text="${status}">OFFLINE</span>
+                                </dd>
+                                <div class="w-100"></div>
+
+                                <dt class="col-sm-2">Last Event received (SSE)</dt>
+                                <dd class="col-sm-8" th:if="${events.size() > 0}" th:text="${#temporals.format(events.get(events.size()-1).creation, 'yyyy-MM-dd HH:mm:ss.SSS')}">1234567890</dd>
+                                <dd class="col-sm-8" th:unless="${events.size() > 0}">unknown</dd>
+                                <div class="w-100"></div>
+
+                                <dt class="col-sm-2">API Actions</dt>
+                                <dd class="col-sm-8">
+                                    <div class="mb-1">
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-primary btn-sm py-0" data-title="Appliance Details" data-api-action="show-details" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            Appliance Details
+                                        </button>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-primary btn-sm py-0" data-title="Operation State" data-api-action="operation-state" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            Operation State
+                                        </button>
+                                        <div class="w-100"></div>
+                                    </div>
+                                    <div class="mb-1">
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-secondary btn-sm py-0" data-title="All Programs" data-api-action="all-programs" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            All Programs
+                                        </button>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-secondary btn-sm py-0" data-title="Available Programs" data-api-action="available-programs" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            Available Programs
+                                        </button>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-secondary btn-sm py-0" data-title="Selected Program" data-api-action="selected-program" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            Selected Program
+                                        </button>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-secondary btn-sm py-0" data-title="Active Program" data-api-action="active-program" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            Active Program
+                                        </button>
+                                        <div class="w-100"></div>
+                                    </div>
+                                    <div>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-info btn-sm py-0" data-title="Power State" data-api-action="power-state" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            Power State
+                                        </button>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-info btn-sm py-0" data-title="Door State" data-api-action="door-state" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            Door State
+                                        </button>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-info btn-sm py-0" data-title="Remote Control Start Allowed" data-api-action="remote-control-start-allowed" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            Remote Control Start Allowed
+                                        </button>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-info btn-sm py-0" data-title="Remote Control Active" data-api-action="remote-control-active" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
+                                            Remote Control Active
+                                        </button>
+                                    </div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
+
+
+    <!-- API action detail modal -->
+    <div class="modal fade" id="apiDetailModal" tabindex="-1" role="dialog" aria-labelledby="apiDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title text-truncate" id="apiDetailModalLabel">API</h5>
+                        <h6 class="modal-subtitle mb-2 text-muted text-truncate">Card subtitle</h6>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <pre class="modal-response-body"></pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!--/*/ <th:block th:include="base :: js">

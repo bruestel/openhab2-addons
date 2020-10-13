@@ -89,6 +89,7 @@ public class HomeConnectApiClient {
     private final Map<String, List<AvailableProgramOption>> availableProgramOptionsCache;
     private final OAuthClientService oAuthClientService;
     private final Queue<ApiRequest> communicationQueue;
+    private final JsonParser jsonParser;
 
     public HomeConnectApiClient(OAuthClientService oAuthClientService, boolean simulated, @Nullable List<ApiRequest> apiRequestHistory) {
         this.oAuthClientService = oAuthClientService;
@@ -97,6 +98,7 @@ public class HomeConnectApiClient {
         apiUrl = simulated ? API_SIMULATOR_BASE_URL : API_BASE_URL;
         client = OkHttpHelper.builder().readTimeout(REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).build();
         logger = LoggerFactory.getLogger(HomeConnectApiClient.class);
+        jsonParser = new JsonParser();
         communicationQueue = QueueUtils.synchronizedQueue(new CircularFifoQueue<>(COMMUNICATION_QUEUE_SIZE));
         if (apiRequestHistory != null) {
             communicationQueue.addAll(apiRequestHistory);
@@ -471,7 +473,7 @@ public class HomeConnectApiClient {
         return getData(haId, "/api/homeappliances/" + haId + "/status/" + status);
     }
 
-    private @Nullable String getRaw(String haId, String path) throws CommunicationException, AuthorizationException {
+    public @Nullable String getRaw(String haId, String path) throws CommunicationException, AuthorizationException {
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, haId, null);
@@ -707,7 +709,7 @@ public class HomeConnectApiClient {
 
     private Program mapToProgram(String json) {
         ArrayList<Option> optionList = new ArrayList<>();
-        JsonObject responseObject = new JsonParser().parse(json).getAsJsonObject();
+        JsonObject responseObject = jsonParser.parse(json).getAsJsonObject();
         JsonObject data = responseObject.getAsJsonObject("data");
         Program result = new Program(data.get("key").getAsString(), optionList);
         JsonArray options = data.getAsJsonArray("options");
@@ -733,7 +735,7 @@ public class HomeConnectApiClient {
         ArrayList<AvailableProgram> result = new ArrayList<>();
 
         try {
-            JsonObject responseObject = new JsonParser().parse(json).getAsJsonObject();
+            JsonObject responseObject = jsonParser.parse(json).getAsJsonObject();
 
             JsonArray programs = responseObject.getAsJsonObject("data").getAsJsonArray("programs");
             programs.forEach(program -> {
@@ -761,7 +763,7 @@ public class HomeConnectApiClient {
         ArrayList<AvailableProgramOption> result = new ArrayList<>();
 
         try {
-            JsonObject responseObject = new JsonParser().parse(json).getAsJsonObject();
+            JsonObject responseObject = jsonParser.parse(json).getAsJsonObject();
 
             JsonArray options = responseObject.getAsJsonObject("data").getAsJsonArray("options");
             options.forEach(option -> {
@@ -784,7 +786,7 @@ public class HomeConnectApiClient {
     }
 
     private HomeAppliance mapToHomeAppliance(String json) {
-        JsonObject responseObject = new JsonParser().parse(json).getAsJsonObject();
+        JsonObject responseObject = jsonParser.parse(json).getAsJsonObject();
 
         JsonObject data = responseObject.getAsJsonObject("data");
 
@@ -795,7 +797,7 @@ public class HomeConnectApiClient {
 
     private ArrayList<HomeAppliance> mapToHomeAppliances(String json) {
         final ArrayList<HomeAppliance> result = new ArrayList<>();
-        JsonObject responseObject = new JsonParser().parse(json).getAsJsonObject();
+        JsonObject responseObject = jsonParser.parse(json).getAsJsonObject();
 
         JsonObject data = responseObject.getAsJsonObject("data");
         JsonArray homeappliances = data.getAsJsonArray("homeappliances");
@@ -812,7 +814,7 @@ public class HomeConnectApiClient {
     }
 
     private Data mapToState(String json) {
-        JsonObject responseObject = new JsonParser().parse(json).getAsJsonObject();
+        JsonObject responseObject = jsonParser.parse(json).getAsJsonObject();
 
         JsonObject data = responseObject.getAsJsonObject("data");
 
