@@ -16,6 +16,7 @@
                 <h1 class="h2">Bridges</h1>
             </div>
 
+            <div th:if="${bridgeHandlers.size() == 0}">No Home Connect bridge found. Please manually add 'Home Connect API' bridge and authorize it here.</div>
             <div th:each="bridgeHandler: ${bridgeHandlers}">
                 <div class="card mb-3" th:with="thing=${bridgeHandler.getThing()}, status=${bridgeHandler.getThing().getStatus().toString()}, uid=${thing.getUID().getAsString()}">
                     <div class="card-body">

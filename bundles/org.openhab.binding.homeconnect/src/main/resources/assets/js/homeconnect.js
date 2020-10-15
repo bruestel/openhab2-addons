@@ -133,7 +133,7 @@
                                    type: 'date'
                                },
                                yaxis: {
-                                   title: 'Requests'
+                                   title: 'Request count'
                                }
                            },
                            {

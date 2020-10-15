@@ -16,7 +16,7 @@
                 <h1 class="h2">Events</h1>
             </div>
 
-
+            <div th:if="${bridgeHandlers.size() == 0}" class="mb-4"><span class="text-muted">No events</span></div>
             <div class="mb-4" th:each="bridgeHandler: ${bridgeHandlers}" th:with="thing=${bridgeHandler.getThing()}, queue=${bridgeHandler.getEventSourceClient().getLatestEvents()}, status=${bridgeHandler.getThing().getStatus().toString()}, uid=${bridgeHandler.getThing().getUID().getAsString()}">
                 <h2 th:text="${thing.getLabel() + ' (' + uid + ')'}" style="display: inline-block;">Section title</h2>
                 <div class="btn-toolbar float-right">
@@ -24,7 +24,8 @@
                     <a th:href="@{/homeconnect/log/events(export='json',bridgeId=${uid})}" class="btn btn-sm btn-outline-secondary">Export</a>
                 </div>
 
-                <div class="table-responsive">
+                <div th:if="${queue.size() == 0}"><span class="text-muted">No events</span></div>
+                <div th:if="${queue.size() > 0}" class="table-responsive">
                     <table class="table table-striped table-sm">
                         <thead>
                         <tr>
