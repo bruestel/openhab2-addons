@@ -95,7 +95,7 @@
         var chartElement = element;
 
         function makeplot(bridgeId, chartElement) {
-            Plotly.d3.csv('homeconnect/bridges?bridgeId=' + bridgeId + '&action=request-csv', function (data) {
+            Plotly.d3.csv('requests?bridgeId=' + bridgeId + '&action=request-csv', function (data) {
                 processData(data, chartElement)
             });
         }

@@ -42,7 +42,6 @@ import org.thymeleaf.templateresolver.ServletContextTemplateResolver;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -72,9 +71,9 @@ public class HomeConnectServlet extends HttpServlet {
     private static final String ASSETS_PATH = SERVLET_PATH + "/asset";
     private static final String ROOT_PATH = SLASH;
     private static final String APPLIANCES_PATH = "/appliances";
-    private static final String BRIDGES_PATH = "/bridges";
     private static final String REQUEST_LOG_PATH = "/log/requests";
     private static final String EVENT_LOG_PATH = "/log/events";
+    private static final String REQUEST_COUNT_PATH = "/requests";
     private static final String DEFAULT_CONTENT_TYPE = "text/html; charset=UTF-8";
     private static final String PARAM_CODE = "code";
     private static final String PARAM_STATE = "state";
@@ -165,15 +164,15 @@ public class HomeConnectServlet extends HttpServlet {
             if (!isEmpty(code) && !isEmpty(state)) {
                 getBridgeAuthenticationPage(request, response, code, state);
             } else {
-                getDashboardPage(request, response);
+                getBridgesPage(request, response);
             }
-        } else if (pathMatches(path, BRIDGES_PATH)) {
+        } else if (pathMatches(path, REQUEST_COUNT_PATH)) {
             String action = request.getParameter(PARAM_ACTION);
             String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
             if (!isEmpty(action) && !isEmpty(bridgeId)) {
                 getApiRequestsPerSecondCsv(response, bridgeId);
             } else {
-                getBridgesPage(request, response);
+                getRequestCountPage(request, response);
             }
         } else if (pathMatches(path, APPLIANCES_PATH)) {
             String action = request.getParameter(PARAM_ACTION);
@@ -209,12 +208,10 @@ public class HomeConnectServlet extends HttpServlet {
         if (request == null || response == null) {
             return;
         }
-
         response.setContentType("text/html; charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
 
-        String path = request.getPathInfo();
-        if (path != null && pathMatches(path, BRIDGES_PATH)) {
+        if (request.getParameter(PARAM_ACTION) != null && request.getParameter(PARAM_BRIDGE_ID) != null) {
             postBridgesPage(request, response);
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
@@ -239,13 +236,13 @@ public class HomeConnectServlet extends HttpServlet {
         bridgeHandlers.remove(bridgeHandler);
     }
 
-    private void getDashboardPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    private void getRequestCountPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (bridgeHandlers.isEmpty()) {
             getBridgesPage(request, response);
         } else {
             WebContext context = new WebContext(request, response, request.getServletContext());
             context.setVariable("bridgeHandlers", bridgeHandlers);
-            templateEngine.process("dashboard", context, response.getWriter());
+            templateEngine.process("requests", context, response.getWriter());
         }
     }
 

@@ -21,16 +21,65 @@ okhttp / okhttp-sse
 
 okio
 * License: Apache License 2.0
-* Project: https://github.com/square/okio
+* Project: https://square.github.io/okio/
 * Source:  https://github.com/square/okio
 
-okSse
+Apache Commons Collections
 * License: Apache License 2.0
-* Project: https://github.com/heremaps/oksse
-* Source:  https://github.com/heremaps/oksse
+* Project: https://commons.apache.org/proper/commons-collections/
+* Source:  https://gitbox.apache.org/repos/asf?p=commons-collections.git
 
-TODO andere abhängigkeiten aus maven
+Thymeleaf
+* License: Apache License 2.0
+* Project: https://www.thymeleaf.org/
+* Source:  https://github.com/thymeleaf/thymeleaf
 
-feather icon
-bootstrap etc.
-chartjs
+Thymeleaf - Java 8 Time API compatibility
+* License: Apache License 2.0
+* Project: https://www.thymeleaf.org/
+* Source:  https://github.com/thymeleaf/thymeleaf-extras-java8time
+
+OGNL Object Graph Navigation Library
+* License: Apache License 2.0
+* Project: http://www.opensymphony.com/ognl/
+* Source:  https://github.com/jkuhnert/ognl/
+
+OGNL Object Graph Navigation Library
+* License: Apache License 2.0
+* Project: http://www.opensymphony.com/ognl/
+* Source:  https://github.com/jkuhnert/ognl/
+
+Javassist
+* License: Apache License 2.0
+* Project: http://www.javassist.org/
+* Source:  https://github.com/jboss-javassist/javassist
+
+ATTOPARSER
+* License: Apache License 2.0
+* Project: http://www.attoparser.org/
+* Source:  https://github.com/attoparser/attoparser
+
+UNBESCAPE
+* License: Apache License 2.0
+* Project: http://www.unbescape.org/
+* Source:  https://github.com/unbescape/unbescape
+
+Feather icons
+* License: MIT License
+* Project: https://feathericons.com/
+* Source:  https://github.com/feathericons/feather
+
+jQuery
+* License: MIT License
+* Project: https://jquery.com/
+* Source:  https://github.com/jquery/jquery
+
+Bootstrap
+* License: MIT License
+* Project: https://getbootstrap.com/
+* Source:  https://github.com/twbs/bootstrap
+
+Plotly
+* License: MIT License
+* Project: https://plotly.com/javascript/
+* Source:  https://github.com/plotly/plotly.js
