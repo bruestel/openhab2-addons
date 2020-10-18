@@ -12,6 +12,9 @@
  */
 package org.openhab.binding.homeconnect.internal.client;
 
+import static io.github.bucket4j.Bandwidth.classic;
+import static io.github.bucket4j.Bandwidth.simple;
+import static io.github.bucket4j.Refill.intervally;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HTTP_PROXY_ENABLED;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HTTP_PROXY_HOST;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HTTP_PROXY_PORT;
@@ -19,6 +22,7 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 import javax.net.ssl.SSLContext;
@@ -42,7 +46,10 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.sun.research.ws.wadl.HTTPMethods;
 
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Bucket4j;
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
@@ -61,8 +68,14 @@ public class OkHttpHelper {
     private static final JsonParser JSON_PARSER = new JsonParser();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Logger LOGGER = LoggerFactory.getLogger(OkHttpHelper.class);
+    private static final Bucket BUCKET = Bucket4j.builder()
+            // allows 50 tokens per minute
+            .addLimit(simple(50, Duration.ofMinutes(1)))
+            // but not often then 50 tokens per second
+            .addLimit(classic(10, intervally(10, Duration.ofSeconds(1))).withInitialTokens(5)).build();
 
-    public static Builder builder() {
+    public static Builder builder(boolean enableRateLimiting) {
+        Builder builder;
         if (HTTP_PROXY_ENABLED) {
             LOGGER.warn("Using http proxy! {}:{}", HTTP_PROXY_HOST, HTTP_PROXY_PORT);
             Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(HTTP_PROXY_HOST, HTTP_PROXY_PORT));
@@ -89,15 +102,29 @@ public class OkHttpHelper {
                 sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
                 final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
 
-                return new OkHttpClient().newBuilder()
+                builder = new OkHttpClient().newBuilder()
                         .sslSocketFactory(sslSocketFactory, (X509TrustManager) trustAllCerts[0])
                         .hostnameVerifier((hostname, session) -> true).proxy(proxy);
             } catch (Exception e) {
                 throw new ProxySetupException(e);
             }
+        } else {
+            builder = new OkHttpClient().newBuilder();
         }
 
-        return new OkHttpClient().newBuilder();
+        if (enableRateLimiting) {
+            builder.addInterceptor(chain -> {
+                if (HTTPMethods.GET.value().equals(chain.request().method())) {
+                    try {
+                        BUCKET.asScheduler().consume(1);
+                    } catch (InterruptedException e) {
+                        LOGGER.error("Rate limiting error! error={}", e.getMessage());
+                    }
+                }
+                return chain.proceed(chain.request());
+            });
+        }
+        return builder;
     }
 
     public static String formatJsonBody(@Nullable String jsonString) {

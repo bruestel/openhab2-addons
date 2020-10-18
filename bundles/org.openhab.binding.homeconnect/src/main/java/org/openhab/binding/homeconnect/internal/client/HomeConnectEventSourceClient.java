@@ -68,7 +68,7 @@ public class HomeConnectEventSourceClient {
         this.oAuthClientService = oAuthClientService;
 
         apiUrl = simulated ? API_SIMULATOR_BASE_URL : API_BASE_URL;
-        eventSourceFactory = EventSources.createFactory(OkHttpHelper.builder()
+        eventSourceFactory = EventSources.createFactory(OkHttpHelper.builder(false)
                 .readTimeout(SSE_REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).retryOnConnectionFailure(true).build());
         eventSourceConnections = new HashMap<>();
         eventQueue = QueueUtils.synchronizedQueue(new CircularFifoQueue<>(EVENT_QUEUE_SIZE));
@@ -135,7 +135,7 @@ public class HomeConnectEventSourceClient {
 
     /**
      * Get latest events
-     * 
+     *
      * @return thread safe queue
      */
     public Queue<Event> getLatestEvents() {
@@ -144,7 +144,7 @@ public class HomeConnectEventSourceClient {
 
     /**
      * Get latest events by haId
-     * 
+     *
      * @param haId appliance id
      * @return thread safe queue
      */

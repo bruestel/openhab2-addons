@@ -97,7 +97,7 @@ public class HomeConnectApiClient {
 
         availableProgramOptionsCache = new ConcurrentHashMap<>();
         apiUrl = simulated ? API_SIMULATOR_BASE_URL : API_BASE_URL;
-        client = OkHttpHelper.builder().readTimeout(REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).build();
+        client = OkHttpHelper.builder(true).readTimeout(REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).build();
         logger = LoggerFactory.getLogger(HomeConnectApiClient.class);
         jsonParser = new JsonParser();
         communicationQueue = QueueUtils.synchronizedQueue(new CircularFifoQueue<>(COMMUNICATION_QUEUE_SIZE));
@@ -697,7 +697,7 @@ public class HomeConnectApiClient {
             int code = response.code();
             String message = response.message();
 
-            logger.warn("Invalid HTTP response code {} (allowed: {})", code, desiredCodes);
+            logger.debug("Invalid HTTP response code {} (allowed: {})", code, desiredCodes);
             String responseBody = "";
             try {
                 responseBody = mapToString(response.body());

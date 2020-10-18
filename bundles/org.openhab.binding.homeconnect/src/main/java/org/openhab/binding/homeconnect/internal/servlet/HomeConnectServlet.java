@@ -381,7 +381,7 @@ public class HomeConnectServlet extends HttpServlet {
                         break;
                 }
             } catch (CommunicationException | AuthorizationException e) {
-                logger.warn("Could not execute request! thingId={}, action={}, error={}", thingId, action,
+                logger.debug("Could not execute request! thingId={}, action={}, error={}", thingId, action,
                         e.getMessage());
                 response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
             }
@@ -415,7 +415,7 @@ public class HomeConnectServlet extends HttpServlet {
                     response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown action");
                 }
             } catch (CommunicationException | AuthorizationException e) {
-                logger.warn("Could not execute request! thingId={}, action={}, error={}", thingId, action,
+                logger.debug("Could not execute request! thingId={}, action={}, error={}", thingId, action,
                         e.getMessage());
                 response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
             }

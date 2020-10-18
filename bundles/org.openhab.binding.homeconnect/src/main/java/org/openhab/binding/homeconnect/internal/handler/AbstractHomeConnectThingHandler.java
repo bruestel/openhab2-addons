@@ -339,7 +339,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                         removeSelectedProgramStateDescription();
                     }
                 } catch (CommunicationException | AuthorizationException e) {
-                    logger.error("Could not fetch available programs. thing={}, haId={}, error={}", getThingLabel(),
+                    logger.debug("Could not fetch available programs. thing={}, haId={}, error={}", getThingLabel(),
                             getThingHaId(), e.getMessage());
                     removeSelectedProgramStateDescription();
                 }
@@ -522,8 +522,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             try {
                 channelUpdateHandlers.get(channelUID.getId()).handle(channelUID, stateCache);
             } catch (CommunicationException e) {
-                logger.error("API communication problem while trying to update! thing={}, haId={}", getThingLabel(),
-                        getThingHaId(), e);
+                logger.debug("API communication problem while trying to update! thing={}, haId={}, error={}",
+                        getThingLabel(), getThingHaId(), e.getMessage());
             } catch (AuthorizationException e) {
                 logger.error("Authentication problem while trying to update! thing={}, haId={}", getThingLabel(),
                         getThingHaId(), e);
@@ -1001,8 +1001,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             try {
                 return supplier.get();
             } catch (CommunicationException e) {
-                logger.error("API communication problem while trying to update! thing={}, haId={}", getThingLabel(),
-                        getThingHaId(), e);
+                logger.debug("API communication problem while trying to update! thing={}, haId={}, error={}",
+                        getThingLabel(), getThingHaId(), e.getMessage());
                 return UnDefType.NULL;
             } catch (AuthorizationException e) {
                 logger.error("Authentication problem while trying to update! thing={}, haId={}", getThingLabel(),
