@@ -500,19 +500,19 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * @param channelUID channel UID
      */
     protected void updateChannel(ChannelUID channelUID) {
-        if (getApiClient().isPresent()) {
+        if (!getApiClient().isPresent()) {
             logger.error("Cannot update channel. No instance of api client found! thing={}, haId={}", getThingLabel(),
                     getThingHaId());
             return;
         }
 
-        if (!isBridgeOnline()) {
+        if (isBridgeOffline()) {
             logger.warn("BridgeHandler not found or offline. Stopping update of channel {}. thing={}, haId={}",
                     channelUID, getThingLabel(), getThingHaId());
             return;
         }
 
-        if (!isThingOnline()) {
+        if (isThingOffline()) {
             logger.debug("{} offline. Stopping update of channel {}. haId={}", getThing().getLabel(), channelUID,
                     getThingHaId());
             return;

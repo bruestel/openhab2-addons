@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.stream.Collectors;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -93,6 +94,7 @@ public class HomeConnectServlet extends HttpServlet {
     private static final String PARAM_ACTION = "action";
     private static final String PARAM_BRIDGE_ID = "bridgeId";
     private static final String PARAM_THING_ID = "thingId";
+    private static final String PARAM_PATH = "path";
     private static final String ACTION_AUTHORIZE = "authorize";
     private static final String ACTION_CLEAR_CREDENTIALS = "clearCredentials";
     private static final String ACTION_SHOW_DETAILS = "show-details";
@@ -105,7 +107,10 @@ public class HomeConnectServlet extends HttpServlet {
     private static final String ACTION_DOOR_STATE = "door-state";
     private static final String ACTION_REMOTE_START_ALLOWED = "remote-control-start-allowed";
     private static final String ACTION_REMOTE_CONTROL_ACTIVE = "remote-control-active";
+    private static final String ACTION_PUT_RAW = "put-raw";
+    private static final String ACTION_GET_RAW = "get-raw";
     private static final DateTimeFormatter FILE_EXPORT_DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm");
+    private static final long serialVersionUID = -2449763690208703307L;
 
     private final Logger logger;
     private final HttpService httpService;
@@ -222,11 +227,20 @@ public class HomeConnectServlet extends HttpServlet {
         if (request == null || response == null) {
             return;
         }
+        String requestPayload = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+
         response.setContentType("text/html; charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
 
         if (request.getParameter(PARAM_ACTION) != null && request.getParameter(PARAM_BRIDGE_ID) != null) {
             postBridgesPage(request, response);
+        } else if ((ACTION_PUT_RAW.equals(request.getParameter(PARAM_ACTION))
+                || ACTION_GET_RAW.equals(request.getParameter(PARAM_ACTION)))
+                && request.getParameter(PARAM_THING_ID) != null) {
+            String thingId = request.getParameter(PARAM_THING_ID);
+            String putPath = request.getParameter(PARAM_PATH);
+            String action = request.getParameter(PARAM_ACTION);
+            processRawApplianceActions(response, action, thingId, putPath, requestPayload);
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
@@ -373,6 +387,40 @@ public class HomeConnectServlet extends HttpServlet {
             }
         } else {
             response.sendError(HttpStatus.SC_BAD_REQUEST, "Thing or bridge not found!");
+        }
+    }
+
+    private void processRawApplianceActions(HttpServletResponse response, String action, String thingId, String path,
+            String body) throws IOException {
+        Optional<HomeConnectBridgeHandler> bridgeHandler = getBridgeHandlerForThing(thingId);
+        Optional<AbstractHomeConnectThingHandler> thingHandler = getThingHandler(thingId);
+
+        if (bridgeHandler.isPresent() && thingHandler.isPresent()) {
+            try {
+                response.setContentType(MediaType.APPLICATION_JSON);
+                String haId = thingHandler.get().getThingHaId();
+
+                if (ACTION_PUT_RAW.equals(action)) {
+                    String actionResponse = bridgeHandler.get().getApiClient().putRaw(haId, path, body);
+                    response.getWriter().write(actionResponse);
+                } else if (ACTION_GET_RAW.equals(action)) {
+                    @Nullable
+                    String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, path, true);
+                    if (actionResponse == null) {
+                        response.getWriter().write("{\"status\": \"No response\"}");
+                    } else {
+                        response.getWriter().write(actionResponse);
+                    }
+                } else {
+                    response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown action");
+                }
+            } catch (CommunicationException | AuthorizationException e) {
+                logger.warn("Could not execute request! thingId={}, action={}, error={}", thingId, action,
+                        e.getMessage());
+                response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        } else {
+            response.sendError(HttpStatus.SC_BAD_REQUEST, "Bridge or Thing not found!");
         }
     }
 

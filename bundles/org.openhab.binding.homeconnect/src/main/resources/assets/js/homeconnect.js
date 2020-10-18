@@ -33,6 +33,76 @@
         });
     })
 
+    $('#rawCommandDetailModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget);
+        var thingId = button.data('thing-id');
+        var haId = button.data('ha-id');
+
+        var modal = $(this);
+        var subTitle = modal.find('.modal-subtitle');
+        var inputPath = modal.find('#raw-path');
+        var inputBody = modal.find('#raw-request-body');
+        var submit = modal.find('#raw-submit');
+        var responseBodyElement = modal.find('.modal-response-body');
+        var responseTitle = modal.find('.raw-response-header');
+
+        subTitle.text(thingId);
+        responseBodyElement.text('');
+        responseTitle.hide();
+        inputPath.val('/api/homeappliances/' + haId + '/programs/active')
+        modal.modal('handleUpdate');
+
+        submit.click(function() {
+            responseBodyElement.text('Loading...');
+            let jqxhr = $.post( 'appliances?thingId=' + thingId + '&action=put-raw&path=' + inputPath.val(),
+                                inputBody.val(), function(data) {
+                responseBodyElement.text(JSON.stringify(data,null,'\t'));
+                responseTitle.show();
+            });
+            jqxhr.fail(function(data) {
+                responseBodyElement.text(JSON.stringify(data,null,'\t'));
+                responseTitle.show();
+            })
+            jqxhr.always(function() {
+                modal.modal('handleUpdate');
+            });
+        });
+    })
+
+    $('#rawGetDetailModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget);
+        var thingId = button.data('thing-id');
+        var haId = button.data('ha-id');
+
+        var modal = $(this);
+        var subTitle = modal.find('.modal-subtitle');
+        var inputPath = modal.find('#raw-get-path');
+        var submit = modal.find('#raw-get-submit');
+        var responseBodyElement = modal.find('.modal-response-body');
+        var responseTitle = modal.find('.raw-response-header');
+
+        subTitle.text(thingId);
+        responseBodyElement.text('');
+        responseTitle.hide();
+        inputPath.val('/api/homeappliances/' + haId + '/programs')
+        modal.modal('handleUpdate');
+
+        submit.click(function() {
+            responseBodyElement.text('Loading...');
+            let jqxhr = $.post( 'appliances?thingId=' + thingId + '&action=get-raw&path=' + inputPath.val(), function(data) {
+                    responseBodyElement.text(JSON.stringify(data,null,'\t'));
+                    responseTitle.show();
+                });
+            jqxhr.fail(function(data) {
+                responseBodyElement.text(JSON.stringify(data,null,'\t'));
+                responseTitle.show();
+            })
+            jqxhr.always(function() {
+                modal.modal('handleUpdate');
+            });
+        });
+    })
+
     $('#requestDetailModal').on('show.bs.modal', function (event) {
         var button = $(event.relatedTarget);
         var requestId = button.data('request-id');

@@ -72,7 +72,7 @@
                                         </button>
                                         <div class="w-100"></div>
                                     </div>
-                                    <div>
+                                    <div class="mb-1">
                                         <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-info btn-sm py-0" data-title="Power State" data-api-action="power-state" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
                                             Power State
                                         </button>
@@ -84,6 +84,14 @@
                                         </button>
                                         <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-info btn-sm py-0" data-title="Remote Control Active" data-api-action="remote-control-active" th:attr="data-thing-id=${uid}" data-toggle="modal" data-target="#apiDetailModal">
                                             Remote Control Active
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-warning btn-sm py-0" data-title="Send Raw Command (PUT)" th:attr="data-thing-id=${uid}, data-ha-id=${haId}" data-toggle="modal" data-target="#rawCommandDetailModal">
+                                            Send Raw Command (PUT)
+                                        </button>
+                                        <button style="display: inline-block;font-size: 0.8em;" type="button" class="btn btn-warning btn-sm py-0" data-title="Send Raw Request (GET)" th:attr="data-thing-id=${uid}, data-ha-id=${haId}" data-toggle="modal" data-target="#rawGetDetailModal">
+                                            Send Raw Request (GET)
                                         </button>
                                     </div>
                                 </dd>
@@ -115,6 +123,72 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Raw Command modal -->
+    <div class="modal fade" id="rawCommandDetailModal" tabindex="-1" role="dialog" aria-labelledby="rawCommandDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title text-truncate" id="rawCommandDetailModalLabel">Send Raw Command</h5>
+                        <h6 class="modal-subtitle mb-2 text-muted text-truncate">Card subtitle</h6>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label for="raw-path" class="col-form-label">Path:</label>
+                            <input type="text" class="form-control" id="raw-path">
+                        </div>
+                        <div class="form-group">
+                            <label for="raw-request-body" class="col-form-label">Request Body:</label>
+                            <textarea cols=100 rows=12 class="form-control" id="raw-request-body"></textarea>
+                        </div>
+                    </form>
+                    <label class="raw-response-header">Response:</label>
+                    <pre class="modal-response-body"></pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="raw-submit">Submit Request</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Raw Request modal -->
+    <div class="modal fade" id="rawGetDetailModal" tabindex="-1" role="dialog" aria-labelledby="rawGetDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title text-truncate" id="rawGetDetailModalLabel">Send Request (GET)</h5>
+                        <h6 class="modal-subtitle mb-2 text-muted text-truncate">Card subtitle</h6>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label for="raw-path" class="col-form-label">Path:</label>
+                            <input type="text" class="form-control" id="raw-get-path">
+                        </div>
+                    </form>
+                    <label class="raw-response-header">Response:</label>
+                    <pre class="modal-response-body"></pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="raw-get-submit">Submit Request</button>
                 </div>
             </div>
         </div>

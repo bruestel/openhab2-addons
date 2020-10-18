@@ -451,7 +451,7 @@ public class HomeConnectApiClient {
 
     /**
      * Get latest API requests.
-     * 
+     *
      * @return thread safe queue
      */
     public Queue<ApiRequest> getLatestApiRequests() {
@@ -476,6 +476,11 @@ public class HomeConnectApiClient {
     }
 
     public @Nullable String getRaw(String haId, String path) throws CommunicationException, AuthorizationException {
+        return getRaw(haId, path, false);
+    }
+
+    public @Nullable String getRaw(String haId, String path, boolean ignoreResponseCode)
+            throws CommunicationException, AuthorizationException {
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, haId, null);
@@ -483,7 +488,7 @@ public class HomeConnectApiClient {
             String responseBody = mapToString(response.body());
             trackAndLogApiRequest(haId, request, null, response, responseBody);
 
-            if (response.code() == HTTP_OK) {
+            if (ignoreResponseCode || response.code() == HTTP_OK) {
                 return responseBody;
             }
         } catch (IOException e) {
@@ -494,7 +499,7 @@ public class HomeConnectApiClient {
         return null;
     }
 
-    private void putRaw(String haId, String path, String requestBodyPayload)
+    public String putRaw(String haId, String path, String requestBodyPayload)
             throws CommunicationException, AuthorizationException {
         RequestBody requestBody = RequestBody.create(BSH_JSON_V1_MEDIA_TYPE,
                 requestBodyPayload.getBytes(StandardCharsets.UTF_8));
@@ -504,7 +509,9 @@ public class HomeConnectApiClient {
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_NO_CONTENT, request, response, haId, requestBodyPayload);
 
-            trackAndLogApiRequest(haId, request, requestBodyPayload, response, mapToString(response.body()));
+            String responseBody = mapToString(response.body());
+            trackAndLogApiRequest(haId, request, requestBodyPayload, response, responseBody);
+            return responseBody;
         } catch (IOException e) {
             logger.warn("Failed to put raw! haId={}, path={}, payload={}, error={}", haId, path, requestBodyPayload,
                     e.getMessage());
