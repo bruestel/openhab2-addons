@@ -90,10 +90,7 @@ public class HomeAppliance {
             return false;
         }
         HomeAppliance other = (HomeAppliance) obj;
-        if (!haId.equals(other.haId)) {
-            return false;
-        }
-        return true;
+        return haId.equals(other.haId);
     }
 
     @Override

@@ -12,13 +12,23 @@
  */
 package org.openhab.binding.homeconnect.internal.discovery;
 
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.BINDING_ID;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.DISCOVERABLE_DEVICE_THING_TYPES_UIDS;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HA_ID;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_COFFEE_MAKER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_COOKTOP;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_DISHWASHER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_DRYER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_FRIDGE_FREEZER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_HOOD;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_OVEN;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER_DRYER;
 
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -31,10 +41,8 @@ import org.eclipse.smarthome.core.thing.ThingUID;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler;
-import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.LogWriter;
-import org.openhab.binding.homeconnect.internal.logger.Type;
-import org.slf4j.event.Level;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HomeConnectDiscoveryService} is responsible for discovering new devices.
@@ -47,19 +55,18 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
     private static final int SEARCH_TIME = 20;
 
     private final HomeConnectBridgeHandler bridgeHandler;
-    private final LogWriter logger;
+    private final Logger logger;
 
     /**
      * Construct an {@link HomeConnectDiscoveryService} with the given
      * {@link org.eclipse.smarthome.core.thing.binding.BridgeHandler}.
      *
      * @param bridgeHandler bridge handler
-     * @param loggingService logging service
      */
-    public HomeConnectDiscoveryService(HomeConnectBridgeHandler bridgeHandler, EmbeddedLoggingService loggingService) {
+    public HomeConnectDiscoveryService(HomeConnectBridgeHandler bridgeHandler) {
         super(DISCOVERABLE_DEVICE_THING_TYPES_UIDS, SEARCH_TIME, true);
         this.bridgeHandler = bridgeHandler;
-        this.logger = loggingService.getLogger(HomeConnectDiscoveryService.class);
+        logger = LoggerFactory.getLogger(HomeConnectDiscoveryService.class);
     }
 
     @Override
@@ -70,12 +77,11 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
 
         try {
             List<HomeAppliance> appliances = apiClient.getHomeAppliances();
-            logger.log(Type.DEFAULT, Level.DEBUG, null, null,
-                    appliances.stream().map(appliance -> appliance.toString()).collect(Collectors.toList()), null, null,
-                    "Scan found {} devices.", appliances.size());
+            logger.debug("Scan found {} devices.", appliances.size());
 
             // add found devices
             for (HomeAppliance appliance : appliances) {
+                @Nullable
                 ThingTypeUID thingTypeUID = getThingTypeUID(appliance);
 
                 if (alreadyExists(appliance.getHaId())) {
@@ -121,7 +127,7 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
      * Check if device is already connected to the bridge.
      *
      * @param haId home appliance id
-     * @return
+     * @return true if appliance exists, otherwise false
      */
     private boolean alreadyExists(String haId) {
         boolean exists = false;
@@ -135,6 +141,7 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
     }
 
     private @Nullable ThingTypeUID getThingTypeUID(HomeAppliance appliance) {
+        @Nullable
         ThingTypeUID thingTypeUID = null;
 
         if (THING_TYPE_DISHWASHER.getId().equalsIgnoreCase(appliance.getType())) {

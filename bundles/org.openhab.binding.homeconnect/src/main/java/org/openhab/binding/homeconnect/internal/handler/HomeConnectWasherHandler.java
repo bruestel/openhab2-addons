@@ -12,7 +12,38 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ACTIVE_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DOOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_LOCAL_CONTROL_ACTIVE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_PROGRAM_PROGRESS_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMAINING_PROGRAM_TIME_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMOTE_CONTROL_ACTIVE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMOTE_START_ALLOWANCE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_SELECTED_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_IDOS1;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_IDOS2;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_SPIN_SPEED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_ACTIVE_PROGRAM;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_DOOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_LOCAL_CONTROL_ACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_PROGRAM_PROGRESS;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMAINING_PROGRAM_TIME;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_ACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_START_ALLOWED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_SELECTED_PROGRAM;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_WASHER_IDOS_1_DOSING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_WASHER_IDOS_2_DOSING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_WASHER_SPIN_SPEED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_WASHER_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPERATION_STATE_INACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPERATION_STATE_READY;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_IDOS_1_DOSING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_IDOS_2_DOSING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_SPIN_SPEED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_TEMPERATURE;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,6 +51,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.ChannelUID;
@@ -29,9 +61,9 @@ import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HomeConnectWasherHandler} is responsible for handling commands, which are
@@ -44,13 +76,12 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
 
     private static final List<String> INACTIVE_STATE = Arrays.asList(OPERATION_STATE_INACTIVE, OPERATION_STATE_READY);
 
-    private final LogWriter logger;
+    private final Logger logger;
 
     public HomeConnectWasherHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
-            EmbeddedLoggingService loggingService) {
-        super(thing, dynamicStateDescriptionProvider, loggingService);
-        logger = loggingService.getLogger(HomeConnectWasherDryerHandler.class);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
+        super(thing, dynamicStateDescriptionProvider);
+        logger = LoggerFactory.getLogger(HomeConnectWasherDryerHandler.class);
     }
 
     @Override
@@ -97,77 +128,64 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
         handlers.put(EVENT_SELECTED_PROGRAM, updateProgramOptionsAndSelectedProgramStateEventHandler());
 
         // register washer specific event handlers
-        handlers.put(EVENT_WASHER_TEMPERATURE, event -> {
-            getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
-            });
-        });
-        handlers.put(EVENT_WASHER_SPIN_SPEED, event -> {
-            getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
-            });
-        });
-        handlers.put(EVENT_WASHER_IDOS_1_DOSING_LEVEL, event -> {
-            getThingChannel(CHANNEL_WASHER_IDOS1).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
-            });
-        });
-        handlers.put(EVENT_WASHER_IDOS_2_DOSING_LEVEL, event -> {
-            getThingChannel(CHANNEL_WASHER_IDOS2).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
-            });
-        });
+        handlers.put(EVENT_WASHER_TEMPERATURE,
+                event -> getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
+        handlers.put(EVENT_WASHER_SPIN_SPEED,
+                event -> getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(channel -> updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
+        handlers.put(EVENT_WASHER_IDOS_1_DOSING_LEVEL,
+                event -> getThingChannel(CHANNEL_WASHER_IDOS1).ifPresent(channel -> updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
+        handlers.put(EVENT_WASHER_IDOS_2_DOSING_LEVEL,
+                event -> getThingChannel(CHANNEL_WASHER_IDOS2).ifPresent(channel -> updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
     }
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
+            @Nullable
             String operationState = getOperationState();
-            HomeConnectApiClient apiClient = getApiClient().orElse(null);
+            Optional<HomeConnectApiClient> apiClient = getApiClient();
 
             try {
                 // only handle these commands if operation state allows it
-                if (operationState != null && INACTIVE_STATE.contains(operationState) && apiClient != null) {
+                if (operationState != null && INACTIVE_STATE.contains(operationState) && apiClient.isPresent()) {
                     // set temperature option
                     if (command instanceof StringType && CHANNEL_WASHER_TEMPERATURE.equals(channelUID.getId())) {
-                        apiClient.setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE, command.toFullString(),
-                                null, false, false);
+                        apiClient.get().setProgramOptions(getThingHaId(), OPTION_WASHER_TEMPERATURE,
+                                command.toFullString(), null, false, false);
                     }
 
                     // set spin speed option
                     if (command instanceof StringType && CHANNEL_WASHER_SPIN_SPEED.equals(channelUID.getId())) {
-                        apiClient.setProgramOptions(getThingHaId(), OPTION_WASHER_SPIN_SPEED, command.toFullString(),
-                                null, false, false);
+                        apiClient.get().setProgramOptions(getThingHaId(), OPTION_WASHER_SPIN_SPEED,
+                                command.toFullString(), null, false, false);
                     }
 
                     // set iDos 1 option
                     if (command instanceof StringType && CHANNEL_WASHER_IDOS1.equals(channelUID.getId())) {
-                        apiClient.setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_1_DOSING_LEVEL,
+                        apiClient.get().setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_1_DOSING_LEVEL,
                                 command.toFullString(), null, false, false);
                     }
 
                     // set iDos 2 option
                     if (command instanceof StringType && CHANNEL_WASHER_IDOS2.equals(channelUID.getId())) {
-                        apiClient.setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_2_DOSING_LEVEL,
+                        apiClient.get().setProgramOptions(getThingHaId(), OPTION_WASHER_IDOS_2_DOSING_LEVEL,
                                 command.toFullString(), null, false, false);
                     }
                 } else {
-                    logger.debugWithHaId(getThingHaId(),
-                            "Device can not handle command {} in current operation state ({}).", command,
-                            operationState);
+                    logger.debug("Device can not handle command {} in current operation state ({}). haId={}", command,
+                            operationState, getThingHaId());
                 }
             } catch (CommunicationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
-                        command.toFullString(), e.getMessage());
+                logger.warn("Could not handle command {}. API communication problem! thing={}, haId={}, error={}",
+                        command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
             } catch (AuthorizationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
-                        command.toFullString(), e.getMessage());
-
+                logger.warn("Could not handle command {}. Authorization problem! thing={}, haId={}, error={}",
+                        command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
                 handleAuthenticationError(e);
             }
         }

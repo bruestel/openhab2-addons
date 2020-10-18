@@ -12,11 +12,11 @@
  */
 package org.openhab.binding.homeconnect.internal.client.model;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 
 /**
  *
@@ -32,7 +32,7 @@ public class ApiRequest {
     private final @Nullable HomeConnectResponse homeConnectResponse;
 
     public ApiRequest(LocalDateTime time, HomeConnectRequest homeConnectRequest,
-                      @Nullable HomeConnectResponse homeConnectResponse) {
+            @Nullable HomeConnectResponse homeConnectResponse) {
         this.id = UUID.randomUUID().toString();
         this.time = time;
         this.homeConnectRequest = homeConnectRequest;
@@ -57,7 +57,7 @@ public class ApiRequest {
 
     @Override
     public String toString() {
-        return "ApiRequest [id=" + id + ", time=" + time + ", request=" + homeConnectRequest + ", response=" + homeConnectResponse
-                + "]";
+        return "ApiRequest [id=" + id + ", time=" + time + ", request=" + homeConnectRequest + ", response="
+                + homeConnectResponse + "]";
     }
 }

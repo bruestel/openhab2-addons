@@ -12,8 +12,18 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DOOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_FREEZER_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_FREEZER_SUPER_MODE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REFRIGERATOR_SUPER_MODE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_DOOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_FREEZER_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_FREEZER_SUPER_MODE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_FRIDGE_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_FRIDGE_SUPER_MODE;
 
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.measure.IncommensurableException;
@@ -33,9 +43,9 @@ import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
-import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HomeConnectFridgeFreezerHandler} is responsible for handling commands, which are
@@ -46,13 +56,12 @@ import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDesc
 @NonNullByDefault
 public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHandler {
 
-    private final LogWriter logger;
+    private final Logger logger;
 
     public HomeConnectFridgeFreezerHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
-            EmbeddedLoggingService loggingService) {
-        super(thing, dynamicStateDescriptionProvider, loggingService);
-        logger = loggingService.getLogger(HomeConnectFridgeFreezerHandler.class);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
+        super(thing, dynamicStateDescriptionProvider);
+        logger = LoggerFactory.getLogger(HomeConnectFridgeFreezerHandler.class);
     }
 
     @Override
@@ -61,62 +70,59 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
         handlers.put(CHANNEL_DOOR_STATE, defaultDoorStateChannelUpdateHandler());
 
         // register fridge/freezer specific handlers
-        handlers.put(CHANNEL_FREEZER_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
-            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient().orElse(null);
-                if (apiClient != null) {
-                    Data data = apiClient.getFreezerSetpointTemperature(getThingHaId());
-                    if (data.getValue() != null) {
-                        return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
-                    } else {
-                        return UnDefType.NULL;
+        handlers.put(CHANNEL_FREEZER_SETPOINT_TEMPERATURE,
+                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Optional<HomeConnectApiClient> apiClient = getApiClient();
+                    if (apiClient.isPresent()) {
+                        Data data = apiClient.get().getFreezerSetpointTemperature(getThingHaId());
+                        if (data.getValue() != null) {
+                            return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
+                        } else {
+                            return UnDefType.NULL;
+                        }
                     }
-                }
-                return UnDefType.NULL;
-            }));
-        });
-        handlers.put(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
-            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient().orElse(null);
-                if (apiClient != null) {
-                    Data data = apiClient.getFridgeSetpointTemperature(getThingHaId());
-                    if (data.getValue() != null) {
-                        return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
-                    } else {
-                        return UnDefType.NULL;
+                    return UnDefType.NULL;
+                })));
+        handlers.put(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE,
+                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Optional<HomeConnectApiClient> apiClient = getApiClient();
+                    if (apiClient.isPresent()) {
+                        Data data = apiClient.get().getFridgeSetpointTemperature(getThingHaId());
+                        if (data.getValue() != null) {
+                            return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
+                        } else {
+                            return UnDefType.NULL;
+                        }
                     }
-                }
-                return UnDefType.NULL;
-            }));
-        });
-        handlers.put(CHANNEL_REFRIGERATOR_SUPER_MODE, (channelUID, cache) -> {
-            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient().orElse(null);
-                if (apiClient != null) {
-                    Data data = apiClient.getFridgeSuperMode(getThingHaId());
-                    if (data.getValue() != null) {
-                        return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
-                    } else {
-                        return UnDefType.NULL;
+                    return UnDefType.NULL;
+                })));
+        handlers.put(CHANNEL_REFRIGERATOR_SUPER_MODE,
+                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Optional<HomeConnectApiClient> apiClient = getApiClient();
+                    if (apiClient.isPresent()) {
+                        Data data = apiClient.get().getFridgeSuperMode(getThingHaId());
+                        if (data.getValue() != null) {
+                            return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
+                        } else {
+                            return UnDefType.NULL;
+                        }
                     }
-                }
-                return UnDefType.NULL;
-            }));
-        });
-        handlers.put(CHANNEL_FREEZER_SUPER_MODE, (channelUID, cache) -> {
-            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient().orElse(null);
-                if (apiClient != null) {
-                    Data data = apiClient.getFreezerSuperMode(getThingHaId());
-                    if (data.getValue() != null) {
-                        return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
-                    } else {
-                        return UnDefType.NULL;
+                    return UnDefType.NULL;
+                })));
+        handlers.put(CHANNEL_FREEZER_SUPER_MODE,
+                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Optional<HomeConnectApiClient> apiClient = getApiClient();
+
+                    if (apiClient.isPresent()) {
+                        Data data = apiClient.get().getFreezerSuperMode(getThingHaId());
+                        if (data.getValue() != null) {
+                            return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
+                        } else {
+                            return UnDefType.NULL;
+                        }
                     }
-                }
-                return UnDefType.NULL;
-            }));
-        });
+                    return UnDefType.NULL;
+                })));
     }
 
     @Override
@@ -127,25 +133,24 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
         handlers.put(EVENT_FRIDGE_SUPER_MODE, defaultBooleanEventHandler(CHANNEL_REFRIGERATOR_SUPER_MODE));
 
         // register fridge/freezer specific event handlers
-        handlers.put(EVENT_FREEZER_SETPOINT_TEMPERATURE, event -> {
-            getThingChannel(CHANNEL_FREEZER_SETPOINT_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
-                    new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
-        });
-        handlers.put(EVENT_FRIDGE_SETPOINT_TEMPERATURE, event -> {
-            getThingChannel(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE)
-                    .ifPresent(channel -> updateState(channel.getUID(),
-                            new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
-        });
+        handlers.put(EVENT_FREEZER_SETPOINT_TEMPERATURE,
+                event -> getThingChannel(CHANNEL_FREEZER_SETPOINT_TEMPERATURE)
+                        .ifPresent(channel -> updateState(channel.getUID(),
+                                new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit())))));
+        handlers.put(EVENT_FRIDGE_SETPOINT_TEMPERATURE,
+                event -> getThingChannel(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE)
+                        .ifPresent(channel -> updateState(channel.getUID(),
+                                new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit())))));
     }
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
-            HomeConnectApiClient apiClient = getApiClient().orElse(null);
+            Optional<HomeConnectApiClient> apiClient = getApiClient();
 
             try {
-                if (apiClient != null && command instanceof QuantityType
+                if (apiClient.isPresent() && command instanceof QuantityType
                         && (CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE.equals(channelUID.getId())
                                 || CHANNEL_FREEZER_SETPOINT_TEMPERATURE.equals(channelUID.getId()))) {
                     @SuppressWarnings("unchecked")
@@ -159,40 +164,40 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                         unit = quantity.getUnit().toString();
                         value = String.valueOf(quantity.intValue());
                     } else {
-                        logger.infoWithHaId(getThingHaId(),
-                                "Converting target setpoint temperature from {}{} to °C value.", quantity.intValue(),
-                                quantity.getUnit().toString());
+                        logger.debug("Converting target setpoint temperature from {}{} to °C value. thing={}, haId={}",
+                                quantity.intValue(), quantity.getUnit().toString(), getThingLabel(), getThingHaId());
                         unit = "°C";
                         value = String.valueOf(
                                 quantity.getUnit().getConverterToAny(SIUnits.CELSIUS).convert(quantity).intValue());
-                        logger.infoWithHaId(getThingHaId(), "{}{}", value, unit);
+                        logger.debug("{}{}", value, unit);
                     }
 
-                    logger.debugWithHaId(getThingHaId(), "Set setpoint temperature to {} {}.", value, unit);
+                    logger.debug("Set setpoint temperature to {} {}. thing={}, haId={}", value, unit, getThingLabel(),
+                            getThingHaId());
 
                     if (CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
-                        apiClient.setFridgeSetpointTemperature(getThingHaId(), value, unit);
+                        apiClient.get().setFridgeSetpointTemperature(getThingHaId(), value, unit);
                     } else if (CHANNEL_FREEZER_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
-                        apiClient.setFreezerSetpointTemperature(getThingHaId(), value, unit);
+                        apiClient.get().setFreezerSetpointTemperature(getThingHaId(), value, unit);
                     }
 
-                } else if (command instanceof OnOffType && apiClient != null) {
+                } else if (command instanceof OnOffType && apiClient.isPresent()) {
                     if (CHANNEL_FREEZER_SUPER_MODE.equals(channelUID.getId())) {
-                        apiClient.setFreezerSuperMode(getThingHaId(), OnOffType.ON.equals(command));
+                        apiClient.get().setFreezerSuperMode(getThingHaId(), OnOffType.ON.equals(command));
                     } else if (CHANNEL_REFRIGERATOR_SUPER_MODE.equals(channelUID.getId())) {
-                        apiClient.setFridgeSuperMode(getThingHaId(), OnOffType.ON.equals(command));
+                        apiClient.get().setFridgeSuperMode(getThingHaId(), OnOffType.ON.equals(command));
                     }
                 }
             } catch (CommunicationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. API communication problem! error: {}",
-                        command.toFullString(), e.getMessage());
+                logger.warn("Could not handle command {}. API communication problem! haId={}, error={}",
+                        command.toFullString(), getThingHaId(), e.getMessage());
             } catch (AuthorizationException e) {
-                logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
-                        command.toFullString(), e.getMessage());
+                logger.warn("Could not handle command {}. Authorization problem! haId={}, error={}",
+                        command.toFullString(), getThingHaId(), e.getMessage());
 
                 handleAuthenticationError(e);
             } catch (IncommensurableException | UnconvertibleException e) {
-                logger.errorWithHaId(getThingHaId(), "Could not set setpoint! {}", e.getMessage());
+                logger.warn("Could not set setpoint! haId={}, error={}", getThingHaId(), e.getMessage());
             }
         }
     }

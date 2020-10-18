@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -48,9 +49,9 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HomeConnectDryerHandler} is responsible for handling commands, which are
@@ -63,13 +64,12 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
 
     private static final List<String> INACTIVE_STATE = Arrays.asList(OPERATION_STATE_INACTIVE, OPERATION_STATE_READY);
 
-    private final LogWriter logger;
+    private final Logger logger;
 
     public HomeConnectDryerHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
-            EmbeddedLoggingService loggingService) {
-        super(thing, dynamicStateDescriptionProvider, loggingService);
-        logger = loggingService.getLogger(HomeConnectDryerHandler.class);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
+        super(thing, dynamicStateDescriptionProvider);
+        logger = LoggerFactory.getLogger(HomeConnectDryerHandler.class);
     }
 
     @Override
@@ -100,18 +100,16 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
         handlers.put(EVENT_SELECTED_PROGRAM, updateProgramOptionsAndSelectedProgramStateEventHandler());
 
         // register dryer specific event handlers
-        handlers.put(EVENT_DRYER_DRYING_TARGET, event -> {
-            getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
-            });
-        });
+        handlers.put(EVENT_DRYER_DRYING_TARGET,
+                event -> getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(channel -> updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
     }
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (isThingReadyToHandleCommand()) {
             super.handleCommand(channelUID, command);
+            @Nullable
             String operationState = getOperationState();
 
             // only handle these commands if operation state allows it
@@ -123,21 +121,19 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                             apiClient.setProgramOptions(getThingHaId(), OPTION_DRYER_DRYING_TARGET,
                                     command.toFullString(), null, false, false);
                         } catch (CommunicationException e) {
-                            logger.warnWithHaId(getThingHaId(),
-                                    "Could not handle command {}. API communication problem! error: {}",
-                                    command.toFullString(), e.getMessage());
+                            logger.warn("Could not handle command {}. API communication problem! haId={}, error={}",
+                                    command.toFullString(), getThingHaId(), e.getMessage());
                         } catch (AuthorizationException e) {
-                            logger.warnWithHaId(getThingHaId(),
-                                    "Could not handle command {}. Authorization problem! error: {}",
-                                    command.toFullString(), e.getMessage());
+                            logger.warn("Could not handle command {}. Authorization problem! haId={}, error={}",
+                                    command.toFullString(), getThingHaId(), e.getMessage());
 
                             handleAuthenticationError(e);
                         }
                     });
                 }
             } else {
-                logger.debugWithHaId(getThingHaId(),
-                        "Device can not handle command {} in current operation state ({}).", command, operationState);
+                logger.debug("Device can not handle command {} in current operation state ({}). thing={}, haId={}",
+                        command, operationState, getThingLabel(), getThingHaId());
             }
 
         }

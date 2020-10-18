@@ -15,6 +15,14 @@ package org.openhab.binding.homeconnect.internal.client;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_BASE_URL;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_SIMULATOR_BASE_URL;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 import org.apache.commons.collections4.QueueUtils;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -26,14 +34,6 @@ import org.openhab.binding.homeconnect.internal.client.listener.HomeConnectEvent
 import org.openhab.binding.homeconnect.internal.client.model.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import okhttp3.Request;
 import okhttp3.sse.EventSource;
@@ -135,6 +135,7 @@ public class HomeConnectEventSourceClient {
 
     /**
      * Get latest events
+     * 
      * @return thread safe queue
      */
     public Queue<Event> getLatestEvents() {
@@ -143,11 +144,11 @@ public class HomeConnectEventSourceClient {
 
     /**
      * Get latest events by haId
+     * 
      * @param haId appliance id
      * @return thread safe queue
      */
     public List<Event> getLatestEvents(String haId) {
-        return eventQueue.stream().filter(event -> haId.equals(event.getHaId()))
-                .collect(Collectors.toList());
+        return eventQueue.stream().filter(event -> haId.equals(event.getHaId())).collect(Collectors.toList());
     }
 }

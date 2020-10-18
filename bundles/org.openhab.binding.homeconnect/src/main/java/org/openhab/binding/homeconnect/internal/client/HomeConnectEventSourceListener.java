@@ -40,8 +40,8 @@ import okhttp3.sse.EventSourceListener;
 public class HomeConnectEventSourceListener extends EventSourceListener {
     private static final String EMPTY_DATA = "\"\"";
     private static final int SSE_MONITOR_INITIAL_DELAY = 1;
-    private static final int SSE_MONITOR_INTERVAL = 1; // TODO 5 minutes
-    private static final int SSE_MONITOR_BROKEN_CONNECTION_TIMEOUT = 2; // TODO 3 minutes
+    private static final int SSE_MONITOR_INTERVAL = 5; // in min
+    private static final int SSE_MONITOR_BROKEN_CONNECTION_TIMEOUT = 3; // in min
 
     private final String haId;
     private final HomeConnectEventListener eventListener;
@@ -54,7 +54,8 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
     private @Nullable LocalDateTime lastEventReceived;
 
     public HomeConnectEventSourceListener(String haId, final HomeConnectEventListener eventListener,
-            final HomeConnectEventSourceClient client, final ScheduledExecutorService scheduler, Queue<Event> eventQueue) {
+            final HomeConnectEventSourceClient client, final ScheduledExecutorService scheduler,
+            Queue<Event> eventQueue) {
         this.haId = haId;
         this.eventListener = eventListener;
         this.client = client;

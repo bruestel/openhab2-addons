@@ -76,9 +76,9 @@ import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
-import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HomeConnectOvenHandler} is responsible for handling commands, which are
@@ -93,17 +93,16 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
     private static final int CAVITY_TEMPERATURE_SCHEDULER_INITIAL_DELAY = 30;
     private static final int CAVITY_TEMPERATURE_SCHEDULER_PERIOD = 90;
 
-    private final LogWriter logger;
+    private final Logger logger;
     private final ScheduledExecutorService scheduler;
 
     private @Nullable ScheduledFuture<?> cavityTemperatureFuture;
     private boolean manuallyUpdateCavityTemperature;
 
     public HomeConnectOvenHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
-            EmbeddedLoggingService loggingService) {
-        super(thing, dynamicStateDescriptionProvider, loggingService);
-        logger = loggingService.getLogger(HomeConnectOvenHandler.class);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
+        super(thing, dynamicStateDescriptionProvider);
+        logger = LoggerFactory.getLogger(HomeConnectOvenHandler.class);
         scheduler = ThreadPoolManager.getScheduledPool(getClass().getSimpleName());
         manuallyUpdateCavityTemperature = true;
     }
@@ -120,16 +119,15 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
 
         // register oven specific update handlers
-        handlers.put(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE, (channelUID, cache) -> {
-            updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
-                HomeConnectApiClient apiClient = getApiClient().orElse(null);
-                if (apiClient != null) {
-                    Data data = apiClient.getCurrentCavityTemperature(getThingHaId());
-                    return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
-                }
-                return UnDefType.NULL;
-            }));
-        });
+        handlers.put(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE,
+                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Optional<HomeConnectApiClient> apiClient = getApiClient();
+                    if (apiClient.isPresent()) {
+                        Data data = apiClient.get().getCurrentCavityTemperature(getThingHaId());
+                        return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
+                    }
+                    return UnDefType.NULL;
+                })));
         handlers.put(CHANNEL_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
             Optional<Channel> channel = getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE);
             if (channel.isPresent()) {
@@ -185,14 +183,12 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                     new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
         });
 
-        handlers.put(EVENT_SETPOINT_TEMPERATURE, event -> {
-            getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
-                    new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit()))));
-        });
-        handlers.put(EVENT_DURATION, event -> {
-            getThingChannel(CHANNEL_DURATION).ifPresent(
-                    channel -> updateState(channel.getUID(), new QuantityType<>(event.getValueAsInt(), SECOND)));
-        });
+        handlers.put(EVENT_SETPOINT_TEMPERATURE,
+                event -> getThingChannel(CHANNEL_SETPOINT_TEMPERATURE)
+                        .ifPresent(channel -> updateState(channel.getUID(),
+                                new QuantityType<>(event.getValueAsInt(), mapTemperature(event.getUnit())))));
+        handlers.put(EVENT_DURATION, event -> getThingChannel(CHANNEL_DURATION).ifPresent(
+                channel -> updateState(channel.getUID(), new QuantityType<>(event.getValueAsInt(), SECOND))));
     }
 
     @Override
@@ -208,6 +204,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                                 OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_STANDBY);
                     }
 
+                    @Nullable
                     String operationState = getOperationState();
                     if (operationState != null && INACTIVE_STATE.contains(operationState)) {
                         // set setpoint temperature
@@ -225,21 +222,22 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                                     unit = quantity.getUnit().toString();
                                     value = String.valueOf(quantity.intValue());
                                 } else {
-                                    logger.infoWithHaId(getThingHaId(),
-                                            "Converting target setpoint temperature from {}{} to °C value.",
-                                            quantity.intValue(), quantity.getUnit().toString());
+                                    logger.debug(
+                                            "Converting target setpoint temperature from {}{} to °C value. haId={}",
+                                            quantity.intValue(), quantity.getUnit().toString(), getThingHaId());
                                     unit = "°C";
                                     value = String.valueOf(quantity.getUnit().getConverterToAny(SIUnits.CELSIUS)
                                             .convert(quantity).intValue());
-                                    logger.infoWithHaId(getThingHaId(), "{}{}", value, unit);
+                                    logger.debug("{}{}", value, unit);
                                 }
 
-                                logger.debugWithHaId(getThingHaId(), "Set setpoint temperature to {} {}.", value, unit);
+                                logger.debug("Set setpoint temperature to {} {}. haId={}", value, unit, getThingHaId());
                                 apiClient.setProgramOptions(getThingHaId(), OPTION_SETPOINT_TEMPERATURE, value, unit,
                                         true, false);
 
                             } catch (IncommensurableException | UnconvertibleException e) {
-                                logger.errorWithHaId(getThingHaId(), "Could not set setpoint! {}", e.getMessage());
+                                logger.warn("Could not set setpoint! haId={}, error={}", getThingHaId(),
+                                        e.getMessage());
                             }
                         }
 
@@ -251,28 +249,25 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                             try {
                                 String value = String.valueOf(
                                         quantity.getUnit().getConverterToAny(SECOND).convert(quantity).intValue());
-                                logger.debugWithHaId(getThingHaId(), "Set duration to {} seconds.", value);
+                                logger.debug("Set duration to {} seconds. haId={}", value, getThingHaId());
 
                                 apiClient.setProgramOptions(getThingHaId(), OPTION_DURATION, value, "seconds", true,
                                         false);
                             } catch (IncommensurableException | UnconvertibleException e) {
-                                logger.errorWithHaId(getThingHaId(), "Could not set duration! error: {}",
+                                logger.warn("Could not set duration! haId={}, error={}", getThingHaId(),
                                         e.getMessage());
                             }
                         }
                     } else {
-                        logger.debugWithHaId(getThingHaId(),
-                                "Device can not handle command {} in current operation state ({}).", command,
-                                operationState);
+                        logger.debug("Device can not handle command {} in current operation state ({}). haId={}",
+                                command, operationState, getThingHaId());
                     }
                 } catch (CommunicationException e) {
-                    logger.warnWithHaId(getThingHaId(),
-                            "Could not handle command {}. API communication problem! error: {}", command.toFullString(),
-                            e.getMessage());
+                    logger.warn("Could not handle command {}. API communication problem! thing={}, haId={}, error={}",
+                            command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
                 } catch (AuthorizationException e) {
-                    logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
-                            command.toFullString(), e.getMessage());
-
+                    logger.warn("Could not handle command {}. Authorization problem! thing={}, haId={}, error={}",
+                            command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
                     handleAuthenticationError(e);
                 }
             });
@@ -283,17 +278,18 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
     public void initialize() {
         super.initialize();
         cavityTemperatureFuture = scheduler.scheduleWithFixedDelay(() -> {
+            @Nullable
             String operationState = getOperationState();
             boolean manuallyUpdateCavityTemperature = this.manuallyUpdateCavityTemperature;
 
-            if (operationState != null && STATE_OPERATION_RUN.equals(operationState)) {
+            if (STATE_OPERATION_RUN.equals(operationState)) {
                 getThingChannel(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE).ifPresent(c -> {
                     if (manuallyUpdateCavityTemperature) {
-                        logger.debugWithHaId(getThingHaId(), "Update cavity temperature manually via API.");
+                        logger.debug("Update cavity temperature manually via API. haId={}", getThingHaId());
                         updateChannel(c.getUID());
                     } else {
-                        logger.debugWithHaId(getThingHaId(),
-                                "Update cavity temperature via SSE, don't need to fetch manually.");
+                        logger.debug("Update cavity temperature via SSE, don't need to fetch manually. haId={}",
+                                getThingHaId());
                     }
                 });
             }
@@ -303,6 +299,7 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
     @Override
     public void dispose() {
         super.dispose();
+        @Nullable
         ScheduledFuture<?> cavityTemperatureFuture = this.cavityTemperatureFuture;
         if (cavityTemperatureFuture != null) {
             cavityTemperatureFuture.cancel(true);

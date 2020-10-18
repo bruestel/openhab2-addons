@@ -25,9 +25,15 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.formatJsonBody;
 import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.requestBuilder;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.collections4.QueueUtils;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
@@ -48,15 +54,9 @@ import org.openhab.binding.homeconnect.internal.client.model.Program;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -91,7 +91,8 @@ public class HomeConnectApiClient {
     private final Queue<ApiRequest> communicationQueue;
     private final JsonParser jsonParser;
 
-    public HomeConnectApiClient(OAuthClientService oAuthClientService, boolean simulated, @Nullable List<ApiRequest> apiRequestHistory) {
+    public HomeConnectApiClient(OAuthClientService oAuthClientService, boolean simulated,
+            @Nullable List<ApiRequest> apiRequestHistory) {
         this.oAuthClientService = oAuthClientService;
 
         availableProgramOptionsCache = new ConcurrentHashMap<>();
@@ -402,7 +403,7 @@ public class HomeConnectApiClient {
     }
 
     public void setProgramOptions(String haId, String key, String value, @Nullable String unit, boolean valueAsInt,
-                                  boolean isProgramActive) throws CommunicationException, AuthorizationException {
+            boolean isProgramActive) throws CommunicationException, AuthorizationException {
         String programState = isProgramActive ? "active" : "selected";
 
         putOption(haId, "/api/homeappliances/" + haId + "/programs/" + programState + "/options",
@@ -450,6 +451,7 @@ public class HomeConnectApiClient {
 
     /**
      * Get latest API requests.
+     * 
      * @return thread safe queue
      */
     public Queue<ApiRequest> getLatestApiRequests() {
@@ -656,20 +658,20 @@ public class HomeConnectApiClient {
 
             trackAndLogApiRequest(haId, request, requestBodyPayload, response, mapToString(response.body()));
         } catch (IOException e) {
-            logger.warn("Failed to put option! haId={}, path={}, option={}, asInt={}, error={}", haId, path, option, asInt,
-                    e.getMessage());
+            logger.warn("Failed to put option! haId={}, path={}, option={}, asInt={}, error={}", haId, path, option,
+                    asInt, e.getMessage());
             trackAndLogApiRequest(haId, request, requestBodyPayload, null, null);
             throw new CommunicationException(e);
         }
     }
 
     private void checkResponseCode(int desiredCode, Request request, Response response, @Nullable String haId,
-                                   @Nullable String requestPayload) throws CommunicationException, AuthorizationException {
+            @Nullable String requestPayload) throws CommunicationException, AuthorizationException {
         checkResponseCode(singletonList(desiredCode), request, response, haId, requestPayload);
     }
 
     private void checkResponseCode(List<Integer> desiredCodes, Request request, Response response,
-                                   @Nullable String haId, @Nullable String requestPayload)
+            @Nullable String haId, @Nullable String requestPayload)
             throws CommunicationException, AuthorizationException {
 
         if (!desiredCodes.contains(HTTP_UNAUTHORIZED) && response.code() == HTTP_UNAUTHORIZED) {
@@ -829,7 +831,7 @@ public class HomeConnectApiClient {
     }
 
     private void trackAndLogApiRequest(@Nullable String haId, Request request, @Nullable String requestBody,
-                                       @Nullable Response response, @Nullable String responseBody) {
+            @Nullable Response response, @Nullable String responseBody) {
         HomeConnectRequest homeConnectRequest = map(request, requestBody);
         @Nullable
         HomeConnectResponse homeConnectResponse = response != null ? map(response, responseBody) : null;
@@ -839,7 +841,7 @@ public class HomeConnectApiClient {
     }
 
     private void logApiRequest(@Nullable String haId, HomeConnectRequest homeConnectRequest,
-                               @Nullable HomeConnectResponse homeConnectResponse) {
+            @Nullable HomeConnectResponse homeConnectResponse) {
         if (logger.isDebugEnabled()) {
             StringBuilder sb = new StringBuilder();
 
@@ -873,7 +875,7 @@ public class HomeConnectApiClient {
     }
 
     private void trackApiRequest(HomeConnectRequest homeConnectRequest,
-                                 @Nullable HomeConnectResponse homeConnectResponse) {
+            @Nullable HomeConnectResponse homeConnectResponse) {
         communicationQueue.add(new ApiRequest(now(), homeConnectRequest, homeConnectResponse));
     }
 

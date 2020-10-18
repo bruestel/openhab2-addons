@@ -12,12 +12,35 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
-import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.*;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ACTIVE_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_HOOD_INTENSIVE_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_HOOD_VENTING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_LOCAL_CONTROL_ACTIVE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_POWER_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMOTE_CONTROL_ACTIVE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_REMOTE_START_ALLOWANCE_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_SELECTED_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_ACTIVE_PROGRAM;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_HOOD_INTENSIVE_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_HOOD_VENTING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_LOCAL_CONTROL_ACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_POWER_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_ACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_START_ALLOWED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_SELECTED_PROGRAM;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPERATION_STATE_INACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_HOOD_INTENSIVE_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_HOOD_VENTING_LEVEL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_POWER_OFF;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_POWER_ON;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.Channel;
@@ -27,9 +50,9 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
-import org.openhab.binding.homeconnect.internal.logger.LogWriter;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link HomeConnectHoodHandler} is responsible for handling commands, which are
@@ -40,13 +63,12 @@ import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDesc
 @NonNullByDefault
 public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
 
-    private final LogWriter logger;
+    private final Logger logger;
 
     public HomeConnectHoodHandler(Thing thing,
-            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
-            EmbeddedLoggingService loggingService) {
-        super(thing, dynamicStateDescriptionProvider, loggingService);
-        logger = loggingService.getLogger(HomeConnectHoodHandler.class);
+            HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
+        super(thing, dynamicStateDescriptionProvider);
+        logger = LoggerFactory.getLogger(HomeConnectHoodHandler.class);
         resetProgramStateChannels();
     }
 
@@ -92,18 +114,13 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
         handlers.put(EVENT_SELECTED_PROGRAM, updateProgramOptionsAndSelectedProgramStateEventHandler());
 
         // register hood specific SSE event handlers
-        handlers.put(EVENT_HOOD_INTENSIVE_LEVEL, event -> {
-            getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
-            });
-        });
-        handlers.put(EVENT_HOOD_VENTING_LEVEL, event -> {
-            getThingChannel(CHANNEL_HOOD_VENTING_LEVEL).ifPresent(channel -> {
-                updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()));
-            });
-        });
+        handlers.put(EVENT_HOOD_INTENSIVE_LEVEL,
+                event -> getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL)
+                        .ifPresent(channel -> updateState(channel.getUID(),
+                                event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
+        handlers.put(EVENT_HOOD_VENTING_LEVEL,
+                event -> getThingChannel(CHANNEL_HOOD_VENTING_LEVEL).ifPresent(channel -> updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
     }
 
     @Override
@@ -120,6 +137,7 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                     }
 
                     // program options
+                    @Nullable
                     String operationState = getOperationState();
                     if (OPERATION_STATE_INACTIVE.equals(operationState)) {
                         // set intensive level
@@ -132,17 +150,16 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                                     command.toFullString(), null, false, false);
                         }
                     } else {
-                        logger.debugWithHaId(getThingHaId(),
-                                "Device can not handle command {} in current operation state ({}).", command,
-                                operationState);
+                        logger.debug(
+                                "Device can not handle command {} in current operation state ({}). thing={}, haId={}",
+                                command, operationState, getThingLabel(), getThingHaId());
                     }
                 } catch (CommunicationException e) {
-                    logger.warnWithHaId(getThingHaId(),
-                            "Could not handle command {}. API communication problem! error: {}", command.toFullString(),
-                            e.getMessage());
+                    logger.warn("Could not handle command {}. API communication problem! thing={}, haId={}, error={}",
+                            command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
                 } catch (AuthorizationException e) {
-                    logger.warnWithHaId(getThingHaId(), "Could not handle command {}. Authorization problem! error: {}",
-                            command.toFullString(), e.getMessage());
+                    logger.warn("Could not handle command {}. Authorization problem! thing={}, haId={}, error={}",
+                            command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
 
                     handleAuthenticationError(e);
                 }

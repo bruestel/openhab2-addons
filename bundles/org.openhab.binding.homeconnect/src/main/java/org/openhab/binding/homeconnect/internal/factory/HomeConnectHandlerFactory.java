@@ -24,6 +24,10 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER_DRYER;
 
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Map;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.discovery.DiscoveryService;
@@ -46,17 +50,12 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectHoodHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectOvenHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherDryerHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectWasherHandler;
-import org.openhab.binding.homeconnect.internal.logger.EmbeddedLoggingService;
 import org.openhab.binding.homeconnect.internal.servlet.HomeConnectServlet;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Map;
 
 /**
  * The {@link HomeConnectHandlerFactory} is responsible for creating things and thing
@@ -72,17 +71,14 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
     private final OAuthFactory oAuthFactory;
     private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
     private final HomeConnectServlet homeConnectServlet;
-    private final EmbeddedLoggingService loggingService;
 
     @Activate
     public HomeConnectHandlerFactory(@Reference OAuthFactory oAuthFactory,
-                                     @Reference HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
-                                     @Reference HomeConnectServlet homeConnectServlet,
-                                     @Reference EmbeddedLoggingService loggingService) {
+            @Reference HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+            @Reference HomeConnectServlet homeConnectServlet) {
         this.oAuthFactory = oAuthFactory;
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
         this.homeConnectServlet = homeConnectServlet;
-        this.loggingService = loggingService;
 
         discoveryServiceRegistrations = new HashMap<>();
     }
@@ -98,33 +94,32 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
 
         if (THING_TYPE_API_BRIDGE.equals(thingTypeUID)) {
             HomeConnectBridgeHandler bridgeHandler = new HomeConnectBridgeHandler((Bridge) thing, oAuthFactory,
-                    homeConnectServlet, loggingService);
+                    homeConnectServlet);
 
             // configure discovery service
-            HomeConnectDiscoveryService discoveryService = new HomeConnectDiscoveryService(bridgeHandler,
-                    loggingService);
+            HomeConnectDiscoveryService discoveryService = new HomeConnectDiscoveryService(bridgeHandler);
             discoveryServiceRegistrations.put(bridgeHandler.getThing().getUID(), bundleContext
                     .registerService(DiscoveryService.class.getName(), discoveryService, new Hashtable<>()));
 
             return bridgeHandler;
         } else if (THING_TYPE_DISHWASHER.equals(thingTypeUID)) {
-            return new HomeConnectDishwasherHandler(thing, dynamicStateDescriptionProvider, loggingService);
+            return new HomeConnectDishwasherHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_OVEN.equals(thingTypeUID)) {
-            return new HomeConnectOvenHandler(thing, dynamicStateDescriptionProvider, loggingService);
+            return new HomeConnectOvenHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_WASHER.equals(thingTypeUID)) {
-            return new HomeConnectWasherHandler(thing, dynamicStateDescriptionProvider, loggingService);
+            return new HomeConnectWasherHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_WASHER_DRYER.equals(thingTypeUID)) {
-            return new HomeConnectWasherDryerHandler(thing, dynamicStateDescriptionProvider, loggingService);
+            return new HomeConnectWasherDryerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_DRYER.equals(thingTypeUID)) {
-            return new HomeConnectDryerHandler(thing, dynamicStateDescriptionProvider, loggingService);
+            return new HomeConnectDryerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_FRIDGE_FREEZER.equals(thingTypeUID)) {
-            return new HomeConnectFridgeFreezerHandler(thing, dynamicStateDescriptionProvider, loggingService);
+            return new HomeConnectFridgeFreezerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_COFFEE_MAKER.equals(thingTypeUID)) {
-            return new HomeConnectCoffeeMakerHandler(thing, dynamicStateDescriptionProvider, loggingService);
+            return new HomeConnectCoffeeMakerHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_HOOD.equals(thingTypeUID)) {
-            return new HomeConnectHoodHandler(thing, dynamicStateDescriptionProvider, loggingService);
+            return new HomeConnectHoodHandler(thing, dynamicStateDescriptionProvider);
         } else if (THING_TYPE_COOKTOP.equals(thingTypeUID)) {
-            return new HomeConnectCooktopHandler(thing, dynamicStateDescriptionProvider, loggingService);
+            return new HomeConnectCooktopHandler(thing, dynamicStateDescriptionProvider);
         }
 
         return null;

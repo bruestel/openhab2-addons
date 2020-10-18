@@ -96,7 +96,7 @@
 			<channel id="operation_state" typeId="operation_state"/>
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state"/>
 			<channel id="remote_control_active_state" typeId="remote_control_active_state"/>
-			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+			<channel id="local_control_active_state" typeId="local_control_active_state"/>
 			<channel id="active_program_state" typeId="active_program_state"/>
 			<channel id="selected_program_state" typeId="selected_program_state"/>
 			<channel id="laundry_care_washer_temperature" typeId="laundry_care_washer_temperature"/>
@@ -127,7 +127,7 @@
 			<channel id="operation_state" typeId="operation_state"/>
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state"/>
 			<channel id="remote_control_active_state" typeId="remote_control_active_state"/>
-			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+			<channel id="local_control_active_state" typeId="local_control_active_state"/>
 			<channel id="active_program_state" typeId="active_program_state"/>
 			<channel id="selected_program_state" typeId="selected_program_state"/>
 			<channel id="laundry_care_washer_temperature" typeId="laundry_care_washer_temperature"/>
@@ -157,7 +157,7 @@
 			<channel id="operation_state" typeId="operation_state"/>
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state"/>
 			<channel id="remote_control_active_state" typeId="remote_control_active_state"/>
-			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+			<channel id="local_control_active_state" typeId="local_control_active_state"/>
 			<channel id="active_program_state" typeId="active_program_state"/>
 			<channel id="selected_program_state" typeId="selected_program_state"/>
 			<channel id="dryer_drying_target" typeId="dryer_drying_target"/>
@@ -206,7 +206,7 @@
 			<channel id="power_state" typeId="power_state"/>
 			<channel id="operation_state" typeId="operation_state"/>
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state"/>
-			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+			<channel id="local_control_active_state" typeId="local_control_active_state"/>
 			<channel id="active_program_state" typeId="active_program_state"/>
 			<channel id="selected_program_state" typeId="selected_program_state"/>
 			<channel id="basic_actions_state" typeId="basic_actions_state"/>
@@ -235,7 +235,7 @@
 			<channel id="operation_state" typeId="operation_state"/>
 			<channel id="remote_start_allowance_state" typeId="remote_start_allowance_state"/>
 			<channel id="remote_control_active_state" typeId="remote_control_active_state"/>
-			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+			<channel id="local_control_active_state" typeId="local_control_active_state"/>
 			<channel id="active_program_state" typeId="active_program_state"/>
 			<channel id="selected_program_state" typeId="selected_program_state"/>
 			<channel id="hood_venting_level" typeId="hood_venting_level"/>
@@ -261,7 +261,7 @@
 			<channel id="power_state" typeId="power_state"/>
 			<channel id="operation_state" typeId="operation_state"/>
 			<channel id="remote_control_active_state" typeId="remote_control_active_state"/>
-			<channel id="local_control_active_state" typeId="local_control_active_state"></channel>
+			<channel id="local_control_active_state" typeId="local_control_active_state"/>
 			<channel id="active_program_state" typeId="active_program_state"/>
 			<channel id="selected_program_state" typeId="selected_program_state"/>
 		</channels>
@@ -357,7 +357,7 @@
 		<item-type>Number:Time</item-type>
 		<label>Remaining program time</label>
 		<description>This status indicates the remaining program time of the home appliance.</description>
-		<state pattern="%d %unit%" readOnly="true"></state>
+		<state pattern="%d %unit%" readOnly="true"/>
 	</channel-type>
 	<channel-type id="program_progress_state">
 		<item-type>Number:Dimensionless</item-type>
@@ -375,7 +375,7 @@
 		<item-type>Number:Time</item-type>
 		<label>Elapsed Program Time</label>
 		<description>This status describes the elapsed program time of the home appliance.</description>
-		<state pattern="%d %unit%" readOnly="true"></state>
+		<state pattern="%d %unit%" readOnly="true"/>
 	</channel-type>
 	<channel-type id="setpoint_temperature">
 		<item-type>Number:Temperature</item-type>
@@ -387,7 +387,7 @@
 		<item-type>Number:Time</item-type>
 		<label>Selected duration</label>
 		<description>This status describes the duration of the program of the home appliance.</description>
-		<state pattern="%d %unit%" step="60" min="60"></state>
+		<state pattern="%d %unit%" step="60" min="60"/>
 	</channel-type>
 	<channel-type id="laundry_care_washer_temperature">
 		<item-type>String</item-type>
@@ -466,13 +466,13 @@
 		<item-type>Number:Temperature</item-type>
 		<label>Refrigerator temperature</label>
 		<description>Target temperature of the refrigerator compartment (Range depends on appliance - common range 2 to 8°C).</description>
-		<state step="1" pattern="%.0f %unit%"></state>
+		<state step="1" pattern="%.0f %unit%"/>
 	</channel-type>
 	<channel-type id="setpoint_temperature_freezer">
 		<item-type>Number:Temperature</item-type>
 		<label>Freezer temperature</label>
 		<description>Target temperature of the freezer compartment (Range depends on appliance - common range -16 to -24°C).</description>
-		<state step="1" pattern="%.0f %unit%"></state>
+		<state step="1" pattern="%.0f %unit%"/>
 	</channel-type>
 	<channel-type id="super_mode_refrigerator">
 		<item-type>Switch</item-type>

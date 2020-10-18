@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2010-2020 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 package org.openhab.binding.homeconnect.internal.servlet;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -9,10 +21,20 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_ACTIVE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_REMOTE_CONTROL_START_ALLOWED;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializer;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.httpclient.HttpStatus;
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -40,20 +62,10 @@ import org.thymeleaf.extras.java8time.dialect.Java8TimeDialect;
 import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ServletContextTemplateResolver;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.MediaType;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 
 /**
  *
@@ -105,7 +117,8 @@ public class HomeConnectServlet extends HttpServlet {
     public HomeConnectServlet(@Reference HttpService httpService) {
         logger = LoggerFactory.getLogger(HomeConnectServlet.class);
         bridgeHandlers = new CopyOnWriteArraySet<>();
-        gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) -> new JsonPrimitive(src.format(DateTimeFormatter.ISO_DATE_TIME))).create();
+        gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src,
+                typeOfSrc, context) -> new JsonPrimitive(src.format(DateTimeFormatter.ISO_DATE_TIME))).create();
         this.httpService = httpService;
 
         // register servlet
@@ -204,7 +217,8 @@ public class HomeConnectServlet extends HttpServlet {
     }
 
     @Override
-    protected void doPost(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response) throws IOException {
+    protected void doPost(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response)
+            throws IOException {
         if (request == null || response == null) {
             return;
         }
@@ -253,9 +267,8 @@ public class HomeConnectServlet extends HttpServlet {
             PrintWriter writer = response.getWriter();
 
             writer.println(String.format("%s,%s", "time", "requests"));
-            bridgeHandler.get().getApiClient().getLatestApiRequests().forEach(apiRequest -> {
-                writer.println(String.format("%s,%s", apiRequest.getTime(), 1));
-            });
+            bridgeHandler.get().getApiClient().getLatestApiRequests()
+                    .forEach(apiRequest -> writer.println(String.format("%s,%s", apiRequest.getTime(), 1)));
             writer.println(String.format("%s,%s", LocalDateTime.now(), 0));
         } else {
             response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
@@ -268,8 +281,8 @@ public class HomeConnectServlet extends HttpServlet {
         templateEngine.process("appliances", context, response.getWriter());
     }
 
-    private void processApplianceActions(HttpServletResponse response,
-                                         String action, String thingId) throws IOException {
+    private void processApplianceActions(HttpServletResponse response, String action, String thingId)
+            throws IOException {
         Optional<HomeConnectBridgeHandler> bridgeHandler = getBridgeHandlerForThing(thingId);
         Optional<AbstractHomeConnectThingHandler> thingHandler = getThingHandler(thingId);
 
@@ -280,52 +293,72 @@ public class HomeConnectServlet extends HttpServlet {
 
                 switch (action) {
                     case ACTION_SHOW_DETAILS: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId);
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId);
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
                     case ACTION_ALL_PROGRAMS: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/programs");
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId + "/programs");
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
                     case ACTION_AVAILABLE_PROGRAMS: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/programs/available");
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId + "/programs/available");
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
                     case ACTION_SELECTED_PROGRAM: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/programs/selected");
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId + "/programs/selected");
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
                     case ACTION_ACTIVE_PROGRAM: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/programs/active");
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId + "/programs/active");
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
                     case ACTION_OPERATION_STATE: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/status/" + EVENT_OPERATION_STATE);
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId + "/status/" + EVENT_OPERATION_STATE);
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
                     case ACTION_POWER_STATE: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/settings/" + EVENT_POWER_STATE);
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId + "/settings/" + EVENT_POWER_STATE);
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
                     case ACTION_DOOR_STATE: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/status/" + EVENT_DOOR_STATE);
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId + "/status/" + EVENT_DOOR_STATE);
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
                     case ACTION_REMOTE_START_ALLOWED: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/status/" + EVENT_REMOTE_CONTROL_START_ALLOWED);
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId + "/status/" + EVENT_REMOTE_CONTROL_START_ALLOWED);
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
                     case ACTION_REMOTE_CONTROL_ACTIVE: {
-                        @Nullable String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId, "/api/homeappliances/" + haId + "/status/" + EVENT_REMOTE_CONTROL_ACTIVE);
+                        @Nullable
+                        String actionResponse = bridgeHandler.get().getApiClient().getRaw(haId,
+                                "/api/homeappliances/" + haId + "/status/" + EVENT_REMOTE_CONTROL_ACTIVE);
                         response.getWriter().write(actionResponse != null ? actionResponse : "{}");
                         break;
                     }
@@ -350,19 +383,21 @@ public class HomeConnectServlet extends HttpServlet {
     }
 
     private void postBridgesPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        @Nullable String action = request.getParameter(PARAM_ACTION);
-        @Nullable String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
-        Optional<HomeConnectBridgeHandler> bridgeHandlerOptional = bridgeHandlers.stream()
-                .filter(homeConnectBridgeHandler -> homeConnectBridgeHandler.getThing().getUID().toString().equals(bridgeId))
+        @Nullable
+        String action = request.getParameter(PARAM_ACTION);
+        @Nullable
+        String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
+        Optional<HomeConnectBridgeHandler> bridgeHandlerOptional = bridgeHandlers.stream().filter(
+                homeConnectBridgeHandler -> homeConnectBridgeHandler.getThing().getUID().toString().equals(bridgeId))
                 .findFirst();
 
-        if (bridgeHandlerOptional.isPresent() && (ACTION_AUTHORIZE.equals(action) || ACTION_CLEAR_CREDENTIALS.equals(action))) {
+        if (bridgeHandlerOptional.isPresent()
+                && (ACTION_AUTHORIZE.equals(action) || ACTION_CLEAR_CREDENTIALS.equals(action))) {
             HomeConnectBridgeHandler bridgeHandler = bridgeHandlerOptional.get();
             if (ACTION_AUTHORIZE.equals(action)) {
                 try {
-                    String authorizationUrl = bridgeHandler
-                            .getOAuthClientService()
-                            .getAuthorizationUrl(null, null, bridgeHandler.getThing().getUID().getAsString());
+                    String authorizationUrl = bridgeHandler.getOAuthClientService().getAuthorizationUrl(null, null,
+                            bridgeHandler.getThing().getUID().getAsString());
                     logger.debug("Generated authorization url: {}", authorizationUrl);
 
                     response.sendRedirect(authorizationUrl);
@@ -381,7 +416,8 @@ public class HomeConnectServlet extends HttpServlet {
                 bridgeHandler.initialize();
 
                 WebContext context = new WebContext(request, response, request.getServletContext());
-                context.setVariable("action", bridgeHandler.getThing().getUID().getAsString() + ACTION_CLEAR_CREDENTIALS);
+                context.setVariable("action",
+                        bridgeHandler.getThing().getUID().getAsString() + ACTION_CLEAR_CREDENTIALS);
                 context.setVariable("bridgeHandlers", bridgeHandlers);
                 templateEngine.process("bridges", context, response.getWriter());
             }
@@ -392,11 +428,12 @@ public class HomeConnectServlet extends HttpServlet {
 
     private void getRequestLogPage(HttpServletRequest request, HttpServletResponse response) throws IOException {
         ArrayList<ApiRequest> requests = new ArrayList<>();
-        bridgeHandlers.forEach(homeConnectBridgeHandler -> requests.addAll(homeConnectBridgeHandler.getApiClient().getLatestApiRequests()));
+        bridgeHandlers.forEach(homeConnectBridgeHandler -> requests
+                .addAll(homeConnectBridgeHandler.getApiClient().getLatestApiRequests()));
 
         WebContext context = new WebContext(request, response, request.getServletContext());
         context.setVariable("bridgeHandlers", bridgeHandlers);
-        context.setVariable("requests",  gson.toJson(requests));
+        context.setVariable("requests", gson.toJson(requests));
         templateEngine.process("log-requests", context, response.getWriter());
     }
 
@@ -435,7 +472,7 @@ public class HomeConnectServlet extends HttpServlet {
     }
 
     private void getBridgeAuthenticationPage(HttpServletRequest request, HttpServletResponse response, String code,
-                                             String state) throws IOException {
+            String state) throws IOException {
         // callback handling from authorization server
         logger.debug("[oAuth] redirect from authorization server (code={}, state={}).", code, state);
 

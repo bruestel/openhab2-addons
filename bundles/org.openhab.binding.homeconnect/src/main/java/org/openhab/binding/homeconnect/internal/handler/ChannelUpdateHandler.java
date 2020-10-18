@@ -20,8 +20,7 @@ import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationEx
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 
 /**
- * The {@link ChannelUpdateHandler} is responsible for handling events, which where send via Server-Sent event
- * interface.
+ * The {@link ChannelUpdateHandler} is responsible for updating channels.
  *
  * @author Jonas Brüstel - Initial contribution
  */

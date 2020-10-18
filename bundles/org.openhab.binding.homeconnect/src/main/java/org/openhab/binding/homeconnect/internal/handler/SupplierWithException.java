@@ -24,5 +24,5 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 @NonNullByDefault
 @FunctionalInterface
 public interface SupplierWithException<T> {
-    public T get() throws CommunicationException, AuthorizationException;
+    T get() throws CommunicationException, AuthorizationException;
 }
