@@ -7,13 +7,4 @@
 	<description>This is the binding for Home Connect.</description>
 	<author>Jonas Brüstel</author>
 
-	<config-description>
-		<parameter name="embeddedLogging" type="boolean">
-			<label>Enable extended logging</label>
-			<description>If enabled, the binding will log to separate file</description>
-			<default>true</default>
-			<required>true</required>
-		</parameter>
-	</config-description>
-
 </binding:binding>
