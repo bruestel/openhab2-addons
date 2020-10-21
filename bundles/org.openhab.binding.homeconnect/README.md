@@ -33,7 +33,7 @@ Supported devices: dishwasher, washer, washer / dryer combination, dryer, oven, 
 
 ## Discovery
 
-After the bridge has been added, devices are discovered automatically.
+After the bridge has been added and authorized, devices are discovered automatically.
 
 
 ## Channels
@@ -87,26 +87,26 @@ After the bridge has been added, devices are discovered automatically.
 2. Please make sure you've added your associated Home Connect account email at [https://developer.home-connect.com/user/me/edit](https://developer.home-connect.com/user/me/edit). You should fill in your email address, which you use for the official Android or iOS app, at `Default Home Connect User Account for Testing`.  
 ![Screenshot Home Connect profile page](doc/home_connect_profile.png "Screenshot Home Connect profile page")
 
-3. Create an application at [https://developer.home-connect.com/applications](https://developer.home-connect.com/applications)
+3. Register / Create an application at [https://developer.home-connect.com/applications](https://developer.home-connect.com/applications)
     * _Application ID_: e.g. `openhab-binding`
     * _OAuth Flow_: Authorization Code Grant Flow
     * _Home Connect User Account for Testing_: the associated user account email from [Home Connect](https://www.home-connect.com/)  
+       > **WARNING**: Please don't use your developer account username  
+
      **_Please don't use your developer account username_**
     * _Redirect URIs_: add your openHAB URL followed by `/homeconnect`  
     for example: `http://192.168.178.34:8080/homeconnect` or `https://myhome.domain.com/homeconnect`
     * _One Time Token Mode_: keep unchecked 
     * _Proof Key for Code Exchange_: keep unchecked
-    > **WARNING**: If you plan to add more than two Home Connect appliances, I suggest that you create multiple applications on the Home Connect developer site. Due to the request [limits](https://developer.home-connect.com/docs/general/ratelimiting)  this is necessary to avoid communication problems. Each Home Connect application is associated to a openHAB bridge.  
-    It is also possible to add all home appliances to one bridge. But initializing will take longer after adding them or a openHAB restart. You will see log messages like this: `The rate limit “50 calls in 1 minute” was reached. Requests are blocked during the remaining period of 40 seconds.` 
 4. After your application has been created, you should see the _Client ID_ and _Client Secret_ of the application. Please save these for later.  
 
 ![Screenshot Home Connect application page](doc/home_connect_application.png "Screenshot Home Connect application page")
 
 
 
-#### 3. Setup bridge (Paper UI)
+#### 3. Setup bridge (openHAB UI)
 
-The Home Connect bridge can be configured in the Paper UI as follows:
+The Home Connect bridge can be configured in the openHAB UI as follows:
 
 1. Go to the Inbox and press the add button
 2. Choose `Home Connect Binding`
@@ -122,13 +122,13 @@ The Home Connect bridge can be configured in the Paper UI as follows:
 ![Screenshot Home Connect wizard page 3](doc/homeconnect_setup_3.png "Screenshot Home Connect wizard page 3")  
 ![Screenshot Home Connect wizard page 4](doc/homeconnect_setup_4.png "Screenshot Home Connect wizard page 4")  
 
-7. That's it! Now you can use autodiscovery to add devices. Your devices should show up if you start a scan inside the Paper UI Inbox.
+7. That's it! Now you can use autodiscovery to add devices. Your devices should show up if you start a device scan in the openHAB UI.
 
 
 
 ## Examples: File based configuration
 
-If you prefer to configure everything via file instead of PaperUI, here are some examples.
+If you prefer to configure everything via file instead of openHAB UI, here are some examples.
 
 ### things/homeconnect.things
 
@@ -165,11 +165,18 @@ Number:Time            DishwasherSimulator_RemainingProgramTimeState   "Remainin
 Number:Dimensionless   DishwasherSimulator_ProgramProgressState        "Progress State"                    {channel="homeconnect:dishwasher:simulator_api_bridge:dishwasher1:program_progress_state"}
 ```
 
-## Log view
+## Home Connect Console
 
-The binding comes with a build in logging service. The user interface is reachable through the web browser http(s)://[YOUROPENHAB]:[YOURPORT]/homeconnectlogs (e.g. http://192.168.178.100:8080/homeconnectlogs). The logging UI allows to download a pseudominysed log file. Credentials and appliance IDs will be replaced. For example, the exported file can be used to ask for help in the community forum.
+The binding comes with a separate user interface, which is reachable through the web browser http(s)://[YOUROPENHAB]:[YOURPORT]/homeconnect (e.g. http://192.168.178.100:8080/homeconnect). 
 
-Log entries older than 49h will be automatically earased. To disable file logging you can switch it off in the bindings settings. 
+Features:
+* overview of your bridges and appliances
+* send commands to your appliances
+* see latest API requests
+* see received events from the Home Connect backend
+* API request counts
+
+> **INFO**: If you have a problems with your installation, please always provide request and event exports. ![Screenshot Home Connect wizard page 4](doc/export_button.png "Export button")
 
 ## How To
 
@@ -204,9 +211,9 @@ end
 
 ### Start program with custom settings
 
-Currently, not all program options of a device are available as items in openHAB. For example, you cannot change the `Fill quantity` of a coffee maker program. If starting a program with custom setting is wished, you can send a special command to the item of type `basic_actions_state`.
+Currently, not all program options of a device are available as items in openHAB. For example, you cannot change the `Fill quantity` of a coffee maker program. If you wish to start a program with a custom setting, you can send a special command to the item of type `basic_actions_state`.
 
-> **INFO**: Only for advanced users. You need to know how to use the `curl` command. Alternatively you could use the REST UI to trigger the commands.
+> **INFO**: Only for advanced users. You need to know how to use the `curl` command. Alternatively you you can use the binding UI to trigger the commands.
 
 #### 1. Retrieve "special command" payload
 
@@ -214,25 +221,14 @@ You have a couple options to get the program settings payload.
 
 a) You could have a look at the Home Connect developer documentation (https://developer.home-connect.com/docs/) and create the payload on your own. 
 
-b) You could have a look at the log UI and extract the payload from there. 
+b) You could have a look at the request logs and extract the payload from there. 
 
 1. On the physical device, select your desired program with the appropriate options.
-2. Send the command `selected` to the `basic_actions_state` channel item. This will trigger an API call to retrieve the current home appliance program settings. You can do it via `curl` command or use the REST UI of openHAB.     
-*Curl example*:   
-        ```shell
-curl -X POST --header "Content-Type: text/plain" --header "Accept: application/json" -d "selected" "http://localhost:8080/rest/items/homeconnect_CoffeeMaker_BOSCH_HCS06COM1_B95E5103934D_basic_actions_state"
-        ```  
-*Please replace `item` and `server URL`* 
+2. Open the appliance section of the binding UI (http(s)://[YOUROPENHAB]:[YOURPORT]/appliances) and click the 'Selected Program' button.  
+![Screenshot Home Connect wizard page 4](doc/selected_program_1.png "Get selected program")  
 
-3. Open the log UI in your browser (http(s)://[YOUROPENHAB]:[YOURPORT]/homeconnectlogs) and search for the latest occurence of the string `/programs/selected`. Click on the log line and expand the entry. It should look like the following screenshot.
-![Screenshot Home Connect log view](doc/homeconnect_log_selected.png "Screenshot Home Connect log view")
-
-4. Copy the JSON payload. In a further step, this payload will be used to start the program.  
-*extracted payload:* 
-
-      ```JS 
-      {"data":{"key":"ConsumerProducts.CoffeeMaker.Program.Beverage.EspressoMacchiato","options":[{"key":"ConsumerProducts.CoffeeMaker.Option.CoffeeTemperature","value":"ConsumerProducts.CoffeeMaker.EnumType.CoffeeTemperature.94C","unit":"enum"},{"key":"ConsumerProducts.CoffeeMaker.Option.BeanAmount","value":"ConsumerProducts.CoffeeMaker.EnumType.BeanAmount.Mild","unit":"enum"},{"key":"ConsumerProducts.CoffeeMaker.Option.FillQuantity","value":60,"unit":"ml"}]}}
-      ```
+3. Copy the JSON payload. In a further step, this payload will be used to start the program.  
+![Screenshot Home Connect wizard page 4](doc/selected_program_2.png "Get selected program") 
 
 #### 2. Start program
 
@@ -276,10 +272,10 @@ The channel of type `remote_start_allowance_state` is read only. You can only en
 
 ### In case of error...
 
-Please check log UI (http(s)://[YOUROPENHAB]:[YOURPORT]/homeconnectlogs) and ask for help in the community forum or on github. Please download a pseudonymised log file and attach it to your question.
+Please check log UI (http(s)://[YOUROPENHAB]:[YOURPORT]/homeconnect) and ask for help in the community forum or on github. Please provide request and event exports.  
+ ![Screenshot Home Connect wizard page 4](doc/export_button.png "Export button")
+
 
 ### Rate limit reached
 
-If you plan to add more than two Home Connect appliances, I suggest that you create multiple applications on the Home Connect developer site. Due to the request [limits](https://developer.home-connect.com/docs/general/ratelimiting)  this is necessary to avoid communication problems. Each Home Connect application is associated to a openHAB bridge. 
-
-After you've added a appliance you can switch the bridge at the thing configuration page.
+The Home Connect API enforces rate [limits](https://developer.home-connect.com/docs/general/ratelimiting) . If you have a lot of `429` response codes in your request log section (http(s)://[YOUROPENHAB]:[YOURPORT]/log/requests), please check the error response.

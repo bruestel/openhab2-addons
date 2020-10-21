@@ -227,20 +227,28 @@ public class HomeConnectServlet extends HttpServlet {
         if (request == null || response == null) {
             return;
         }
-        String requestPayload = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-
         response.setContentType("text/html; charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
 
-        if (request.getParameter(PARAM_ACTION) != null && request.getParameter(PARAM_BRIDGE_ID) != null) {
-            postBridgesPage(request, response);
-        } else if ((ACTION_PUT_RAW.equals(request.getParameter(PARAM_ACTION))
-                || ACTION_GET_RAW.equals(request.getParameter(PARAM_ACTION)))
-                && request.getParameter(PARAM_THING_ID) != null) {
-            String thingId = request.getParameter(PARAM_THING_ID);
-            String putPath = request.getParameter(PARAM_PATH);
-            String action = request.getParameter(PARAM_ACTION);
-            processRawApplianceActions(response, action, thingId, putPath, requestPayload);
+        String path = request.getPathInfo();
+        if (path == null || path.isEmpty() || path.equals(ROOT_PATH)) {
+            if (request.getParameter(PARAM_ACTION) != null && request.getParameter(PARAM_BRIDGE_ID) != null) {
+                postBridgesPage(request, response);
+            } else {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            }
+        } else if (pathMatches(path, APPLIANCES_PATH)) {
+            String requestPayload = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+            if ((ACTION_PUT_RAW.equals(request.getParameter(PARAM_ACTION))
+                    || ACTION_GET_RAW.equals(request.getParameter(PARAM_ACTION)))
+                    && request.getParameter(PARAM_THING_ID) != null) {
+                String thingId = request.getParameter(PARAM_THING_ID);
+                String putPath = request.getParameter(PARAM_PATH);
+                String action = request.getParameter(PARAM_ACTION);
+                processRawApplianceActions(response, action, thingId, putPath, requestPayload);
+            } else {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            }
         } else {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
