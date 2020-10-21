@@ -13,7 +13,6 @@
 package org.openhab.binding.homeconnect.internal.client;
 
 import static io.github.bucket4j.Bandwidth.classic;
-import static io.github.bucket4j.Bandwidth.simple;
 import static io.github.bucket4j.Refill.intervally;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HTTP_PROXY_ENABLED;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HTTP_PROXY_HOST;
@@ -69,10 +68,10 @@ public class OkHttpHelper {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Logger LOGGER = LoggerFactory.getLogger(OkHttpHelper.class);
     private static final Bucket BUCKET = Bucket4j.builder()
-            // allows 50 tokens per minute
-            .addLimit(simple(50, Duration.ofMinutes(1)))
+            // allows 50 tokens per minute (added 10 second buffer)
+            .addLimit(classic(50, intervally(50, Duration.ofSeconds(70))).withInitialTokens(40))
             // but not often then 50 tokens per second
-            .addLimit(classic(10, intervally(10, Duration.ofSeconds(1))).withInitialTokens(5)).build();
+            .addLimit(classic(10, intervally(10, Duration.ofSeconds(1))).withInitialTokens(0)).build();
 
     public static Builder builder(boolean enableRateLimiting) {
         Builder builder;
