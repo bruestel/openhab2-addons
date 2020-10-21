@@ -466,7 +466,7 @@ public class HomeConnectServlet extends HttpServlet {
                 try {
                     bridgeHandler.getOAuthClientService().remove();
                 } catch (OAuthException e) {
-                    logger.error("Could not clear oAuth credentials.", e);
+                    logger.debug("Could not clear oAuth credentials. error={}", e.getMessage());
                 }
                 bridgeHandler.dispose();
                 bridgeHandler.initialize();

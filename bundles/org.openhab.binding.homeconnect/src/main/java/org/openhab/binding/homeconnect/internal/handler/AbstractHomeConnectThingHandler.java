@@ -657,25 +657,26 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * Handle authentication exception.
      */
     protected void handleAuthenticationError(AuthorizationException exception) {
-        logger.info(
-                "Thing handler threw authentication exception --> clear credential storage thing={}, haId={} error={}",
-                getThingLabel(), getThingHaId(), exception.getMessage());
-        @Nullable
-        Bridge bridge = getBridge();
-        if (bridge != null) {
+        if (isBridgeOnline()) {
+            logger.debug(
+                    "Thing handler threw authentication exception --> clear credential storage thing={}, haId={} error={}",
+                    getThingLabel(), getThingHaId(), exception.getMessage());
             @Nullable
-            BridgeHandler bridgeHandler = bridge.getHandler();
-            if (bridgeHandler instanceof HomeConnectBridgeHandler) {
-                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
+            Bridge bridge = getBridge();
+            if (bridge != null) {
+                @Nullable
+                BridgeHandler bridgeHandler = bridge.getHandler();
+                if (bridgeHandler instanceof HomeConnectBridgeHandler) {
+                    HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
 
-                try {
-                    homeConnectBridgeHandler.getOAuthClientService().remove();
-                } catch (OAuthException e) {
-                    logger.error("Could not clear oAuth storage! thing={}, haId={}", getThingLabel(), getThingHaId(),
-                            e);
+                    try {
+                        homeConnectBridgeHandler.getOAuthClientService().remove();
+                        homeConnectBridgeHandler.dispose();
+                        homeConnectBridgeHandler.initialize();
+                    } catch (OAuthException e) {
+                        // client is already closed --> we can ignore it
+                    }
                 }
-                homeConnectBridgeHandler.dispose();
-                homeConnectBridgeHandler.initialize();
             }
         }
     }

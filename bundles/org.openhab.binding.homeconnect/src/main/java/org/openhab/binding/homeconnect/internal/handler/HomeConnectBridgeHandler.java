@@ -156,7 +156,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     @Override
     public void dispose() {
         logger.debug("Dispose bridge {}", getThing().getLabel());
-
+        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.DUTY_CYCLE);
         stopReinitializer();
         cleanup();
     }
