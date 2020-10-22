@@ -27,6 +27,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -507,7 +509,16 @@ public class HomeConnectServlet extends HttpServlet {
             HashMap<String, Object> responsePayload = new HashMap<>();
             responsePayload.put("openHAB", OpenHAB.getVersion());
             responsePayload.put("bundle", FrameworkUtil.getBundle(this.getClass()).getVersion().toString());
-            responsePayload.put("requests", bridgeHandler.get().getApiClient().getLatestApiRequests());
+            List<ApiRequest> apiRequestList = bridgeHandler.get().getApiClient().getLatestApiRequests().stream()
+                    .peek(apiRequest -> {
+                        Map<String, String> headers = apiRequest.getRequest().getHeader();
+                        if (headers.containsKey("authorization")) {
+                            headers.put("authorization", "*replaced*");
+                        } else if (headers.containsKey("Authorization")) {
+                            headers.put("Authorization", "*replaced*");
+                        }
+                    }).collect(Collectors.toList());
+            responsePayload.put("requests", apiRequestList);
             response.getWriter().write(gson.toJson(responsePayload));
         } else {
             response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
