@@ -26,6 +26,7 @@ import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -48,6 +49,8 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
 import org.openhab.binding.homeconnect.internal.handler.AbstractHomeConnectThingHandler;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler;
+import org.openhab.core.OpenHAB;
+import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -501,7 +504,11 @@ public class HomeConnectServlet extends HttpServlet {
                     bridgeId.replaceAll("[^a-zA-Z0-9]", "_"));
             response.setHeader("Content-disposition", "attachment; filename=" + fileName);
 
-            response.getWriter().write(gson.toJson(bridgeHandler.get().getApiClient().getLatestApiRequests()));
+            HashMap<String, Object> responsePayload = new HashMap<>();
+            responsePayload.put("openHAB", OpenHAB.getVersion());
+            responsePayload.put("bundle", FrameworkUtil.getBundle(this.getClass()).getVersion().toString());
+            responsePayload.put("requests", bridgeHandler.get().getApiClient().getLatestApiRequests());
+            response.getWriter().write(gson.toJson(responsePayload));
         } else {
             response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
         }
@@ -521,7 +528,11 @@ public class HomeConnectServlet extends HttpServlet {
                     bridgeId.replaceAll("[^a-zA-Z0-9]", "_"));
             response.setHeader("Content-disposition", "attachment; filename=" + fileName);
 
-            response.getWriter().write(gson.toJson(bridgeHandler.get().getEventSourceClient().getLatestEvents()));
+            HashMap<String, Object> responsePayload = new HashMap<>();
+            responsePayload.put("openHAB", OpenHAB.getVersion());
+            responsePayload.put("bundle", FrameworkUtil.getBundle(this.getClass()).getVersion().toString());
+            responsePayload.put("events", bridgeHandler.get().getEventSourceClient().getLatestEvents());
+            response.getWriter().write(gson.toJson(responsePayload));
         } else {
             response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
         }
