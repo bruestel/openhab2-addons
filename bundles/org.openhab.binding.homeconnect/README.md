@@ -29,6 +29,7 @@ Supported devices: dishwasher, washer, washer / dryer combination, dryer, oven, 
 | Refrigerator Freezer | fridgefreezer | 
 | Coffee Machine | coffeemaker | 
 
+> **INFO**: Currently the Home Connect API does not support all appliance programs. Please check if your desired program is available (e.g. https://developer.home-connect.com/docs/washing-machine/supported_programs_and_options).
 
 
 ## Discovery
@@ -275,7 +276,29 @@ The channel of type `remote_start_allowance_state` is read only. You can only en
 Please check log UI (http(s)://[YOUROPENHAB]:[YOURPORT]/homeconnect) and ask for help in the community forum or on github. Please provide request and event exports.  
  ![Screenshot Home Connect wizard page 4](doc/export_button.png "Export button")
 
-
 ### Rate limit reached
 
 The Home Connect API enforces rate [limits](https://developer.home-connect.com/docs/general/ratelimiting) . If you have a lot of `429` response codes in your request log section (http(s)://[YOUROPENHAB]:[YOURPORT]/log/requests), please check the error response.
+
+
+### Error message 'Program not supported', 'Unsupported operation' or 'SDK.Error.UnsupportedOption'
+
+Not all appliance programs and program options are supported by the Home Connect API. Unfortunately you can't use them. You will see error messages like the following in the binding UI (request log):
+
+```json
+{
+  "error": {
+    "key": "SDK.Error.UnsupportedProgram",
+    "description": "Unsupported operation: LaundryCare.Washer.Program.Cotton.CottonEco"
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "key": "SDK.Error.UnsupportedProgram",
+    "description": "Program not supported"
+  }
+}
+```
