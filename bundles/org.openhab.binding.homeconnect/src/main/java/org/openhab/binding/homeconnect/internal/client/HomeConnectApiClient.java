@@ -12,6 +12,7 @@
  */
 package org.openhab.binding.homeconnect.internal.client;
 
+import static java.net.HttpURLConnection.HTTP_CONFLICT;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 import static java.net.HttpURLConnection.HTTP_OK;
@@ -20,6 +21,7 @@ import static java.time.LocalDateTime.now;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
+import static org.apache.commons.lang.StringUtils.containsIgnoreCase;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_BASE_URL;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_SIMULATOR_BASE_URL;
 import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.formatJsonBody;
@@ -42,6 +44,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
+import org.openhab.binding.homeconnect.internal.client.exception.OfflineException;
 import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgram;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
@@ -705,7 +708,13 @@ public class HomeConnectApiClient {
                 logger.error("Could not get HTTP response body as string.", e);
             }
             trackAndLogApiRequest(haId, request, requestPayload, response, responseBody);
-            throw new CommunicationException(code, message, responseBody);
+
+            if (code == HTTP_CONFLICT && containsIgnoreCase(responseBody, "error")
+                    && containsIgnoreCase(responseBody, "offline")) {
+                throw new OfflineException(code, message, responseBody);
+            } else {
+                throw new CommunicationException(code, message, responseBody);
+            }
         }
     }
 

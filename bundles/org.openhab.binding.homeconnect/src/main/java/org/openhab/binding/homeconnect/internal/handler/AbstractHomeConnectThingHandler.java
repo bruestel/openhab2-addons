@@ -99,6 +99,7 @@ import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectEventSourceClient;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
+import org.openhab.binding.homeconnect.internal.client.exception.OfflineException;
 import org.openhab.binding.homeconnect.internal.client.listener.HomeConnectEventListener;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
@@ -521,6 +522,13 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         if (channelUpdateHandlers.containsKey(channelUID.getId())) {
             try {
                 channelUpdateHandlers.get(channelUID.getId()).handle(channelUID, stateCache);
+            } catch (OfflineException e) {
+                logger.debug(
+                        "API communication problem while trying to update! Appliance offline. thing={}, haId={}, error={}",
+                        getThingLabel(), getThingHaId(), e.getMessage());
+                updateStatus(OFFLINE);
+                resetChannelsOnOfflineEvent();
+                resetProgramStateChannels();
             } catch (CommunicationException e) {
                 logger.debug("API communication problem while trying to update! thing={}, haId={}, error={}",
                         getThingLabel(), getThingHaId(), e.getMessage());
