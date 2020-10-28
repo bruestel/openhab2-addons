@@ -16,7 +16,7 @@ import static org.openhab.binding.homeconnect.internal.client.model.EventType.EV
 import static org.openhab.binding.homeconnect.internal.client.model.EventType.NOTIFY;
 import static org.openhab.binding.homeconnect.internal.client.model.EventType.STATUS;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -40,7 +40,7 @@ public class Event {
     // URI of the resource that changed
     private @Nullable final String uri;
     // creation time of event
-    private @Nullable final LocalDateTime creation;
+    private @Nullable final ZonedDateTime creation;
     // level of the event
     private @Nullable final EventLevel level;
     // expected activity
@@ -56,7 +56,7 @@ public class Event {
         this.key = null;
         this.name = null;
         this.uri = null;
-        this.creation = LocalDateTime.now();
+        this.creation = ZonedDateTime.now();
         this.level = null;
         this.handling = null;
         this.value = null;
@@ -64,7 +64,7 @@ public class Event {
     }
 
     public Event(final String haId, final EventType type, @Nullable final String key, @Nullable final String name,
-            @Nullable final String uri, @Nullable final LocalDateTime creation, @Nullable final EventLevel level,
+            @Nullable final String uri, @Nullable final ZonedDateTime creation, @Nullable final EventLevel level,
             @Nullable final EventHandling handling, @Nullable final String value, @Nullable final String unit) {
         this.haId = haId;
         this.type = type;
@@ -98,7 +98,7 @@ public class Event {
         return uri;
     }
 
-    public @Nullable LocalDateTime getCreation() {
+    public @Nullable ZonedDateTime getCreation() {
         return creation;
     }
 

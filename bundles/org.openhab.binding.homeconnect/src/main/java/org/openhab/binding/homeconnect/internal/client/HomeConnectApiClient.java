@@ -17,7 +17,6 @@ import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
-import static java.time.LocalDateTime.now;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
@@ -29,6 +28,7 @@ import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.reque
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -892,7 +892,7 @@ public class HomeConnectApiClient {
 
     private void trackApiRequest(HomeConnectRequest homeConnectRequest,
             @Nullable HomeConnectResponse homeConnectResponse) {
-        communicationQueue.add(new ApiRequest(now(), homeConnectRequest, homeConnectResponse));
+        communicationQueue.add(new ApiRequest(ZonedDateTime.now(), homeConnectRequest, homeConnectResponse));
     }
 
     private HomeConnectRequest map(Request request, @Nullable String requestBody) {

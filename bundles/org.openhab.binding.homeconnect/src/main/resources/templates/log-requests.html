@@ -38,7 +38,7 @@
                         </thead>
                         <tbody>
                         <tr th:each="entry: ${queue}">
-                            <td th:text="${#temporals.format(entry.time, 'yyyy-MM-dd HH:mm:ss.SSS')}">27.04.2020 14:30</td>
+                            <td th:text="${#temporals.format(entry.time, 'yyyy-MM-dd HH:mm:ss.SSS Z')}">27.04.2020 14:30</td>
                             <td class="text-center"><span th:if="${entry.response}" class="badge" th:classappend="|${entry.response.code >= 300 && entry.response.code != 404 ? 'badge-danger' : ''} ${entry.response.code >=200 && entry.response.code < 300 ? 'badge-success' : ''} ${entry.response.code == 404 ? 'badge-warning' : ''}|" th:text="${entry.response.code}">200</span></td>
                             <td class="text-center" th:text="${entry.request.method}">GET</td>
                             <td th:text="${entry.request.getShortUrl()}">/bla/bla?w92374=34</td>

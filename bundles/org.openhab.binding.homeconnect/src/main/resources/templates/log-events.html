@@ -42,7 +42,7 @@
                         </thead>
                         <tbody>
                         <tr th:each="entry: ${queue}">
-                            <td th:text="${#temporals.format(entry.creation, 'yyyy-MM-dd HH:mm:ss.SSS')}">27.04.2020 14:30</td>
+                            <td th:text="${#temporals.format(entry.creation, 'yyyy-MM-dd HH:mm:ss.SSS Z')}">27.04.2020 14:30</td>
                             <td><span th:text="${entry.haId}" class="badge badge-light">align-middle</span></td>
                             <td><span th:text="${entry.type}" class="badge badge-secondary"></span></td>
                             <td><span th:if="${entry.level}" th:text="${entry.level}" class="badge" th:classappend="|${entry.level.getLevel() == 'critical' || entry.level.getLevel() == 'alert' ? 'badge-danger' : ''} ${entry.level.getLevel() == 'info' || entry.level.getLevel() == 'hint' ? 'badge-success' : ''} ${entry.level.getLevel() == 'warning' ? 'badge-warning' : ''}|">hint</span></td>

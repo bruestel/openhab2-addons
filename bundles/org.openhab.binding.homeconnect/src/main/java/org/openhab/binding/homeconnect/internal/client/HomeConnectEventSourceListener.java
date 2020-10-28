@@ -9,6 +9,7 @@ import static org.openhab.binding.homeconnect.internal.client.model.EventType.va
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -195,8 +196,8 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
                     @Nullable
                     Long timestamp = obj.get("timestamp") != null ? obj.get("timestamp").getAsLong() : null;
                     @Nullable
-                    LocalDateTime creation = timestamp != null
-                            ? LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp),
+                    ZonedDateTime creation = timestamp != null
+                            ? ZonedDateTime.ofInstant(Instant.ofEpochSecond(timestamp),
                                     TimeZone.getDefault().toZoneId())
                             : null;
 

@@ -61,11 +61,13 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_POWER_ON;
 import static org.openhab.binding.homeconnect.internal.client.model.EventType.CONNECTED;
 import static org.openhab.binding.homeconnect.internal.client.model.EventType.DISCONNECTED;
+import static org.openhab.binding.homeconnect.internal.client.model.EventType.KEEP_ALIVE;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -121,8 +123,10 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler implements HomeConnectEventListener {
 
     private static final int CACHE_TTL = 2; // in seconds
+    private static final int OFFLINE_MONITOR_DELAY = 15; // in min
 
     private @Nullable String operationState;
+    private @Nullable ScheduledFuture<?> reinitializationFuture;
 
     private final ConcurrentHashMap<String, EventHandler> eventHandlers;
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
@@ -152,6 +156,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             updateSelectedProgramStateDescription();
             updateChannels();
             registerEventListener();
+            scheduleOfflineMonitor();
         } else {
             logger.debug("Bridge is offline ({}), skip initialization of thing handler. haId={}", getThingLabel(),
                     getThingHaId());
@@ -162,6 +167,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     @Override
     public void dispose() {
         unregisterEventListener();
+        stopOfflineMonitor();
     }
 
     @Override
@@ -243,10 +249,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             updateStatus(OFFLINE);
             resetChannelsOnOfflineEvent();
             resetProgramStateChannels();
-        } else if (CONNECTED.equals(event.getType()) && isThingOnline()) {
+        } else if (isThingOnline() && CONNECTED.equals(event.getType())) {
             logger.info("Received CONNECTED event. Update power state channel. haId={}", getThingHaId());
             getThingChannel(CHANNEL_POWER_STATE).ifPresent(c -> updateChannel(c.getUID()));
-        } else if (isThingOffline()) {
+        } else if (isThingOffline() && !KEEP_ALIVE.equals(event.getType())) {
             updateStatus(ONLINE);
             logger.info("Set {} to ONLINE and update channels. haId={}", getThing().getLabel(), getThingHaId());
             updateChannels();
@@ -1139,5 +1145,36 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
 
         return stateDescription == null ? Optional.empty() : Optional.of(stateDescription);
+    }
+
+    private synchronized void scheduleOfflineMonitor() {
+        @Nullable
+        ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture;
+        if (reinitializationFuture != null && !reinitializationFuture.isDone()) {
+            logger.debug("Reinitialization is already scheduled. Starting in {} seconds. thing={} haId={}",
+                    reinitializationFuture.getDelay(TimeUnit.SECONDS), getThing().getLabel(), getThingHaId());
+        } else {
+            this.reinitializationFuture = scheduler.schedule(() -> {
+                if (isThingOffline() && isBridgeOnline()) {
+                    refreshThingStatus();
+                    if (isThingOnline()) {
+                        dispose();
+                        initialize();
+                    } else {
+                        scheduleOfflineMonitor();
+                    }
+                } else {
+                    scheduleOfflineMonitor();
+                }
+            }, AbstractHomeConnectThingHandler.OFFLINE_MONITOR_DELAY, TimeUnit.MINUTES);
+        }
+    }
+
+    private synchronized void stopOfflineMonitor() {
+        @Nullable
+        ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture;
+        if (reinitializationFuture != null) {
+            reinitializationFuture.cancel(true);
+        }
     }
 }

@@ -42,7 +42,7 @@
                                 <div class="w-100"></div>
 
                                 <dt class="col-sm-2">Last Event received (SSE)</dt>
-                                <dd class="col-sm-8" th:if="${events.size() > 0}" th:text="${#temporals.format(events.get(events.size()-1).creation, 'yyyy-MM-dd HH:mm:ss.SSS')}">1234567890</dd>
+                                <dd class="col-sm-8" th:if="${events.size() > 0}" th:text="${#temporals.format(events.get(events.size()-1).creation, 'yyyy-MM-dd HH:mm:ss.SSS Z')}">1234567890</dd>
                                 <dd class="col-sm-8" th:unless="${events.size() > 0}">unknown</dd>
                                 <div class="w-100"></div>
 
