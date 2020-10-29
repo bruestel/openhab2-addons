@@ -13,6 +13,7 @@
 package org.openhab.binding.homeconnect.internal.handler;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.openhab.binding.homeconnect.internal.client.exception.ApplianceOfflineException;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 
@@ -24,5 +25,5 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 @NonNullByDefault
 @FunctionalInterface
 public interface SupplierWithException<T> {
-    T get() throws CommunicationException, AuthorizationException;
+    T get() throws CommunicationException, ApplianceOfflineException, AuthorizationException;
 }

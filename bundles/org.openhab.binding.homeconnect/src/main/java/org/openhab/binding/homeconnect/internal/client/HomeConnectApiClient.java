@@ -42,9 +42,9 @@ import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
+import org.openhab.binding.homeconnect.internal.client.exception.ApplianceOfflineException;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
-import org.openhab.binding.homeconnect.internal.client.exception.OfflineException;
 import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgram;
 import org.openhab.binding.homeconnect.internal.client.model.AvailableProgramOption;
@@ -125,7 +125,7 @@ public class HomeConnectApiClient {
             trackAndLogApiRequest(null, request, null, response, responseBody);
 
             return mapToHomeAppliances(responseBody);
-        } catch (IOException e) {
+        } catch (IOException | ApplianceOfflineException e) {
             logger.warn("Failed to fetch home appliances! error={}", e.getMessage());
             trackAndLogApiRequest(null, request, null, null, null);
             throw new CommunicationException(e);
@@ -149,7 +149,7 @@ public class HomeConnectApiClient {
             trackAndLogApiRequest(haId, request, null, response, responseBody);
 
             return mapToHomeAppliance(responseBody);
-        } catch (IOException e) {
+        } catch (IOException | ApplianceOfflineException e) {
             logger.warn("Failed to get home appliance! haId={}, error={}", haId, e.getMessage());
             trackAndLogApiRequest(haId, request, null, null, null);
             throw new CommunicationException(e);
@@ -163,8 +163,10 @@ public class HomeConnectApiClient {
      * @return {@link Data}
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public Data getPowerState(String haId) throws CommunicationException, AuthorizationException {
+    public Data getPowerState(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getSetting(haId, "BSH.Common.Setting.PowerState");
     }
 
@@ -175,8 +177,10 @@ public class HomeConnectApiClient {
      * @param state target state
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public void setPowerState(String haId, String state) throws CommunicationException, AuthorizationException {
+    public void setPowerState(String haId, String state)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putSettings(haId, new Data("BSH.Common.Setting.PowerState", state, null));
     }
 
@@ -187,8 +191,10 @@ public class HomeConnectApiClient {
      * @return {@link Data}
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public Data getFreezerSetpointTemperature(String haId) throws CommunicationException, AuthorizationException {
+    public Data getFreezerSetpointTemperature(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer");
     }
 
@@ -199,9 +205,10 @@ public class HomeConnectApiClient {
      * @param state new temperature
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
     public void setFreezerSetpointTemperature(String haId, String state, String unit)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putSettings(haId, new Data("Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer", state, unit),
                 VALUE_TYPE_INT);
     }
@@ -213,8 +220,10 @@ public class HomeConnectApiClient {
      * @return {@link Data} or null in case of communication error
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public Data getFridgeSetpointTemperature(String haId) throws CommunicationException, AuthorizationException {
+    public Data getFridgeSetpointTemperature(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator");
     }
 
@@ -225,9 +234,10 @@ public class HomeConnectApiClient {
      * @param state new temperature
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
     public void setFridgeSetpointTemperature(String haId, String state, String unit)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putSettings(haId, new Data("Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator", state, unit),
                 VALUE_TYPE_INT);
     }
@@ -239,8 +249,10 @@ public class HomeConnectApiClient {
      * @return {@link Data}
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public Data getFridgeSuperMode(String haId) throws CommunicationException, AuthorizationException {
+    public Data getFridgeSuperMode(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator");
     }
 
@@ -251,8 +263,10 @@ public class HomeConnectApiClient {
      * @param enable enable or disable fridge super mode
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public void setFridgeSuperMode(String haId, boolean enable) throws CommunicationException, AuthorizationException {
+    public void setFridgeSuperMode(String haId, boolean enable)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putSettings(haId,
                 new Data("Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator", String.valueOf(enable), null),
                 VALUE_TYPE_BOOLEAN);
@@ -265,8 +279,10 @@ public class HomeConnectApiClient {
      * @return {@link Data}
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public Data getFreezerSuperMode(String haId) throws CommunicationException, AuthorizationException {
+    public Data getFreezerSuperMode(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer");
     }
 
@@ -277,8 +293,10 @@ public class HomeConnectApiClient {
      * @param enable enable or disable freezer super mode
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public void setFreezerSuperMode(String haId, boolean enable) throws CommunicationException, AuthorizationException {
+    public void setFreezerSuperMode(String haId, boolean enable)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putSettings(haId,
                 new Data("Refrigeration.FridgeFreezer.Setting.SuperModeFreezer", String.valueOf(enable), null),
                 VALUE_TYPE_BOOLEAN);
@@ -291,8 +309,10 @@ public class HomeConnectApiClient {
      * @return {@link Data}
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public Data getDoorState(String haId) throws CommunicationException, AuthorizationException {
+    public Data getDoorState(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getStatus(haId, "BSH.Common.Status.DoorState");
     }
 
@@ -303,8 +323,10 @@ public class HomeConnectApiClient {
      * @return {@link Data}
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public Data getOperationState(String haId) throws CommunicationException, AuthorizationException {
+    public Data getOperationState(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getStatus(haId, "BSH.Common.Status.OperationState");
     }
 
@@ -315,8 +337,10 @@ public class HomeConnectApiClient {
      * @return {@link Data}
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public Data getCurrentCavityTemperature(String haId) throws CommunicationException, AuthorizationException {
+    public Data getCurrentCavityTemperature(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getStatus(haId, "Cooking.Oven.Status.CurrentCavityTemperature");
     }
 
@@ -327,8 +351,10 @@ public class HomeConnectApiClient {
      * @return true or false
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public boolean isRemoteControlStartAllowed(String haId) throws CommunicationException, AuthorizationException {
+    public boolean isRemoteControlStartAllowed(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         Data data = getStatus(haId, "BSH.Common.Status.RemoteControlStartAllowed");
         return "true".equalsIgnoreCase(data.getValue());
     }
@@ -340,8 +366,10 @@ public class HomeConnectApiClient {
      * @return true or false
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public boolean isRemoteControlActive(String haId) throws CommunicationException, AuthorizationException {
+    public boolean isRemoteControlActive(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         Data data = getStatus(haId, "BSH.Common.Status.RemoteControlActive");
         return "true".equalsIgnoreCase(data.getValue());
     }
@@ -353,8 +381,10 @@ public class HomeConnectApiClient {
      * @return true or false
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public boolean isLocalControlActive(String haId) throws CommunicationException, AuthorizationException {
+    public boolean isLocalControlActive(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         Data data = getStatus(haId, "BSH.Common.Status.LocalControlActive");
         return "true".equalsIgnoreCase(data.getValue());
     }
@@ -366,8 +396,10 @@ public class HomeConnectApiClient {
      * @return {@link Data} or null if there is no active program
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public @Nullable Program getActiveProgram(String haId) throws CommunicationException, AuthorizationException {
+    public @Nullable Program getActiveProgram(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getProgram(haId, "/api/homeappliances/" + haId + "/programs/active");
     }
 
@@ -378,22 +410,27 @@ public class HomeConnectApiClient {
      * @return {@link Data} or null if there is no selected program
      * @throws CommunicationException API communication exception
      * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
      */
-    public @Nullable Program getSelectedProgram(String haId) throws CommunicationException, AuthorizationException {
+    public @Nullable Program getSelectedProgram(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getProgram(haId, "/api/homeappliances/" + haId + "/programs/selected");
     }
 
-    public void setSelectedProgram(String haId, String program) throws CommunicationException, AuthorizationException {
+    public void setSelectedProgram(String haId, String program)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putData(haId, "/api/homeappliances/" + haId + "/programs/selected", new Data(program, null, null),
                 VALUE_TYPE_STRING);
     }
 
-    public void startProgram(String haId, String program) throws CommunicationException, AuthorizationException {
+    public void startProgram(String haId, String program)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putData(haId, "/api/homeappliances/" + haId + "/programs/active", new Data(program, null, null),
                 VALUE_TYPE_STRING);
     }
 
-    public void startSelectedProgram(String haId) throws CommunicationException, AuthorizationException {
+    public void startSelectedProgram(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         @Nullable
         String selectedProgram = getRaw(haId, "/api/homeappliances/" + haId + "/programs/selected");
         if (selectedProgram != null) {
@@ -401,33 +438,36 @@ public class HomeConnectApiClient {
         }
     }
 
-    public void startCustomProgram(String haId, String json) throws CommunicationException, AuthorizationException {
+    public void startCustomProgram(String haId, String json)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putRaw(haId, "/api/homeappliances/" + haId + "/programs/active", json);
     }
 
     public void setProgramOptions(String haId, String key, String value, @Nullable String unit, boolean valueAsInt,
-            boolean isProgramActive) throws CommunicationException, AuthorizationException {
+            boolean isProgramActive) throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         String programState = isProgramActive ? "active" : "selected";
 
         putOption(haId, "/api/homeappliances/" + haId + "/programs/" + programState + "/options",
                 new Option(key, value, unit), valueAsInt);
     }
 
-    public void stopProgram(String haId) throws CommunicationException, AuthorizationException {
+    public void stopProgram(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         sendDelete(haId, "/api/homeappliances/" + haId + "/programs/active");
     }
 
-    public List<AvailableProgram> getPrograms(String haId) throws CommunicationException, AuthorizationException {
+    public List<AvailableProgram> getPrograms(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getAvailablePrograms(haId, "/api/homeappliances/" + haId + "/programs");
     }
 
     public List<AvailableProgram> getAvailablePrograms(String haId)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getAvailablePrograms(haId, "/api/homeappliances/" + haId + "/programs/available");
     }
 
     public List<AvailableProgramOption> getProgramOptions(String haId, String programKey)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         if (availableProgramOptionsCache.containsKey(programKey)) {
             logger.debug("Returning cached options for '{}'.", programKey);
             return availableProgramOptionsCache.get(programKey);
@@ -461,29 +501,33 @@ public class HomeConnectApiClient {
         return communicationQueue;
     }
 
-    private Data getSetting(String haId, String setting) throws CommunicationException, AuthorizationException {
+    private Data getSetting(String haId, String setting)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getData(haId, "/api/homeappliances/" + haId + "/settings/" + setting);
     }
 
-    private void putSettings(String haId, Data data) throws CommunicationException, AuthorizationException {
+    private void putSettings(String haId, Data data)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putSettings(haId, data, VALUE_TYPE_STRING);
     }
 
     private void putSettings(String haId, Data data, int valueType)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         putData(haId, "/api/homeappliances/" + haId + "/settings/" + data.getName(), data, valueType);
     }
 
-    private Data getStatus(String haId, String status) throws CommunicationException, AuthorizationException {
+    private Data getStatus(String haId, String status)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getData(haId, "/api/homeappliances/" + haId + "/status/" + status);
     }
 
-    public @Nullable String getRaw(String haId, String path) throws CommunicationException, AuthorizationException {
+    public @Nullable String getRaw(String haId, String path)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         return getRaw(haId, path, false);
     }
 
     public @Nullable String getRaw(String haId, String path, boolean ignoreResponseCode)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, haId, null);
@@ -503,7 +547,7 @@ public class HomeConnectApiClient {
     }
 
     public String putRaw(String haId, String path, String requestBodyPayload)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         RequestBody requestBody = RequestBody.create(BSH_JSON_V1_MEDIA_TYPE,
                 requestBodyPayload.getBytes(StandardCharsets.UTF_8));
 
@@ -524,7 +568,7 @@ public class HomeConnectApiClient {
     }
 
     private @Nullable Program getProgram(String haId, String path)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(asList(HTTP_OK, HTTP_NOT_FOUND), request, response, haId, null);
@@ -544,7 +588,7 @@ public class HomeConnectApiClient {
     }
 
     private List<AvailableProgram> getAvailablePrograms(String haId, String path)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, haId, null);
@@ -560,7 +604,8 @@ public class HomeConnectApiClient {
         }
     }
 
-    private void sendDelete(String haId, String path) throws CommunicationException, AuthorizationException {
+    private void sendDelete(String haId, String path)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         Request request = requestBuilder(oAuthClientService).url(apiUrl + path).header(ACCEPT, BSH_JSON_V1).delete()
                 .build();
         try (Response response = client.newCall(request).execute()) {
@@ -574,7 +619,8 @@ public class HomeConnectApiClient {
         }
     }
 
-    private Data getData(String haId, String path) throws CommunicationException, AuthorizationException {
+    private Data getData(String haId, String path)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, haId, null);
@@ -591,7 +637,7 @@ public class HomeConnectApiClient {
     }
 
     private void putData(String haId, String path, Data data, int valueType)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         JsonObject innerObject = new JsonObject();
         innerObject.addProperty("key", data.getName());
 
@@ -631,7 +677,7 @@ public class HomeConnectApiClient {
     }
 
     private void putOption(String haId, String path, Option option, boolean asInt)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         JsonObject innerObject = new JsonObject();
         innerObject.addProperty("key", option.getKey());
 
@@ -676,13 +722,14 @@ public class HomeConnectApiClient {
     }
 
     private void checkResponseCode(int desiredCode, Request request, Response response, @Nullable String haId,
-            @Nullable String requestPayload) throws CommunicationException, AuthorizationException {
+            @Nullable String requestPayload)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         checkResponseCode(singletonList(desiredCode), request, response, haId, requestPayload);
     }
 
     private void checkResponseCode(List<Integer> desiredCodes, Request request, Response response,
             @Nullable String haId, @Nullable String requestPayload)
-            throws CommunicationException, AuthorizationException {
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
 
         if (!desiredCodes.contains(HTTP_UNAUTHORIZED) && response.code() == HTTP_UNAUTHORIZED) {
             logger.debug("Current access token is invalid.");
@@ -711,7 +758,7 @@ public class HomeConnectApiClient {
 
             if (code == HTTP_CONFLICT && containsIgnoreCase(responseBody, "error")
                     && containsIgnoreCase(responseBody, "offline")) {
-                throw new OfflineException(code, message, responseBody);
+                throw new ApplianceOfflineException(code, message, responseBody);
             } else {
                 throw new CommunicationException(code, message, responseBody);
             }

@@ -25,11 +25,11 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
  *
  */
 @NonNullByDefault
-public class OfflineException extends CommunicationException {
+public class ApplianceOfflineException extends Exception {
 
     private static final long serialVersionUID = 1L;
 
-    public OfflineException(int code, String message, String body) {
+    public ApplianceOfflineException(int code, String message, String body) {
         super(format("Communication error - appliance offline! response code: %d, message: %s, body: %s (Tried at %s)",
                 code, message, body, new Date()));
     }

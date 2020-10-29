@@ -35,4 +35,10 @@ public interface HomeConnectEventListener {
      */
     default void onClosed() {
     }
+
+    /**
+     * If SSE connection was closed due to rate limits
+     */
+    default void onRateLimitReached() {
+    }
 }

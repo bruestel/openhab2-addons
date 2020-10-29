@@ -12,6 +12,7 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
+import static org.eclipse.smarthome.core.thing.ThingStatus.OFFLINE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DOOR_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_FREEZER_SETPOINT_TEMPERATURE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_FREEZER_SUPER_MODE;
@@ -40,6 +41,7 @@ import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
+import org.openhab.binding.homeconnect.internal.client.exception.ApplianceOfflineException;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.Data;
@@ -188,6 +190,13 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                         apiClient.get().setFridgeSuperMode(getThingHaId(), OnOffType.ON.equals(command));
                     }
                 }
+            } catch (ApplianceOfflineException e) {
+                logger.debug(
+                        "API communication problem while trying to update! Appliance offline. thing={}, haId={}, error={}",
+                        getThingLabel(), getThingHaId(), e.getMessage());
+                updateStatus(OFFLINE);
+                resetChannelsOnOfflineEvent();
+                resetProgramStateChannels();
             } catch (CommunicationException e) {
                 logger.warn("Could not handle command {}. API communication problem! haId={}, error={}",
                         command.toFullString(), getThingHaId(), e.getMessage());

@@ -7,6 +7,7 @@ import static org.openhab.binding.homeconnect.internal.client.model.EventType.NO
 import static org.openhab.binding.homeconnect.internal.client.model.EventType.STATUS;
 import static org.openhab.binding.homeconnect.internal.client.model.EventType.valueOfType;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
@@ -99,13 +100,13 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
         logger.debug("Event source listener channel closed ({}).", haId);
 
         client.unregisterEventListener(eventListener);
-        stopMonitor();
 
         try {
             eventListener.onClosed();
         } catch (Exception e) {
             logger.error("Could not publish closed event to listener ({})!", haId, e);
         }
+        stopMonitor();
     }
 
     @Override
@@ -118,22 +119,36 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
         @Nullable
         String responseCode = response != null ? String.valueOf(response.code()) : null;
 
-        logger.debug(haId,
-                "Event source listener connection failure occurred. haId={}, responseCode={}, throwable={}, throwableMessage={}",
-                haId, responseCode, throwableClass, throwableMessage);
+        String responseBody = "";
+        try {
+            responseBody = response.body().string();
+        } catch (IOException e) {
+            logger.error("Could not get HTTP response body as string.", e);
+        }
+
+        logger.debug(
+                "Event source listener connection failure occurred. haId={}, responseCode={}, responseBody={}, throwable={}, throwableMessage={}",
+                haId, responseCode, responseBody, throwableClass, throwableMessage);
 
         if (response != null) {
             response.close();
         }
 
         client.unregisterEventListener(eventListener);
-        stopMonitor();
 
         try {
-            eventListener.onClosed();
+            if ("429".equals(responseCode)) {
+                logger.warn(
+                        "More than 10 active event monitoring channels was reached. Further event monitoring requests are blocked. haId={}",
+                        haId);
+                eventListener.onRateLimitReached();
+            } else {
+                eventListener.onClosed();
+            }
         } catch (Exception e) {
             logger.error("Could not publish closed event to listener ({})!", haId, e);
         }
+        stopMonitor();
     }
 
     private ScheduledFuture<?> createMonitor(ScheduledExecutorService scheduler) {
@@ -145,14 +160,13 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
                 logger.warn("Dead event source connection detected ({}).", haId);
 
                 client.unregisterEventListener(eventListener);
-                stopMonitor();
 
                 try {
                     eventListener.onClosed();
                 } catch (Exception e) {
                     logger.error("Could not publish closed event to listener ({})!", haId, e);
                 }
-
+                stopMonitor();
             }
         }, SSE_MONITOR_INITIAL_DELAY, SSE_MONITOR_INTERVAL, TimeUnit.MINUTES);
     }

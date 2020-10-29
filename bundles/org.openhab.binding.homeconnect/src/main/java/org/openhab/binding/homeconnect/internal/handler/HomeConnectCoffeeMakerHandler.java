@@ -12,6 +12,7 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
+import static org.eclipse.smarthome.core.thing.ThingStatus.OFFLINE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ACTIVE_PROGRAM_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_COFFEEMAKER_BEAN_CONTAINER_EMPTY_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_COFFEEMAKER_DRIP_TRAY_FULL_STATE;
@@ -43,6 +44,7 @@ import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.UnDefType;
+import org.openhab.binding.homeconnect.internal.client.exception.ApplianceOfflineException;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
@@ -117,6 +119,12 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
                         apiClient.setPowerState(getThingHaId(),
                                 OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_STANDBY);
                     }
+                } catch (ApplianceOfflineException e) {
+                    logger.debug("Could not handle command {}. Appliance offline. thing={}, haId={}, error={}",
+                            command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
+                    updateStatus(OFFLINE);
+                    resetChannelsOnOfflineEvent();
+                    resetProgramStateChannels();
                 } catch (CommunicationException e) {
                     logger.warn("Could not handle command {}. API communication problem! haId={}, error={}",
                             command.toFullString(), getThingHaId(), e.getMessage());

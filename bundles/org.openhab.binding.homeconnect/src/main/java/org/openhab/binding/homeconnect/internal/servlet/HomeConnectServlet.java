@@ -23,7 +23,7 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +46,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
+import org.openhab.binding.homeconnect.internal.client.exception.ApplianceOfflineException;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
@@ -127,7 +128,7 @@ public class HomeConnectServlet extends HttpServlet {
     public HomeConnectServlet(@Reference HttpService httpService) {
         logger = LoggerFactory.getLogger(HomeConnectServlet.class);
         bridgeHandlers = new CopyOnWriteArraySet<>();
-        gson = new GsonBuilder().registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src,
+        gson = new GsonBuilder().registerTypeAdapter(ZonedDateTime.class, (JsonSerializer<ZonedDateTime>) (src,
                 typeOfSrc, context) -> new JsonPrimitive(src.format(DateTimeFormatter.ISO_DATE_TIME))).create();
         this.httpService = httpService;
 
@@ -294,9 +295,8 @@ public class HomeConnectServlet extends HttpServlet {
             PrintWriter writer = response.getWriter();
 
             writer.println(String.format("%s,%s", "time", "requests"));
-            bridgeHandler.get().getApiClient().getLatestApiRequests()
-                    .forEach(apiRequest -> writer.println(String.format("%s,%s", apiRequest.getTime(), 1)));
-            writer.println(String.format("%s,%s", LocalDateTime.now(), 0));
+            bridgeHandler.get().getApiClient().getLatestApiRequests().forEach(apiRequest -> writer.println(
+                    String.format("%s,%s", apiRequest.getTime().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), 1)));
         } else {
             response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
         }
@@ -393,7 +393,7 @@ public class HomeConnectServlet extends HttpServlet {
                         response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown action");
                         break;
                 }
-            } catch (CommunicationException | AuthorizationException e) {
+            } catch (CommunicationException | ApplianceOfflineException | AuthorizationException e) {
                 logger.debug("Could not execute request! thingId={}, action={}, error={}", thingId, action,
                         e.getMessage());
                 response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
@@ -427,7 +427,7 @@ public class HomeConnectServlet extends HttpServlet {
                 } else {
                     response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown action");
                 }
-            } catch (CommunicationException | AuthorizationException e) {
+            } catch (CommunicationException | ApplianceOfflineException | AuthorizationException e) {
                 logger.debug("Could not execute request! thingId={}, action={}, error={}", thingId, action,
                         e.getMessage());
                 response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
