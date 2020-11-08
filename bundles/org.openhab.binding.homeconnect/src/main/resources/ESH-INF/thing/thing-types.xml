@@ -237,10 +237,9 @@
 			<channel id="remote_control_active_state" typeId="remote_control_active_state"/>
 			<channel id="local_control_active_state" typeId="local_control_active_state"/>
 			<channel id="active_program_state" typeId="active_program_state"/>
-			<channel id="selected_program_state" typeId="selected_program_state"/>
 			<channel id="hood_venting_level" typeId="hood_venting_level"/>
 			<channel id="hood_intensive_level" typeId="hood_intensive_level"/>
-			<channel id="basic_actions_state" typeId="basic_actions_state"/>
+			<channel id="hood_program_state" typeId="hood_program_state"/>
 		</channels>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
@@ -498,14 +497,19 @@
 	<channel-type id="hood_venting_level">
 		<item-type>String</item-type>
 		<label>Venting level</label>
-		<description>This option defines the required fan setting of the hood.</description>
-		<state readOnly="false"/>
+		<description>Current venting level of the hood.</description>
+		<state readOnly="true"/>
 	</channel-type>
 	<channel-type id="hood_intensive_level">
 		<item-type>String</item-type>
 		<label>Intensive level</label>
-		<description>This option defines the intensive setting of the hood.</description>
-		<state readOnly="false"/>
+		<description>Current venting intensive level of the hood.</description>
+		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="hood_program_state">
+		<item-type>String</item-type>
+		<label>Program actions</label>
+		<description>Start hood program.</description>
 	</channel-type>
 
 </thing:thing-descriptions>

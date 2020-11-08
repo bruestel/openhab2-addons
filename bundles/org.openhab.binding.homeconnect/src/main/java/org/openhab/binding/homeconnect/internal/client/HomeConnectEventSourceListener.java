@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2010-2020 Contributors to the openHAB project
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
 package org.openhab.binding.homeconnect.internal.client;
 
 import static java.time.LocalDateTime.now;
@@ -35,9 +47,16 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
 
+/**
+ * Event source listener (Server-Sent-Events).
+ *
+ * @author Jonas Brüstel - Initial contribution
+ *
+ */
 @NonNullByDefault
 public class HomeConnectEventSourceListener extends EventSourceListener {
     private static final String EMPTY_DATA = "\"\"";
@@ -121,7 +140,13 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
 
         String responseBody = "";
         try {
-            responseBody = response.body().string();
+            if (response != null) {
+                @Nullable
+                ResponseBody responseBodyObject = response.body();
+                if (responseBodyObject != null) {
+                    responseBody = responseBodyObject.string();
+                }
+            }
         } catch (IOException e) {
             logger.error("Could not get HTTP response body as string.", e);
         }

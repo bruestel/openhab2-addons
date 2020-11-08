@@ -933,7 +933,7 @@ public class HomeConnectApiClient {
                 sb.append(homeConnectResponse.getBody()).append("\n");
             }
 
-            logger.debug(sb.toString());
+            logger.debug("{}", sb.toString());
         }
     }
 

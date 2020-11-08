@@ -83,7 +83,7 @@ public class HomeConnectWasherHandler extends AbstractHomeConnectThingHandler {
     public HomeConnectWasherHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
         super(thing, dynamicStateDescriptionProvider);
-        logger = LoggerFactory.getLogger(HomeConnectWasherDryerHandler.class);
+        logger = LoggerFactory.getLogger(HomeConnectWasherHandler.class);
     }
 
     @Override

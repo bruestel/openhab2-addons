@@ -106,6 +106,7 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_COFFEEMAKER_BEAN_CONTAINER_EMPTY_STATE = "coffeemaker_bean_container_empty_state";
     public static final String CHANNEL_HOOD_VENTING_LEVEL = "hood_venting_level";
     public static final String CHANNEL_HOOD_INTENSIVE_LEVEL = "hood_intensive_level";
+    public static final String CHANNEL_HOOD_ACTIONS_STATE = "hood_program_state";
 
     // List of all supported devices
     public static final Set<ThingTypeUID> SUPPORTED_DEVICE_THING_TYPES_UIDS = Stream.of(THING_TYPE_API_BRIDGE,
@@ -145,6 +146,22 @@ public class HomeConnectBindingConstants {
     public static final String OPTION_HOOD_VENTING_LEVEL = "Cooking.Common.Option.Hood.VentingLevel";
     public static final String OPTION_HOOD_INTENSIVE_LEVEL = "Cooking.Common.Option.Hood.IntensiveLevel";
 
+    // List of stages
+    public static final String STAGE_FAN_OFF = "Cooking.Hood.EnumType.Stage.FanOff";
+    public static final String STAGE_FAN_STAGE_01 = "Cooking.Hood.EnumType.Stage.FanStage01";
+    public static final String STAGE_FAN_STAGE_02 = "Cooking.Hood.EnumType.Stage.FanStage02";
+    public static final String STAGE_FAN_STAGE_03 = "Cooking.Hood.EnumType.Stage.FanStage03";
+    public static final String STAGE_FAN_STAGE_04 = "Cooking.Hood.EnumType.Stage.FanStage04";
+    public static final String STAGE_FAN_STAGE_05 = "Cooking.Hood.EnumType.Stage.FanStage05";
+    public static final String STAGE_INTENSIVE_STAGE_OFF = "Cooking.Hood.EnumType.IntensiveStage.IntensiveStageOff";
+    public static final String STAGE_INTENSIVE_STAGE_1 = "Cooking.Hood.EnumType.IntensiveStage.IntensiveStage1";
+    public static final String STAGE_INTENSIVE_STAGE_2 = "Cooking.Hood.EnumType.IntensiveStage.IntensiveStage2";
+
+    // List of programs
+    public static final String PROGRAM_HOOD_AUTOMATIC = "Cooking.Common.Program.Hood.Automatic";
+    public static final String PROGRAM_HOOD_VENTING = "Cooking.Common.Program.Hood.Venting";
+    public static final String PROGRAM_HOOD_DELAYED_SHUT_OFF = "Cooking.Common.Program.Hood.DelayedShutOff";
+
     // Network and oAuth constants
     public static final String API_BASE_URL = "https://api.home-connect.com";
     public static final String API_SIMULATOR_BASE_URL = "https://simulator.home-connect.com";
@@ -162,6 +179,20 @@ public class HomeConnectBindingConstants {
     public static final String OPERATION_STATE_FINISHED = "BSH.Common.EnumType.OperationState.Finished";
     public static final String OPERATION_STATE_ERROR = "BSH.Common.EnumType.OperationState.Error";
     public static final String OPERATION_STATE_ABORTING = "BSH.Common.EnumType.OperationState.Aborting";
+
+    // Commands
+    public static final String COMMAND_START = "start";
+    public static final String COMMAND_STOP = "stop";
+    public static final String COMMAND_SELECTED = "selected";
+    public static final String COMMAND_VENTING_1 = "venting1";
+    public static final String COMMAND_VENTING_2 = "venting2";
+    public static final String COMMAND_VENTING_3 = "venting3";
+    public static final String COMMAND_VENTING_4 = "venting4";
+    public static final String COMMAND_VENTING_5 = "venting5";
+    public static final String COMMAND_VENTING_INTENSIVE_1 = "ventingIntensive1";
+    public static final String COMMAND_VENTING_INTENSIVE_2 = "ventingIntensive2";
+    public static final String COMMAND_AUTOMATIC = "automatic";
+    public static final String COMMAND_DELAYED_SHUT_OFF = "delayed";
 
     // proxy settings
     public static final boolean HTTP_PROXY_ENABLED = false;

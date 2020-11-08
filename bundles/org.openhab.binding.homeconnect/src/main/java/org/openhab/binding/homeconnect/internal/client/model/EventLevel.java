@@ -14,6 +14,12 @@ package org.openhab.binding.homeconnect.internal.client.model;
 
 import org.eclipse.jdt.annotation.Nullable;
 
+/**
+ * Event level model.
+ *
+ * @author Jonas Brüstel - Initial contribution
+ *
+ */
 public enum EventLevel {
     CRITICAL("critical"),
     ALERT("alert"),

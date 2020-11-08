@@ -147,7 +147,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
                     nextReinitializeDateTime.format(DateTimeFormatter.RFC_1123_DATE_TIME), e.getMessage(),
                     getThing().getLabel());
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, infoMessage);
-            logger.info(infoMessage);
+            logger.info("{}", infoMessage);
 
             scheduleReinitialize();
         }

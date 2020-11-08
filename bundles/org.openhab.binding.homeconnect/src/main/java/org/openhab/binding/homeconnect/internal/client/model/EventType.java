@@ -14,6 +14,12 @@ package org.openhab.binding.homeconnect.internal.client.model;
 
 import org.eclipse.jdt.annotation.Nullable;
 
+/**
+ * Event type model.
+ *
+ * @author Jonas Brüstel - Initial contribution
+ *
+ */
 public enum EventType {
     KEEP_ALIVE("KEEP-ALIVE"),
     STATUS("STATUS"),

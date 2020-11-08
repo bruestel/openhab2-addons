@@ -14,6 +14,12 @@ package org.openhab.binding.homeconnect.internal.client.model;
 
 import org.eclipse.jdt.annotation.Nullable;
 
+/**
+ * Event handling model.
+ *
+ * @author Jonas Brüstel - Initial contribution
+ *
+ */
 public enum EventHandling {
     NONE("none"),
     ACKNOWLEDGE("acknowledge"),

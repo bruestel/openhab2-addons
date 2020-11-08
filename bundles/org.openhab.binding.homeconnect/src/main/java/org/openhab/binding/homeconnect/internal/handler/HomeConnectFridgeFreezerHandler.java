@@ -212,6 +212,16 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
     }
 
     @Override
+    protected void updateSelectedProgramStateDescription() {
+        // not used
+    }
+
+    @Override
+    protected void removeSelectedProgramStateDescription() {
+        // not used
+    }
+
+    @Override
     public String toString() {
         return "HomeConnectFridgeFreezerHandler [haId: " + getThingHaId() + "]";
     }

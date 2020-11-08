@@ -13,7 +13,7 @@ The __Home Connect API__ is responsible for the communication with the Home Conn
 
 ### Devices
 
-Supported devices: dishwasher, washer, washer / dryer combination, dryer, oven, refrigerator freezer, coffee machine, hood*, cooktop*
+Supported devices: dishwasher, washer, washer / dryer combination, dryer, oven, refrigerator freezer, coffee machine, hood, cooktop*
 
 *\* experimental support*
 
@@ -47,7 +47,7 @@ After the bridge has been added and authorized, devices are discovered automatic
 | remote_start_allowance_state | Switch | true  | This status indicates whether the remote program start is enabled. This can happen due to a programmatic change (only disabling), or manually by the user changing the flag locally on the home appliance, or automatically after a certain duration - usually in 24 hours. | dishwasher, washer, washerdryer, dryer, oven, hood, coffeemaker | 
 | remote_control_active_state | Switch | true  | This status indicates whether the allowance for remote controlling is enabled. | dishwasher, washer, washerdryer, dryer, oven, hood, hob | 
 | active_program_state | String | true  | This status describes the active program of the home appliance. | dishwasher, washer, washerdryer, dryer, oven, hood, hob, coffeemaker  | 
-| selected_program_state | String | false | This state describes the selected program of the home appliance. | dishwasher, washer, washerdryer, dryer, oven, hood, hob, coffeemaker | 
+| selected_program_state | String | false | This state describes the selected program of the home appliance. | dishwasher, washer, washerdryer, dryer, oven, hob, coffeemaker | 
 | remaining_program_time_state | Number:Time | true | This status indicates the remaining program time of the home appliance. | dishwasher, washer, washerdryer, dryer, oven | 
 | elapsed_program_time | Number:Time | true | This status indicates the elapsed program time of the home appliance. | oven | 
 | program_progress_state | Number:Dimensionless | true | This status describes the program progress of the home appliance. | dishwasher, washer, washerdryer, dryer, oven, coffeemaker | 
@@ -66,9 +66,10 @@ After the bridge has been added and authorized, devices are discovered automatic
 | coffeemaker_drip_tray_full_state | Switch | true | Is coffee maker drip tray full? | coffeemaker | 
 | coffeemaker_water_tank_empty_state | Switch | true | Is coffee maker water tank empty? | coffeemaker | 
 | coffeemaker_bean_container_empty_state | Switch | true | Is coffee maker bean container empty? | coffeemaker | 
-| hood_venting_level | String | false | This option defines the required fan setting of the hood. | hood | 
-| hood_intensive_level | String | false | This option defines the intensive setting of the hood. | hood | 
-| basic_actions_state | String | false | Adds basic controller actions to the appliance. The following basic commands are supported: `start` (start current selected program), `stop` (stop current program) and `selected` (show current program information). Furthermore it is possible to send raw (Home Connect JSON payload) to the home appliance. | dishwasher, oven, washer, washerdryer, dryer, coffeemaker, hood | 
+| hood_venting_level | String | true | This option defines the required fan setting of the hood. | hood | 
+| hood_intensive_level | String | true | This option defines the intensive setting of the hood. | hood | 
+| hood_program_state | String | false | Adds hood controller actions to the appliance. The following commands are supported: `stop`, `venting1`, `venting2`, `venting3`, `venting4`, `venting5`, `ventingIntensive1`, `ventingIntensive1`, `automatic` and `delayed`. Furthermore it is possible to send raw (Home Connect JSON payload) to the home appliance. | hood | 
+| basic_actions_state | String | false | Adds basic controller actions to the appliance. The following basic commands are supported: `start` (start current selected program), `stop` (stop current program) and `selected` (show current program information). Furthermore it is possible to send raw (Home Connect JSON payload) to the home appliance. | dishwasher, oven, washer, washerdryer, dryer, coffeemaker | 
 
 
             
@@ -171,6 +172,7 @@ Number:Dimensionless   DishwasherSimulator_ProgramProgressState        "Progress
 The binding comes with a separate user interface, which is reachable through the web browser http(s)://[YOUROPENHAB]:[YOURPORT]/homeconnect (e.g. http://192.168.178.100:8080/homeconnect). 
 
 Features:
+
 * overview of your bridges and appliances
 * send commands to your appliances
 * see latest API requests
@@ -227,7 +229,6 @@ b) You could have a look at the request logs and extract the payload from there.
 1. On the physical device, select your desired program with the appropriate options.
 2. Open the appliance section of the binding UI (http(s)://[YOUROPENHAB]:[YOURPORT]/appliances) and click the 'Selected Program' button.  
 ![Screenshot Home Connect wizard page 4](doc/selected_program_1.png "Get selected program")  
-
 3. Copy the JSON payload. In a further step, this payload will be used to start the program.  
 ![Screenshot Home Connect wizard page 4](doc/selected_program_2.png "Get selected program") 
 

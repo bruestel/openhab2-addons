@@ -39,6 +39,9 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_IDOS2;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_SPIN_SPEED;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_WASHER_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.COMMAND_SELECTED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.COMMAND_START;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.COMMAND_STOP;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_OPERATION_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.HA_ID;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_DRYER_DRYING_TARGET;
@@ -53,6 +56,15 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_IDOS_2_DOSING_LEVEL;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_SPIN_SPEED;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.OPTION_WASHER_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_FAN_OFF;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_FAN_STAGE_01;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_FAN_STAGE_02;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_FAN_STAGE_03;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_FAN_STAGE_04;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_FAN_STAGE_05;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_INTENSIVE_STAGE_1;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_INTENSIVE_STAGE_2;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_INTENSIVE_STAGE_OFF;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_DOOR_OPEN;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_EVENT_PRESENT_STATE_OFF;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_OPERATION_FINISHED;
@@ -184,8 +196,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     @Override
     public void bridgeStatusChanged(ThingStatusInfo bridgeStatusInfo) {
         super.bridgeStatusChanged(bridgeStatusInfo);
-        logger.debug(getThingHaId(), "Bridge status changed to {} ({}). haId={}", bridgeStatusInfo, getThingLabel(),
-                getThingHaId());
+        logger.debug("Bridge status changed to {} ({}). haId={}", bridgeStatusInfo, getThingLabel(), getThingHaId());
 
         dispose();
         initialize();
@@ -205,7 +216,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     HomeConnectApiClient apiClient = homeConnectApiClient.get();
                     updateState(channelUID, new StringType(""));
 
-                    if ("start".equalsIgnoreCase(command.toFullString())) {
+                    if (COMMAND_START.equalsIgnoreCase(command.toFullString())) {
                         @Nullable
                         Bridge bridge = getBridge();
                         if (bridge != null) {
@@ -228,9 +239,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                             }
                         }
 
-                    } else if ("stop".equalsIgnoreCase(command.toFullString())) {
+                    } else if (COMMAND_STOP.equalsIgnoreCase(command.toFullString())) {
                         apiClient.stopProgram(getThingHaId());
-                    } else if ("selected".equalsIgnoreCase(command.toFullString())) {
+                    } else if (COMMAND_SELECTED.equalsIgnoreCase(command.toFullString())) {
                         apiClient.getSelectedProgram(getThingHaId());
                     } else {
                         logger.info("Start custom program. command={} haId={}", command.toFullString(), getThingHaId());
@@ -354,36 +365,31 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             return;
         }
 
-        // exclude fridge/freezer as they don't have programs
-        if (!(this instanceof HomeConnectFridgeFreezerHandler)) {
-            Optional<HomeConnectApiClient> apiClient = getApiClient();
-            if (apiClient.isPresent()) {
-                try {
-                    ArrayList<StateOption> stateOptions = new ArrayList<>();
-                    apiClient.get().getPrograms(getThingHaId())
-                            .forEach(p -> stateOptions.add(new StateOption(p.getKey(), mapStringType(p.getKey()))));
+        Optional<HomeConnectApiClient> apiClient = getApiClient();
+        if (apiClient.isPresent()) {
+            try {
+                ArrayList<StateOption> stateOptions = new ArrayList<>();
+                apiClient.get().getPrograms(getThingHaId())
+                        .forEach(p -> stateOptions.add(new StateOption(p.getKey(), mapStringType(p.getKey()))));
 
-                    @Nullable
-                    StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                            .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build()
-                            .toStateDescription();
+                @Nullable
+                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
+                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
 
-                    if (stateDescription != null && !stateOptions.isEmpty()) {
-                        getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE)
-                                .ifPresent(channel -> dynamicStateDescriptionProvider
-                                        .putStateDescriptions(channel.getUID().getAsString(), stateDescription));
-                    } else {
-                        logger.debug("No state description available. haId={}", getThingHaId());
-                        removeSelectedProgramStateDescription();
-                    }
-                } catch (CommunicationException | ApplianceOfflineException | AuthorizationException e) {
-                    logger.debug("Could not fetch available programs. thing={}, haId={}, error={}", getThingLabel(),
-                            getThingHaId(), e.getMessage());
+                if (stateDescription != null && !stateOptions.isEmpty()) {
+                    getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(channel -> dynamicStateDescriptionProvider
+                            .putStateDescriptions(channel.getUID().getAsString(), stateDescription));
+                } else {
+                    logger.debug("No state description available. haId={}", getThingHaId());
                     removeSelectedProgramStateDescription();
                 }
-            } else {
+            } catch (CommunicationException | ApplianceOfflineException | AuthorizationException e) {
+                logger.debug("Could not fetch available programs. thing={}, haId={}, error={}", getThingLabel(),
+                        getThingHaId(), e.getMessage());
                 removeSelectedProgramStateDescription();
             }
+        } else {
+            removeSelectedProgramStateDescription();
         }
     }
 
@@ -391,11 +397,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * Remove state description of selected program.
      */
     protected void removeSelectedProgramStateDescription() {
-        // exclude fridge/freezer as they don't have programs
-        if (!(this instanceof HomeConnectFridgeFreezerHandler)) {
-            getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(
-                    channel -> dynamicStateDescriptionProvider.removeStateDescriptions(channel.getUID().getAsString()));
-        }
+        getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(
+                channel -> dynamicStateDescriptionProvider.removeStateDescriptions(channel.getUID().getAsString()));
     }
 
     /**
@@ -632,6 +635,43 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             return sb.toString().trim();
         }
         return type;
+    }
+
+    /**
+     * Map Home Connect stage value to label.
+     * e.g. Cooking.Hood.EnumType.IntensiveStage.IntensiveStage1 --> 1
+     *
+     * @param stage stage
+     * @return human readable label
+     */
+    protected String mapStageStringType(String stage) {
+        switch (stage) {
+            case STAGE_FAN_OFF:
+            case STAGE_INTENSIVE_STAGE_OFF:
+                stage = "Off";
+                break;
+            case STAGE_FAN_STAGE_01:
+            case STAGE_INTENSIVE_STAGE_1:
+                stage = "1";
+                break;
+            case STAGE_FAN_STAGE_02:
+            case STAGE_INTENSIVE_STAGE_2:
+                stage = "2";
+                break;
+            case STAGE_FAN_STAGE_03:
+                stage = "3";
+                break;
+            case STAGE_FAN_STAGE_04:
+                stage = "4";
+                break;
+            case STAGE_FAN_STAGE_05:
+                stage = "5";
+                break;
+            default:
+                stage = mapStringType(stage);
+        }
+
+        return stage;
     }
 
     /**
@@ -1018,12 +1058,22 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                                 .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
                         break;
                     case OPTION_HOOD_INTENSIVE_LEVEL:
-                        getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL)
-                                .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                        @Nullable
+                        String hoodIntensiveLevelValue = option.getValue();
+                        if (hoodIntensiveLevelValue != null) {
+                            getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL)
+                                    .ifPresent(channel -> updateState(channel.getUID(),
+                                            new StringType(mapStageStringType(hoodIntensiveLevelValue))));
+                        }
                         break;
                     case OPTION_HOOD_VENTING_LEVEL:
-                        getThingChannel(CHANNEL_HOOD_VENTING_LEVEL)
-                                .ifPresent(channel -> updateState(channel.getUID(), new StringType(option.getValue())));
+                        @Nullable
+                        String hoodVentingLevel = option.getValue();
+                        if (hoodVentingLevel != null) {
+                            getThingChannel(CHANNEL_HOOD_VENTING_LEVEL)
+                                    .ifPresent(channel -> updateState(channel.getUID(),
+                                            new StringType(mapStageStringType(hoodVentingLevel))));
+                        }
                         break;
                     case OPTION_SETPOINT_TEMPERATURE:
                         getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
@@ -1091,18 +1141,6 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         return mapStringType(value);
     }
 
-    protected String convertLevel(String value) {
-        if (value.startsWith("Cooking.Hood.EnumType.IntensiveStage.IntensiveStage")) {
-            return value.replace("Cooking.Hood.EnumType.IntensiveStage.IntensiveStage", "");
-        }
-
-        if (value.startsWith("Cooking.Hood.EnumType.Stage.FanStage0")) {
-            return value.replace("Cooking.Hood.EnumType.Stage.FanStage0", "");
-        }
-
-        return mapStringType(value);
-    }
-
     protected void updateProgramOptionsStateDescriptions(String programKey)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         Optional<HomeConnectApiClient> apiClient = getApiClient();
@@ -1113,8 +1151,6 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             Optional<Channel> channelSpinSpeed = getThingChannel(CHANNEL_WASHER_SPIN_SPEED);
             Optional<Channel> channelTemperature = getThingChannel(CHANNEL_WASHER_TEMPERATURE);
             Optional<Channel> channelDryingTarget = getThingChannel(CHANNEL_DRYER_DRYING_TARGET);
-            Optional<Channel> channelHoodIntensiveLevel = getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL);
-            Optional<Channel> channelHoodVentingLevel = getThingChannel(CHANNEL_HOOD_VENTING_LEVEL);
 
             if (availableProgramOptions.isEmpty()) {
                 channelSpinSpeed.ifPresent(channel -> dynamicStateDescriptionProvider
@@ -1122,10 +1158,6 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 channelTemperature.ifPresent(channel -> dynamicStateDescriptionProvider
                         .removeStateDescriptions(channel.getUID().getAsString()));
                 channelDryingTarget.ifPresent(channel -> dynamicStateDescriptionProvider
-                        .removeStateDescriptions(channel.getUID().getAsString()));
-                channelHoodIntensiveLevel.ifPresent(channel -> dynamicStateDescriptionProvider
-                        .removeStateDescriptions(channel.getUID().getAsString()));
-                channelHoodVentingLevel.ifPresent(channel -> dynamicStateDescriptionProvider
                         .removeStateDescriptions(channel.getUID().getAsString()));
             }
 
@@ -1152,22 +1184,13 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                                                 channel.getUID().getAsString(), stateDescription)));
                         break;
                     }
-                    case OPTION_HOOD_INTENSIVE_LEVEL: {
-                        createStateDescription(option, this::convertLevel)
-                                .ifPresent(stateDescription -> channelHoodIntensiveLevel
-                                        .ifPresent(channel -> dynamicStateDescriptionProvider.putStateDescriptions(
-                                                channel.getUID().getAsString(), stateDescription)));
-                        break;
-                    }
-                    case OPTION_HOOD_VENTING_LEVEL: {
-                        createStateDescription(option, this::convertLevel).ifPresent(
-                                sd -> channelHoodVentingLevel.ifPresent(channel -> dynamicStateDescriptionProvider
-                                        .putStateDescriptions(channel.getUID().getAsString(), sd)));
-                        break;
-                    }
                 }
             });
         }
+    }
+
+    protected HomeConnectDynamicStateDescriptionProvider getDynamicStateDescriptionProvider() {
+        return dynamicStateDescriptionProvider;
     }
 
     private Optional<StateDescription> createStateDescription(AvailableProgramOption option,
