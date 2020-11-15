@@ -157,6 +157,178 @@ public class HomeConnectApiClient {
     }
 
     /**
+     * Get ambient light state of device.
+     *
+     * @param haId home appliance id
+     * @return {@link Data}
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public Data getAmbientLightState(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        return getSetting(haId, "BSH.Common.Setting.AmbientLightEnabled");
+    }
+
+    /**
+     * Set ambient light state of device.
+     *
+     * @param haId home appliance id
+     * @param enable enable or disable ambient light
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public void setAmbientLightState(String haId, boolean enable)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        putSettings(haId, new Data("BSH.Common.Setting.AmbientLightEnabled", String.valueOf(enable), null),
+                VALUE_TYPE_BOOLEAN);
+    }
+
+    /**
+     * Get functional light state of device.
+     *
+     * @param haId home appliance id
+     * @return {@link Data}
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public Data getFunctionalLightState(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        return getSetting(haId, "Cooking.Common.Setting.Lighting");
+    }
+
+    /**
+     * Set functional light state of device.
+     *
+     * @param haId home appliance id
+     * @param enable enable or disable functional light
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public void setFunctionalLightState(String haId, boolean enable)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        putSettings(haId, new Data("Cooking.Common.Setting.Lighting", String.valueOf(enable), null),
+                VALUE_TYPE_BOOLEAN);
+    }
+
+    /**
+     * Get functional light brightness state of device.
+     *
+     * @param haId home appliance id
+     * @return {@link Data}
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public Data getFunctionalLightBrightnessState(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        return getSetting(haId, "Cooking.Common.Setting.LightingBrightness");
+    }
+
+    /**
+     * Set functional light brightness of device.
+     *
+     * @param haId home appliance id
+     * @param value brightness value 10-100
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public void setFunctionalLightBrightnessState(String haId, int value)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        putSettings(haId, new Data("Cooking.Common.Setting.LightingBrightness", String.valueOf(value), "%"),
+                VALUE_TYPE_INT);
+    }
+
+    /**
+     * Get ambient light brightness state of device.
+     *
+     * @param haId home appliance id
+     * @return {@link Data}
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public Data getAmbientLightBrightnessState(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        return getSetting(haId, "BSH.Common.Setting.AmbientLightBrightness");
+    }
+
+    /**
+     * Set ambient light brightness of device.
+     *
+     * @param haId home appliance id
+     * @param value brightness value 10-100
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public void setAmbientLightBrightnessState(String haId, int value)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        putSettings(haId, new Data("BSH.Common.Setting.AmbientLightBrightness", String.valueOf(value), "%"),
+                VALUE_TYPE_INT);
+    }
+
+    /**
+     * Get ambient light color state of device.
+     *
+     * @param haId home appliance id
+     * @return {@link Data}
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public Data getAmbientLightColorState(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        return getSetting(haId, "BSH.Common.Setting.AmbientLightColor");
+    }
+
+    /**
+     * Set ambient light color of device.
+     *
+     * @param haId home appliance id
+     * @param value color code
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public void setAmbientLightColorState(String haId, String value)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        putSettings(haId, new Data("BSH.Common.Setting.AmbientLightColor", value, null));
+    }
+
+    /**
+     * Get ambient light custom color state of device.
+     *
+     * @param haId home appliance id
+     * @return {@link Data}
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public Data getAmbientLightCustomColorState(String haId)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        return getSetting(haId, "BSH.Common.Setting.AmbientLightCustomColor");
+    }
+
+    /**
+     * Set ambient light color of device.
+     *
+     * @param haId home appliance id
+     * @param value color code
+     * @throws CommunicationException API communication exception
+     * @throws AuthorizationException oAuth authorization exception
+     * @throws ApplianceOfflineException appliance is not connected to the cloud
+     */
+    public void setAmbientLightCustomColorState(String haId, String value)
+            throws CommunicationException, AuthorizationException, ApplianceOfflineException {
+        putSettings(haId, new Data("BSH.Common.Setting.AmbientLightCustomColor", value, null));
+    }
+
+    /**
      * Get power state of device.
      *
      * @param haId home appliance id

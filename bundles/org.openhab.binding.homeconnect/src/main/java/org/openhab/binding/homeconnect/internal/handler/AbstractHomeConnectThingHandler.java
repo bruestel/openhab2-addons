@@ -19,6 +19,9 @@ import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.SECOND;
 import static org.eclipse.smarthome.core.thing.ThingStatus.OFFLINE;
 import static org.eclipse.smarthome.core.thing.ThingStatus.ONLINE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ACTIVE_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_AMBIENT_LIGHT_BRIGHTNESS_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_AMBIENT_LIGHT_COLOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_AMBIENT_LIGHT_CUSTOM_COLOR_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_BASIC_ACTIONS_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DOOR_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_DRYER_DRYING_TARGET;
@@ -93,6 +96,7 @@ import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
+import org.eclipse.smarthome.core.library.types.HSBType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.OpenClosedType;
 import org.eclipse.smarthome.core.library.types.QuantityType;
@@ -568,7 +572,9 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             return;
         }
 
-        if (channelUpdateHandlers.containsKey(channelUID.getId())) {
+        if ((isLinked(channelUID) || CHANNEL_OPERATION_STATE.equals(channelUID.getId())) // always update operation
+                                                                                         // state channel
+                && channelUpdateHandlers.containsKey(channelUID.getId())) {
             try {
                 channelUpdateHandlers.get(channelUID.getId()).handle(channelUID, expiringStateMap);
             } catch (ApplianceOfflineException e) {
@@ -688,6 +694,37 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         } else {
             return FAHRENHEIT;
         }
+    }
+
+    /**
+     * Map hex representation of color to HSB type.
+     *
+     * @param colorCode color code e.g. #001122
+     * @return HSB type
+     */
+    protected HSBType mapColor(String colorCode) {
+        HSBType color = HSBType.WHITE;
+
+        if (colorCode.length() == 7) {
+            int r = Integer.valueOf(colorCode.substring(1, 3), 16);
+            int g = Integer.valueOf(colorCode.substring(3, 5), 16);
+            int b = Integer.valueOf(colorCode.substring(5, 7), 16);
+            color = HSBType.fromRGB(r, g, b);
+        }
+        return color;
+    }
+
+    /**
+     * Map HSB color type to hex representation.
+     *
+     * @param color HSB color
+     * @return color code e.g. #001122
+     */
+    protected String mapColor(HSBType color) {
+        String redValue = String.format("%02X", (int) (color.getRed().floatValue() * 2.55));
+        String greenValue = String.format("%02X", (int) (color.getGreen().floatValue() * 2.55));
+        String blueValue = String.format("%02X", (int) (color.getBlue().floatValue() * 2.55));
+        return "#" + redValue + greenValue + blueValue;
     }
 
     /**
@@ -866,6 +903,24 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                         event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue())));
     }
 
+    protected EventHandler defaultAmbientLightColorStateEventHandler() {
+        return event -> getThingChannel(CHANNEL_AMBIENT_LIGHT_COLOR_STATE)
+                .ifPresent(channel -> updateState(channel.getUID(),
+                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue())));
+    }
+
+    protected EventHandler defaultAmbientLightCustomColorStateEventHandler() {
+        return event -> getThingChannel(CHANNEL_AMBIENT_LIGHT_CUSTOM_COLOR_STATE).ifPresent(channel -> {
+            @Nullable
+            String value = event.getValue();
+            if (value != null) {
+                updateState(channel.getUID(), mapColor(value));
+            } else {
+                updateState(channel.getUID(), UnDefType.NULL);
+            }
+        });
+    }
+
     protected EventHandler updateProgramOptionsAndSelectedProgramStateEventHandler() {
         return event -> {
             defaultSelectedProgramStateEventHandler().handle(event);
@@ -883,8 +938,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         };
     }
 
-    protected EventHandler defaultProgramProgressEventHandler() {
-        return event -> getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(
+    protected EventHandler defaultPercentEventHandler(String channelId) {
+        return event -> getThingChannel(channelId).ifPresent(
                 channel -> updateState(channel.getUID(), new QuantityType<>(event.getValueAsInt(), PERCENT)));
     }
 
@@ -911,6 +966,48 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 Data data = apiClient.get().getPowerState(getThingHaId());
                 if (data.getValue() != null) {
                     return STATE_POWER_ON.equals(data.getValue()) ? OnOffType.ON : OnOffType.OFF;
+                } else {
+                    return UnDefType.NULL;
+                }
+            } else {
+                return UnDefType.NULL;
+            }
+        }));
+    }
+
+    protected ChannelUpdateHandler defaultAmbientLightChannelUpdateHandler() {
+        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+            Optional<HomeConnectApiClient> apiClient = getApiClient();
+            if (apiClient.isPresent()) {
+                Data data = apiClient.get().getAmbientLightState(getThingHaId());
+                if (data.getValue() != null) {
+                    boolean enabled = data.getValueAsBoolean();
+                    if (enabled) {
+                        // brightness
+                        Data brightnessData = apiClient.get().getAmbientLightBrightnessState(getThingHaId());
+                        getThingChannel(CHANNEL_AMBIENT_LIGHT_BRIGHTNESS_STATE)
+                                .ifPresent(channel -> updateState(channel.getUID(),
+                                        new QuantityType<>(brightnessData.getValueAsInt(), PERCENT)));
+
+                        // color
+                        Data colorData = apiClient.get().getAmbientLightColorState(getThingHaId());
+                        getThingChannel(CHANNEL_AMBIENT_LIGHT_COLOR_STATE).ifPresent(
+                                channel -> updateState(channel.getUID(), new StringType(colorData.getValue())));
+
+                        // custom color
+                        Data customColorData = apiClient.get().getAmbientLightCustomColorState(getThingHaId());
+                        getThingChannel(CHANNEL_AMBIENT_LIGHT_CUSTOM_COLOR_STATE).ifPresent(channel -> {
+                            @Nullable
+                            String value = customColorData.getValue();
+                            if (value != null) {
+                                updateState(channel.getUID(), mapColor(value));
+                            } else {
+                                updateState(channel.getUID(), UnDefType.NULL);
+                            }
+                        });
+
+                    }
+                    return enabled ? OnOffType.ON : OnOffType.OFF;
                 } else {
                     return UnDefType.NULL;
                 }

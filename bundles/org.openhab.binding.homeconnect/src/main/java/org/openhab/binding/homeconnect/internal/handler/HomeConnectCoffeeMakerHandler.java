@@ -102,7 +102,7 @@ public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandl
             if (event.getValue() == null || event.getValueAsInt() == 0) {
                 getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
             } else {
-                defaultProgramProgressEventHandler().handle(event);
+                defaultPercentEventHandler(CHANNEL_PROGRAM_PROGRESS_STATE).handle(event);
             }
         });
     }

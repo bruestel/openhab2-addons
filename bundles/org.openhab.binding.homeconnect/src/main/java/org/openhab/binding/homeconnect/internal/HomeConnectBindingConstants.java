@@ -75,6 +75,12 @@ public class HomeConnectBindingConstants {
     public static final String EVENT_COFFEEMAKER_DRIP_TRAY_FULL = "ConsumerProducts.CoffeeMaker.Event.DripTrayFull";
     public static final String EVENT_HOOD_VENTING_LEVEL = "Cooking.Common.Option.Hood.VentingLevel";
     public static final String EVENT_HOOD_INTENSIVE_LEVEL = "Cooking.Common.Option.Hood.IntensiveLevel";
+    public static final String EVENT_FUNCTIONAL_LIGHT_STATE = "Cooking.Common.Setting.Lighting";
+    public static final String EVENT_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE = "Cooking.Common.Setting.LightingBrightness";
+    public static final String EVENT_AMBIENT_LIGHT_STATE = "BSH.Common.Setting.AmbientLightEnabled";
+    public static final String EVENT_AMBIENT_LIGHT_BRIGHTNESS_STATE = "BSH.Common.Setting.AmbientLightBrightness";
+    public static final String EVENT_AMBIENT_LIGHT_COLOR_STATE = "BSH.Common.Setting.AmbientLightColor";
+    public static final String EVENT_AMBIENT_LIGHT_CUSTOM_COLOR_STATE = "BSH.Common.Setting.AmbientLightCustomColor";
 
     // Channel IDs
     public static final String CHANNEL_DOOR_STATE = "door_state";
@@ -107,6 +113,12 @@ public class HomeConnectBindingConstants {
     public static final String CHANNEL_HOOD_VENTING_LEVEL = "hood_venting_level";
     public static final String CHANNEL_HOOD_INTENSIVE_LEVEL = "hood_intensive_level";
     public static final String CHANNEL_HOOD_ACTIONS_STATE = "hood_program_state";
+    public static final String CHANNEL_FUNCTIONAL_LIGHT_STATE = "functional_light_state";
+    public static final String CHANNEL_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE = "functional_light_brightness_state";
+    public static final String CHANNEL_AMBIENT_LIGHT_STATE = "ambient_light_state";
+    public static final String CHANNEL_AMBIENT_LIGHT_BRIGHTNESS_STATE = "ambient_light_brightness_state";
+    public static final String CHANNEL_AMBIENT_LIGHT_COLOR_STATE = "ambient_light_color_state";
+    public static final String CHANNEL_AMBIENT_LIGHT_CUSTOM_COLOR_STATE = "ambient_light_custom_color_state";
 
     // List of all supported devices
     public static final Set<ThingTypeUID> SUPPORTED_DEVICE_THING_TYPES_UIDS = Stream.of(THING_TYPE_API_BRIDGE,
@@ -156,6 +168,7 @@ public class HomeConnectBindingConstants {
     public static final String STAGE_INTENSIVE_STAGE_OFF = "Cooking.Hood.EnumType.IntensiveStage.IntensiveStageOff";
     public static final String STAGE_INTENSIVE_STAGE_1 = "Cooking.Hood.EnumType.IntensiveStage.IntensiveStage1";
     public static final String STAGE_INTENSIVE_STAGE_2 = "Cooking.Hood.EnumType.IntensiveStage.IntensiveStage2";
+    public static final String STATE_AMBIENT_LIGHT_COLOR_CUSTOM_COLOR = "BSH.Common.EnumType.AmbientLightColor.CustomColor";
 
     // List of programs
     public static final String PROGRAM_HOOD_AUTOMATIC = "Cooking.Common.Program.Hood.Automatic";

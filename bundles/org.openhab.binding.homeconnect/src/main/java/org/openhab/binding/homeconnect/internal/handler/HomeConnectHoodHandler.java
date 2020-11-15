@@ -13,8 +13,15 @@
 package org.openhab.binding.homeconnect.internal.handler;
 
 import static java.lang.String.format;
+import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.PERCENT;
 import static org.eclipse.smarthome.core.thing.ThingStatus.OFFLINE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ACTIVE_PROGRAM_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_AMBIENT_LIGHT_BRIGHTNESS_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_AMBIENT_LIGHT_COLOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_AMBIENT_LIGHT_CUSTOM_COLOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_AMBIENT_LIGHT_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_FUNCTIONAL_LIGHT_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_HOOD_ACTIONS_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_HOOD_INTENSIVE_LEVEL;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_HOOD_VENTING_LEVEL;
@@ -34,6 +41,12 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.COMMAND_VENTING_INTENSIVE_1;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.COMMAND_VENTING_INTENSIVE_2;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_ACTIVE_PROGRAM;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_AMBIENT_LIGHT_BRIGHTNESS_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_AMBIENT_LIGHT_COLOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_AMBIENT_LIGHT_CUSTOM_COLOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_AMBIENT_LIGHT_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_FUNCTIONAL_LIGHT_STATE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_HOOD_INTENSIVE_LEVEL;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_HOOD_VENTING_LEVEL;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.EVENT_LOCAL_CONTROL_ACTIVE;
@@ -57,6 +70,7 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_INTENSIVE_STAGE_1;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_INTENSIVE_STAGE_2;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STAGE_INTENSIVE_STAGE_OFF;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_AMBIENT_LIGHT_COLOR_CUSTOM_COLOR;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_POWER_OFF;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATE_POWER_ON;
 
@@ -66,7 +80,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.smarthome.core.library.types.HSBType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.eclipse.smarthome.core.library.types.QuantityType;
 import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -79,6 +95,7 @@ import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.exception.ApplianceOfflineException;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
+import org.openhab.binding.homeconnect.internal.client.model.Data;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,6 +137,28 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE, defaultRemoteControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE, defaultLocalControlActiveStateChannelUpdateHandler());
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
+        handlers.put(CHANNEL_AMBIENT_LIGHT_STATE, defaultAmbientLightChannelUpdateHandler());
+        handlers.put(CHANNEL_FUNCTIONAL_LIGHT_STATE,
+                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                    Optional<HomeConnectApiClient> apiClient = getApiClient();
+                    if (apiClient.isPresent()) {
+                        Data data = apiClient.get().getFunctionalLightState(getThingHaId());
+                        if (data.getValue() != null) {
+                            boolean enabled = data.getValueAsBoolean();
+                            if (enabled) {
+                                Data brightnessData = apiClient.get().getFunctionalLightBrightnessState(getThingHaId());
+                                getThingChannel(CHANNEL_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE)
+                                        .ifPresent(channel -> updateState(channel.getUID(),
+                                                new QuantityType<>(brightnessData.getValueAsInt(), PERCENT)));
+                            }
+                            return enabled ? OnOffType.ON : OnOffType.OFF;
+                        } else {
+                            return UnDefType.NULL;
+                        }
+                    } else {
+                        return UnDefType.NULL;
+                    }
+                })));
     }
 
     @Override
@@ -132,6 +171,14 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
         handlers.put(EVENT_OPERATION_STATE, defaultOperationStateEventHandler());
         handlers.put(EVENT_ACTIVE_PROGRAM, defaultActiveProgramEventHandler());
         handlers.put(EVENT_POWER_STATE, defaultPowerStateEventHandler());
+        handlers.put(EVENT_FUNCTIONAL_LIGHT_STATE, defaultBooleanEventHandler(CHANNEL_FUNCTIONAL_LIGHT_STATE));
+        handlers.put(EVENT_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE,
+                defaultPercentEventHandler(CHANNEL_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE));
+        handlers.put(EVENT_AMBIENT_LIGHT_STATE, defaultBooleanEventHandler(CHANNEL_AMBIENT_LIGHT_STATE));
+        handlers.put(EVENT_AMBIENT_LIGHT_BRIGHTNESS_STATE,
+                defaultPercentEventHandler(CHANNEL_AMBIENT_LIGHT_BRIGHTNESS_STATE));
+        handlers.put(EVENT_AMBIENT_LIGHT_COLOR_STATE, defaultAmbientLightColorStateEventHandler());
+        handlers.put(EVENT_AMBIENT_LIGHT_CUSTOM_COLOR_STATE, defaultAmbientLightCustomColorStateEventHandler());
 
         // register hood specific SSE event handlers
         handlers.put(EVENT_HOOD_INTENSIVE_LEVEL,
@@ -163,10 +210,75 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
 
             getApiClient().ifPresent(apiClient -> {
                 try {
-                    // turn hood on and off
-                    if (command instanceof OnOffType && CHANNEL_POWER_STATE.equals(channelUID.getId())) {
-                        apiClient.setPowerState(getThingHaId(),
-                                OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_OFF);
+                    if (command instanceof OnOffType) {
+                        if (CHANNEL_POWER_STATE.equals(channelUID.getId())) {
+                            apiClient.setPowerState(getThingHaId(),
+                                    OnOffType.ON.equals(command) ? STATE_POWER_ON : STATE_POWER_OFF);
+                        } else if (CHANNEL_FUNCTIONAL_LIGHT_STATE.equals(channelUID.getId())) {
+                            apiClient.setFunctionalLightState(getThingHaId(), OnOffType.ON.equals(command));
+                        } else if (CHANNEL_AMBIENT_LIGHT_STATE.equals(channelUID.getId())) {
+                            apiClient.setAmbientLightState(getThingHaId(), OnOffType.ON.equals(command));
+                        }
+                    }
+
+                    if (command instanceof QuantityType) {
+                        if (CHANNEL_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE.equals(channelUID.getId())) {
+                            Data functionalLightState = apiClient.getFunctionalLightState(getThingHaId());
+                            if (!functionalLightState.getValueAsBoolean()) {
+                                // turn on
+                                apiClient.setFunctionalLightState(getThingHaId(), true);
+                            }
+                            int value = ((QuantityType<?>) command).intValue();
+                            if (value < 10) {
+                                value = 10;
+                            } else if (value > 100) {
+                                value = 100;
+                            }
+                            apiClient.setFunctionalLightBrightnessState(getThingHaId(), value);
+                        } else if (CHANNEL_AMBIENT_LIGHT_BRIGHTNESS_STATE.equals(channelUID.getId())) {
+                            Data ambientLightState = apiClient.getAmbientLightState(getThingHaId());
+                            if (!ambientLightState.getValueAsBoolean()) {
+                                // turn on
+                                apiClient.setAmbientLightState(getThingHaId(), true);
+                            }
+                            int value = ((QuantityType<?>) command).intValue();
+                            if (value < 10) {
+                                value = 10;
+                            } else if (value > 100) {
+                                value = 100;
+                            }
+                            apiClient.setAmbientLightBrightnessState(getThingHaId(), value);
+                        }
+                    }
+
+                    // ambient light color state
+                    if (command instanceof StringType && CHANNEL_AMBIENT_LIGHT_COLOR_STATE.equals(channelUID.getId())) {
+                        Data ambientLightState = apiClient.getAmbientLightState(getThingHaId());
+                        if (!ambientLightState.getValueAsBoolean()) {
+                            // turn on
+                            apiClient.setAmbientLightState(getThingHaId(), true);
+                        }
+                        apiClient.setAmbientLightColorState(getThingHaId(), command.toFullString());
+                    }
+
+                    // ambient light custom color state
+                    if (CHANNEL_AMBIENT_LIGHT_CUSTOM_COLOR_STATE.equals(channelUID.getId())) {
+                        Data ambientLightState = apiClient.getAmbientLightState(getThingHaId());
+                        if (!ambientLightState.getValueAsBoolean()) {
+                            // turn on
+                            apiClient.setAmbientLightState(getThingHaId(), true);
+                        }
+                        Data ambientLightColorState = apiClient.getAmbientLightColorState(getThingHaId());
+                        if (!STATE_AMBIENT_LIGHT_COLOR_CUSTOM_COLOR.equals(ambientLightColorState.getValue())) {
+                            // set color to custom color
+                            apiClient.setAmbientLightColorState(getThingHaId(), STATE_AMBIENT_LIGHT_COLOR_CUSTOM_COLOR);
+                        }
+
+                        if (command instanceof HSBType) {
+                            apiClient.setAmbientLightCustomColorState(getThingHaId(), mapColor((HSBType) command));
+                        } else if (command instanceof StringType) {
+                            apiClient.setAmbientLightCustomColorState(getThingHaId(), command.toFullString());
+                        }
                     }
 
                     // program options

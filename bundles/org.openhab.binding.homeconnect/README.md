@@ -70,7 +70,12 @@ After the bridge has been added and authorized, devices are discovered automatic
 | hood_intensive_level | String | true | This option defines the intensive setting of the hood. | hood | 
 | hood_program_state | String | false | Adds hood controller actions to the appliance. The following commands are supported: `stop`, `venting1`, `venting2`, `venting3`, `venting4`, `venting5`, `ventingIntensive1`, `ventingIntensive1`, `automatic` and `delayed`. Furthermore it is possible to send raw (Home Connect JSON payload) to the home appliance. | hood | 
 | basic_actions_state | String | false | Adds basic controller actions to the appliance. The following basic commands are supported: `start` (start current selected program), `stop` (stop current program) and `selected` (show current program information). Furthermore it is possible to send raw (Home Connect JSON payload) to the home appliance. | dishwasher, oven, washer, washerdryer, dryer, coffeemaker | 
-
+| functional_light_state | Switch | false | This setting describes the current functional light state of the home appliance. | hood | 
+| functional_light_brightness_state | Number:Dimensionless | false | This setting describes the brightness state of the functional light (Value range 10 - 100%). | hood | 
+| ambient_light_state | Switch | false | This setting describes the current ambient light state of the home appliance. | dishwasher, hood | 
+| ambient_light_brightness_state | Number:Dimensionless | false | This setting describes the brightness state of the ambient light (Value range 10 - 100%). | dishwasher, hood | 
+| ambient_light_color_state | String | false | This setting describes the current ambient light color state of the home appliance. | dishwasher, hood | 
+| ambient_light_custom_color_state | Color | false | This setting describes the custom color state of the ambient light. HSB color commands are supported as well as hex color string e.g. `#11ff00`. | dishwasher, hood | 
 
             
 ## Thing Configuration
