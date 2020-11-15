@@ -40,9 +40,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 
-import org.apache.commons.httpclient.HttpStatus;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthResponseException;
@@ -298,7 +298,7 @@ public class HomeConnectServlet extends HttpServlet {
             bridgeHandler.get().getApiClient().getLatestApiRequests().forEach(apiRequest -> writer.println(
                     String.format("%s,%s", apiRequest.getTime().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME), 1)));
         } else {
-            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
+            response.sendError(HttpStatus.BAD_REQUEST_400, "Unknown bridge");
         }
     }
 
@@ -390,16 +390,16 @@ public class HomeConnectServlet extends HttpServlet {
                         break;
                     }
                     default:
-                        response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown action");
+                        response.sendError(HttpStatus.BAD_REQUEST_400, "Unknown action");
                         break;
                 }
             } catch (CommunicationException | ApplianceOfflineException | AuthorizationException e) {
                 logger.debug("Could not execute request! thingId={}, action={}, error={}", thingId, action,
                         e.getMessage());
-                response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR_500, e.getMessage());
             }
         } else {
-            response.sendError(HttpStatus.SC_BAD_REQUEST, "Thing or bridge not found!");
+            response.sendError(HttpStatus.BAD_REQUEST_400, "Thing or bridge not found!");
         }
     }
 
@@ -425,15 +425,15 @@ public class HomeConnectServlet extends HttpServlet {
                         response.getWriter().write(actionResponse);
                     }
                 } else {
-                    response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown action");
+                    response.sendError(HttpStatus.BAD_REQUEST_400, "Unknown action");
                 }
             } catch (CommunicationException | ApplianceOfflineException | AuthorizationException e) {
                 logger.debug("Could not execute request! thingId={}, action={}, error={}", thingId, action,
                         e.getMessage());
-                response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR_500, e.getMessage());
             }
         } else {
-            response.sendError(HttpStatus.SC_BAD_REQUEST, "Bridge or Thing not found!");
+            response.sendError(HttpStatus.BAD_REQUEST_400, "Bridge or Thing not found!");
         }
     }
 
@@ -464,7 +464,7 @@ public class HomeConnectServlet extends HttpServlet {
                     response.sendRedirect(authorizationUrl);
                 } catch (OAuthException e) {
                     logger.error("Could not create authorization url!", e);
-                    response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, "Could not create authorization url!");
+                    response.sendError(HttpStatus.INTERNAL_SERVER_ERROR_500, "Could not create authorization url!");
                 }
             } else {
                 logger.info("Remove access token for '{}' bridge.", bridgeHandler.getThing().getLabel());
@@ -483,7 +483,7 @@ public class HomeConnectServlet extends HttpServlet {
                 templateEngine.process("bridges", context, response.getWriter());
             }
         } else {
-            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge or action is missing!");
+            response.sendError(HttpStatus.BAD_REQUEST_400, "Unknown bridge or action is missing!");
         }
     }
 
@@ -521,7 +521,7 @@ public class HomeConnectServlet extends HttpServlet {
             responsePayload.put("requests", apiRequestList);
             response.getWriter().write(gson.toJson(responsePayload));
         } else {
-            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
+            response.sendError(HttpStatus.BAD_REQUEST_400, "Unknown bridge");
         }
     }
 
@@ -545,7 +545,7 @@ public class HomeConnectServlet extends HttpServlet {
             responsePayload.put("events", bridgeHandler.get().getEventSourceClient().getLatestEvents());
             response.getWriter().write(gson.toJson(responsePayload));
         } else {
-            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
+            response.sendError(HttpStatus.BAD_REQUEST_400, "Unknown bridge");
         }
     }
 
@@ -572,10 +572,10 @@ public class HomeConnectServlet extends HttpServlet {
                 templateEngine.process("bridges", context, response.getWriter());
             } catch (OAuthException | OAuthResponseException e) {
                 logger.error("Could not fetch token!", e);
-                response.sendError(HttpStatus.SC_INTERNAL_SERVER_ERROR, "Could not fetch token!");
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR_500, "Could not fetch token!");
             }
         } else {
-            response.sendError(HttpStatus.SC_BAD_REQUEST, "Unknown bridge");
+            response.sendError(HttpStatus.BAD_REQUEST_400, "Unknown bridge");
         }
     }
 
