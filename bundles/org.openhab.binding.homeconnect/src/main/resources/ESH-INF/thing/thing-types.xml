@@ -46,7 +46,7 @@
 			<channel id="ambient_light_state" typeId="ambient_light_state"/>
 			<channel id="ambient_light_brightness_state" typeId="ambient_light_brightness_state"/>
 			<channel id="ambient_light_color_state" typeId="ambient_light_color_state"/>
-			<channel id="ambient_light_custom_color_state" typeId="color"/>
+			<channel id="ambient_light_custom_color_state" typeId="ambient_light_custom_color_state"/>
 		</channels>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
@@ -246,7 +246,7 @@
 			<channel id="ambient_light_state" typeId="ambient_light_state"/>
 			<channel id="ambient_light_brightness_state" typeId="ambient_light_brightness_state"/>
 			<channel id="ambient_light_color_state" typeId="ambient_light_color_state"/>
-			<channel id="ambient_light_custom_color_state" typeId="color"/>
+			<channel id="ambient_light_custom_color_state" typeId="ambient_light_custom_color_state"/>
 			<channel id="functional_light_state" typeId="functional_light_state"/>
 			<channel id="functional_light_brightness_state" typeId="functional_light_brightness_state"/>
 		</channels>
@@ -522,7 +522,7 @@
 	</channel-type>
 	<channel-type id="functional_light_state">
 		<item-type>Switch</item-type>
-		<label>Functional Light State</label>
+		<label>Functional light state</label>
 		<description>This setting describes the current functional light state of the home appliance.</description>
 	</channel-type>
 	<channel-type id="functional_light_brightness_state">
@@ -533,7 +533,7 @@
 	</channel-type>
 	<channel-type id="ambient_light_state">
 		<item-type>Switch</item-type>
-		<label>Ambient Light State</label>
+		<label>Ambient light state</label>
 		<description>This setting describes the current ambient light state of the home appliance.</description>
 	</channel-type>
 	<channel-type id="ambient_light_brightness_state">
@@ -651,5 +651,14 @@
 			</options>
 		</state>
 	</channel-type>
-
+	<channel-type id="ambient_light_custom_color_state">
+		<item-type>Color</item-type>
+		<label>Ambient light custom color</label>
+		<description>This setting describes the custom color state of the ambient light.</description>
+		<category>Colorpicker</category>
+		<tags>
+			<tag>Lighting</tag>
+		</tags>
+		<state readOnly="false"/>
+	</channel-type>
 </thing:thing-descriptions>

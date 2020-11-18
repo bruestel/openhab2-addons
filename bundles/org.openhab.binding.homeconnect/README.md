@@ -73,9 +73,9 @@ After the bridge has been added and authorized, devices are discovered automatic
 | functional_light_state | Switch | false | This setting describes the current functional light state of the home appliance. | hood | 
 | functional_light_brightness_state | Number:Dimensionless | false | This setting describes the brightness state of the functional light (Value range 10 - 100%). | hood | 
 | ambient_light_state | Switch | false | This setting describes the current ambient light state of the home appliance. | dishwasher, hood | 
-| ambient_light_brightness_state | Number:Dimensionless | false | This setting describes the brightness state of the ambient light (Value range 10 - 100%). | dishwasher, hood | 
+| ambient_light_brightness_state | Number:Dimensionless | false | This setting describes the brightness state of the ambient light (Value range 10 - 100%). *INFO: Please note that the brightness can't be set if the ambient light color is set to `CustomColor`.* | dishwasher, hood | 
 | ambient_light_color_state | String | false | This setting describes the current ambient light color state of the home appliance. | dishwasher, hood | 
-| ambient_light_custom_color_state | Color | false | This setting describes the custom color state of the ambient light. HSB color commands are supported as well as hex color string e.g. `#11ff00`. | dishwasher, hood | 
+| ambient_light_custom_color_state | Color | false | This setting describes the custom color state of the ambient light. HSB color commands are supported as well as hex color string e.g. `#11ff00`. *INFO: Please note that the brightness can't be set.* | dishwasher, hood | 
 
             
 ## Thing Configuration
