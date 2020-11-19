@@ -96,7 +96,8 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
                     String name = appliance.getBrand() + " " + appliance.getName() + " (" + appliance.getHaId() + ")";
 
                     DiscoveryResult discoveryResult = DiscoveryResultBuilder
-                            .create(new ThingUID(BINDING_ID, appliance.getType(), appliance.getHaId()))
+                            .create(new ThingUID(BINDING_ID, appliance.getType(),
+                                    bridgeHandler.getThing().getUID().getId(), appliance.getHaId()))
                             .withThingType(thingTypeUID).withProperties(properties)
                             .withBridge(bridgeHandler.getThing().getUID()).withLabel(name).build();
                     thingDiscovered(discoveryResult);
