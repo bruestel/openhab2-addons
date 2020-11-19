@@ -47,7 +47,9 @@ public class Option {
     }
 
     public int getValueAsInt() {
-        return value != null ? Integer.parseInt(value) : 0;
+        @Nullable
+        String stringValue = value;
+        return stringValue != null ? Integer.parseInt(stringValue) : 0;
     }
 
     public @Nullable String getUnit() {

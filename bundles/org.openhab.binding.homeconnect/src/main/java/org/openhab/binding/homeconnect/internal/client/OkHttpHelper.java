@@ -31,6 +31,7 @@ import javax.net.ssl.X509TrustManager;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.smarthome.core.auth.client.oauth2.AccessTokenResponse;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
@@ -45,7 +46,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.sun.research.ws.wadl.HTTPMethods;
 
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Bucket4j;
@@ -113,7 +113,7 @@ public class OkHttpHelper {
 
         if (enableRateLimiting) {
             builder.addInterceptor(chain -> {
-                if (HTTPMethods.GET.value().equals(chain.request().method())) {
+                if (HttpMethod.GET.name().equals(chain.request().method())) {
                     try {
                         BUCKET.asScheduler().consume(1);
                     } catch (InterruptedException e) {
@@ -158,9 +158,13 @@ public class OkHttpHelper {
                 throw new AuthorizationException("No access token available!");
             }
         } catch (IOException e) {
-            throw new CommunicationException(e.getMessage(), e);
+            @Nullable
+            String errorMessage = e.getMessage();
+            throw new CommunicationException(errorMessage != null ? errorMessage : "IOException", e);
         } catch (OAuthException | OAuthResponseException e) {
-            throw new AuthorizationException(e.getMessage(), e);
+            @Nullable
+            String errorMessage = e.getMessage();
+            throw new AuthorizationException(errorMessage != null ? errorMessage : "oAuth exception", e);
         }
     }
 }

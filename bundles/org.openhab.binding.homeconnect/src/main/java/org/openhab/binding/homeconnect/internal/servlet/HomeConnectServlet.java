@@ -183,41 +183,51 @@ public class HomeConnectServlet extends HttpServlet {
 
         String path = request.getPathInfo();
         if (path == null || path.isEmpty() || path.equals(ROOT_PATH)) {
+            @Nullable
             String code = request.getParameter(PARAM_CODE);
+            @Nullable
             String state = request.getParameter(PARAM_STATE);
-            if (!isEmpty(code) && !isEmpty(state)) {
+            if (code != null && state != null && !isEmpty(code) && !isEmpty(state)) {
                 getBridgeAuthenticationPage(request, response, code, state);
             } else {
                 getBridgesPage(request, response);
             }
         } else if (pathMatches(path, REQUEST_COUNT_PATH)) {
+            @Nullable
             String action = request.getParameter(PARAM_ACTION);
+            @Nullable
             String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
-            if (!isEmpty(action) && !isEmpty(bridgeId)) {
+            if (action != null && bridgeId != null && !isEmpty(action) && !isEmpty(bridgeId)) {
                 getApiRequestsPerSecondCsv(response, bridgeId);
             } else {
                 getRequestCountPage(request, response);
             }
         } else if (pathMatches(path, APPLIANCES_PATH)) {
+            @Nullable
             String action = request.getParameter(PARAM_ACTION);
+            @Nullable
             String thingId = request.getParameter(PARAM_THING_ID);
-            if (!isEmpty(action) && !isEmpty(thingId)) {
+            if (action != null && thingId != null && !isEmpty(action) && !isEmpty(thingId)) {
                 processApplianceActions(response, action, thingId);
             } else {
                 getAppliancesPage(request, response);
             }
         } else if (pathMatches(path, REQUEST_LOG_PATH)) {
+            @Nullable
             String export = request.getParameter(PARAM_EXPORT);
+            @Nullable
             String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
-            if (!isEmpty(export) && !isEmpty(bridgeId)) {
+            if (export != null && bridgeId != null && !isEmpty(export) && !isEmpty(bridgeId)) {
                 getRequestLogExport(response, bridgeId);
             } else {
                 getRequestLogPage(request, response);
             }
         } else if (pathMatches(path, EVENT_LOG_PATH)) {
+            @Nullable
             String export = request.getParameter(PARAM_EXPORT);
+            @Nullable
             String bridgeId = request.getParameter(PARAM_BRIDGE_ID);
-            if (!isEmpty(export) && !isEmpty(bridgeId)) {
+            if (export != null && bridgeId != null && !isEmpty(export) && !isEmpty(bridgeId)) {
                 getEventLogExport(response, bridgeId);
             } else {
                 getEventLogPage(request, response);
@@ -245,13 +255,16 @@ public class HomeConnectServlet extends HttpServlet {
             }
         } else if (pathMatches(path, APPLIANCES_PATH)) {
             String requestPayload = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-            if ((ACTION_PUT_RAW.equals(request.getParameter(PARAM_ACTION))
-                    || ACTION_GET_RAW.equals(request.getParameter(PARAM_ACTION)))
-                    && request.getParameter(PARAM_THING_ID) != null) {
-                String thingId = request.getParameter(PARAM_THING_ID);
-                String putPath = request.getParameter(PARAM_PATH);
-                String action = request.getParameter(PARAM_ACTION);
-                processRawApplianceActions(response, action, thingId, putPath, requestPayload);
+            @Nullable
+            String action = request.getParameter(PARAM_ACTION);
+            @Nullable
+            String thingId = request.getParameter(PARAM_THING_ID);
+            @Nullable
+            String targetPath = request.getParameter(PARAM_PATH);
+
+            if ((ACTION_PUT_RAW.equals(action) || ACTION_GET_RAW.equals(action)) && thingId != null
+                    && targetPath != null && action != null) {
+                processRawApplianceActions(response, action, thingId, targetPath, requestPayload);
             } else {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
             }

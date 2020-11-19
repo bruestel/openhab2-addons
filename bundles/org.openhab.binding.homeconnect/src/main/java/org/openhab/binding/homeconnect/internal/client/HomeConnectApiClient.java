@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -642,7 +643,8 @@ public class HomeConnectApiClient {
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         if (availableProgramOptionsCache.containsKey(programKey)) {
             logger.debug("Returning cached options for '{}'.", programKey);
-            return availableProgramOptionsCache.get(programKey);
+            List<AvailableProgramOption> availableProgramOptions = availableProgramOptionsCache.get(programKey);
+            return availableProgramOptions != null ? availableProgramOptions : Collections.emptyList();
         }
 
         String path = "/api/homeappliances/" + haId + "/programs/available/" + programKey;
@@ -815,9 +817,9 @@ public class HomeConnectApiClient {
 
         if (data.getValue() != null) {
             if (valueType == VALUE_TYPE_INT) {
-                innerObject.addProperty("value", Integer.valueOf(data.getValue()));
+                innerObject.addProperty("value", data.getValueAsInt());
             } else if (valueType == VALUE_TYPE_BOOLEAN) {
-                innerObject.addProperty("value", Boolean.valueOf(data.getValue()));
+                innerObject.addProperty("value", data.getValueAsBoolean());
             } else {
                 innerObject.addProperty("value", data.getValue());
             }
@@ -855,7 +857,7 @@ public class HomeConnectApiClient {
 
         if (option.getValue() != null) {
             if (asInt) {
-                innerObject.addProperty("value", Integer.valueOf(option.getValue()));
+                innerObject.addProperty("value", option.getValueAsInt());
             } else {
                 innerObject.addProperty("value", option.getValue());
             }

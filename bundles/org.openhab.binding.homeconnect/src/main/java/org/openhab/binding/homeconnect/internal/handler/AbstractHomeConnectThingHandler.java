@@ -290,12 +290,14 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             updateChannels();
         }
 
-        if (EVENT_OPERATION_STATE.equals(event.getKey())) {
+        @Nullable
+        String key = event.getKey();
+        if (EVENT_OPERATION_STATE.equals(key)) {
             operationState = event.getValue() == null ? null : event.getValue();
         }
 
-        if (event.getKey() != null && eventHandlers.containsKey(event.getKey())) {
-            eventHandlers.get(event.getKey()).handle(event);
+        if (key != null && eventHandlers.containsKey(key)) {
+            eventHandlers.get(key).handle(event);
         }
 
         accessible.set(true);

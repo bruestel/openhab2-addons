@@ -119,7 +119,9 @@ public class Event {
     }
 
     public int getValueAsInt() {
-        return value != null ? Float.valueOf(value).intValue() : 0;
+        @Nullable
+        String stringValue = value;
+        return stringValue != null ? Float.valueOf(stringValue).intValue() : 0;
     }
 
     public @Nullable String getUnit() {
