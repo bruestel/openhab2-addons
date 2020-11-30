@@ -256,12 +256,14 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
     }
 
     private void cleanup() {
-        apiRequestHistory = new ArrayList<>();
+        ArrayList<ApiRequest> apiRequestHistory = new ArrayList<>();
         apiRequestHistory.addAll(apiClient.getLatestApiRequests());
+        this.apiRequestHistory = apiRequestHistory;
         apiClient.getLatestApiRequests().clear();
 
-        eventHistory = new ArrayList<>();
+        ArrayList<Event> eventHistory = new ArrayList<>();
         eventHistory.addAll(eventSourceClient.getLatestEvents());
+        this.eventHistory = eventHistory;
         eventSourceClient.getLatestEvents().clear();
         eventSourceClient.dispose();
 

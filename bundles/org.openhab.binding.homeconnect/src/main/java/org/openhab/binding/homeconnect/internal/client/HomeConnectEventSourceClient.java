@@ -51,7 +51,7 @@ public class HomeConnectEventSourceClient {
     private static final String TEXT_EVENT_STREAM = "text/event-stream";
     private static final int SSE_REQUEST_READ_TIMEOUT = 90;
     private static final String ACCEPT = "Accept";
-    private static final int EVENT_QUEUE_SIZE = 150;
+    private static final int EVENT_QUEUE_SIZE = 300;
 
     private final String apiUrl;
     private final EventSource.Factory eventSourceFactory;
@@ -111,7 +111,11 @@ public class HomeConnectEventSourceClient {
      */
     public synchronized void unregisterEventListener(HomeConnectEventListener eventListener) {
         if (eventSourceConnections.containsKey(eventListener)) {
-            eventSourceConnections.get(eventListener).cancel();
+            @Nullable
+            EventSource eventSource = eventSourceConnections.get(eventListener);
+            if (eventSource != null) {
+                eventSource.cancel();
+            }
             eventSourceConnections.remove(eventListener);
         }
     }

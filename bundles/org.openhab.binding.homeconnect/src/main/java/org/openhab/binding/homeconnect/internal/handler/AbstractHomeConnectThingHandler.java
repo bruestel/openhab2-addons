@@ -297,7 +297,11 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         }
 
         if (key != null && eventHandlers.containsKey(key)) {
-            eventHandlers.get(key).handle(event);
+            @Nullable
+            EventHandler eventHandler = eventHandlers.get(key);
+            if (eventHandler != null) {
+                eventHandler.handle(event);
+            }
         }
 
         accessible.set(true);
@@ -578,7 +582,11 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                                                                                          // state channel
                 && channelUpdateHandlers.containsKey(channelUID.getId())) {
             try {
-                channelUpdateHandlers.get(channelUID.getId()).handle(channelUID, expiringStateMap);
+                @Nullable
+                ChannelUpdateHandler channelUpdateHandler = channelUpdateHandlers.get(channelUID.getId());
+                if (channelUpdateHandler != null) {
+                    channelUpdateHandler.handle(channelUID, expiringStateMap);
+                }
             } catch (ApplianceOfflineException e) {
                 logger.debug(
                         "API communication problem while trying to update! Appliance offline. thing={}, haId={}, error={}",
