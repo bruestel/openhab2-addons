@@ -26,7 +26,6 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 import java.util.TimeZone;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -70,13 +69,13 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
     private final Logger logger;
     private final JsonParser jsonParser;
     private final ScheduledFuture<?> eventSourceMonitorFuture;
-    private final Queue<Event> eventQueue;
+    private final CircularQueue<Event> eventQueue;
 
     private @Nullable LocalDateTime lastEventReceived;
 
     public HomeConnectEventSourceListener(String haId, final HomeConnectEventListener eventListener,
             final HomeConnectEventSourceClient client, final ScheduledExecutorService scheduler,
-            Queue<Event> eventQueue) {
+            CircularQueue<Event> eventQueue) {
         this.haId = haId;
         this.eventListener = eventListener;
         this.client = client;

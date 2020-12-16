@@ -206,5 +206,4 @@ public class HomeConnectBindingConstants {
     public static final String COMMAND_VENTING_INTENSIVE_2 = "ventingIntensive2";
     public static final String COMMAND_AUTOMATIC = "automatic";
     public static final String COMMAND_DELAYED_SHUT_OFF = "delayed";
-
 }

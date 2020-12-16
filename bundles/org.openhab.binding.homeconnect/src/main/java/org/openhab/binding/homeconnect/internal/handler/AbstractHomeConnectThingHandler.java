@@ -78,10 +78,9 @@ import static org.openhab.binding.homeconnect.internal.client.model.EventType.CO
 import static org.openhab.binding.homeconnect.internal.client.model.EventType.DISCONNECTED;
 import static org.openhab.binding.homeconnect.internal.client.model.EventType.KEEP_ALIVE;
 
+import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
@@ -92,10 +91,10 @@ import java.util.function.Function;
 import javax.measure.Unit;
 import javax.measure.quantity.Temperature;
 
-import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
+import org.eclipse.smarthome.core.cache.ExpiringCacheMap;
 import org.eclipse.smarthome.core.library.types.HSBType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.OpenClosedType;
@@ -153,7 +152,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     private final ConcurrentHashMap<String, EventHandler> eventHandlers;
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
     private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
-    private final Map<ChannelUID, State> expiringStateMap;
+    private final ExpiringCacheMap<ChannelUID, State> expiringStateMap;
     private final AtomicBoolean accessible;
     private final Logger logger;
 
@@ -164,7 +163,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         channelUpdateHandlers = new ConcurrentHashMap<>();
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
         logger = LoggerFactory.getLogger(AbstractHomeConnectThingHandler.class);
-        expiringStateMap = Collections.synchronizedMap(new PassiveExpiringMap<>(TimeUnit.SECONDS.toMillis(CACHE_TTL)));
+        expiringStateMap = new ExpiringCacheMap<>(Duration.ofSeconds(CACHE_TTL));
         accessible = new AtomicBoolean(false);
 
         configureEventHandlers(eventHandlers);
@@ -1209,15 +1208,17 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         });
     }
 
-    protected State cachePutIfAbsentAndGet(ChannelUID channelUID, Map<ChannelUID, State> cache,
+    protected State cachePutIfAbsentAndGet(ChannelUID channelUID, ExpiringCacheMap<ChannelUID, State> cache,
             SupplierWithException<State> supplier)
             throws AuthorizationException, ApplianceOfflineException, CommunicationException {
         // noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized (cache) {
+            @Nullable
             State state = cache.get(channelUID);
             if (state == null) {
                 state = supplier.get();
-                cache.put(channelUID, state);
+                cache.put(channelUID, () -> UnDefType.NULL);
+                cache.putValue(channelUID, state);
             }
             return state;
         }

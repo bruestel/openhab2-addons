@@ -15,16 +15,14 @@ package org.openhab.binding.homeconnect.internal.client;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_BASE_URL;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_SIMULATOR_BASE_URL;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.QueueUtils;
-import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
@@ -58,7 +56,7 @@ public class HomeConnectEventSourceClient {
     private final OAuthClientService oAuthClientService;
     private final Map<HomeConnectEventListener, EventSource> eventSourceConnections;
     private final ScheduledExecutorService scheduler;
-    private final Queue<Event> eventQueue;
+    private final CircularQueue<Event> eventQueue;
 
     private final Logger logger;
 
@@ -71,7 +69,7 @@ public class HomeConnectEventSourceClient {
         eventSourceFactory = EventSources.createFactory(OkHttpHelper.builder(false)
                 .readTimeout(SSE_REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).retryOnConnectionFailure(true).build());
         eventSourceConnections = new HashMap<>();
-        eventQueue = QueueUtils.synchronizedQueue(new CircularFifoQueue<>(EVENT_QUEUE_SIZE));
+        eventQueue = new CircularQueue<>(EVENT_QUEUE_SIZE);
         if (eventHistory != null) {
             eventQueue.addAll(eventHistory);
         }
@@ -140,19 +138,19 @@ public class HomeConnectEventSourceClient {
     /**
      * Get latest events
      *
-     * @return thread safe queue
+     * @return event queue
      */
-    public Queue<Event> getLatestEvents() {
-        return eventQueue;
+    public Collection<Event> getLatestEvents() {
+        return eventQueue.getAll();
     }
 
     /**
      * Get latest events by haId
      *
      * @param haId appliance id
-     * @return thread safe queue
+     * @return event queue
      */
     public List<Event> getLatestEvents(String haId) {
-        return eventQueue.stream().filter(event -> haId.equals(event.getHaId())).collect(Collectors.toList());
+        return eventQueue.getAll().stream().filter(event -> haId.equals(event.getHaId())).collect(Collectors.toList());
     }
 }

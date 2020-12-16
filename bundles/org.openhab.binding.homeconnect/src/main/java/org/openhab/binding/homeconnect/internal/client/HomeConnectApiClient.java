@@ -30,16 +30,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.collections4.QueueUtils;
-import org.apache.commons.collections4.queue.CircularFifoQueue;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthClientService;
@@ -92,7 +90,7 @@ public class HomeConnectApiClient {
     private final String apiUrl;
     private final Map<String, List<AvailableProgramOption>> availableProgramOptionsCache;
     private final OAuthClientService oAuthClientService;
-    private final Queue<ApiRequest> communicationQueue;
+    private final CircularQueue<ApiRequest> communicationQueue;
     private final JsonParser jsonParser;
 
     public HomeConnectApiClient(OAuthClientService oAuthClientService, boolean simulated,
@@ -104,7 +102,7 @@ public class HomeConnectApiClient {
         client = OkHttpHelper.builder(true).readTimeout(REQUEST_READ_TIMEOUT, TimeUnit.SECONDS).build();
         logger = LoggerFactory.getLogger(HomeConnectApiClient.class);
         jsonParser = new JsonParser();
-        communicationQueue = QueueUtils.synchronizedQueue(new CircularFifoQueue<>(COMMUNICATION_QUEUE_SIZE));
+        communicationQueue = new CircularQueue<>(COMMUNICATION_QUEUE_SIZE);
         if (apiRequestHistory != null) {
             communicationQueue.addAll(apiRequestHistory);
         }
@@ -669,10 +667,10 @@ public class HomeConnectApiClient {
     /**
      * Get latest API requests.
      *
-     * @return thread safe queue
+     * @return communication queue
      */
-    public Queue<ApiRequest> getLatestApiRequests() {
-        return communicationQueue;
+    public Collection<ApiRequest> getLatestApiRequests() {
+        return communicationQueue.getAll();
     }
 
     private Data getSetting(String haId, String setting)

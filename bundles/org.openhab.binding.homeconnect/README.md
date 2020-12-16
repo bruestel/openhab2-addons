@@ -234,8 +234,8 @@ b) You could have a look at the request logs and extract the payload from there.
 1. On the physical device, select your desired program with the appropriate options.
 2. Open the appliance section of the binding UI (http(s)://[YOUROPENHAB]:[YOURPORT]/appliances) and click the 'Selected Program' button.
 ![Screenshot Home Connect wizard page 4](doc/selected_program_1.png "Get selected program")
-3. Copy the JSON payload. In a further step, this payload will be used to start the program.  
-  ![Screenshot Home Connect wizard page 4](doc/selected_program_2.png "Get selected program") 
+3. ![Screenshot Home Connect wizard page 4](doc/selected_program_2.png "Get selected program") Copy the JSON payload. In a further step, this payload will be used to start the program.
+
 
 #### 2. Start program
 

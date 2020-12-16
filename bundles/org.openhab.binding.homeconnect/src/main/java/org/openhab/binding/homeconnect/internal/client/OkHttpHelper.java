@@ -15,13 +15,9 @@ package org.openhab.binding.homeconnect.internal.client;
 import static io.github.bucket4j.Bandwidth.classic;
 import static io.github.bucket4j.Refill.intervally;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Bucket4j;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -34,10 +30,13 @@ import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationEx
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.time.LocalDateTime;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Bucket4j;
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
@@ -70,7 +69,8 @@ public class OkHttpHelper {
                     try {
                         BUCKET.asScheduler().consume(1);
                     } catch (InterruptedException e) {
-                        LoggerFactory.getLogger(OkHttpHelper.class).error("Rate limiting error! error={}", e.getMessage());
+                        LoggerFactory.getLogger(OkHttpHelper.class).error("Rate limiting error! error={}",
+                                e.getMessage());
                     }
                 }
                 return chain.proceed(chain.request());
