@@ -143,7 +143,6 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                 logger.debug("Device can not handle command {} in current operation state ({}). thing={}, haId={}",
                         command, operationState, getThingLabel(), getThingHaId());
             }
-
         }
     }
 

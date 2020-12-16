@@ -236,7 +236,6 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                                 logger.debug("Set setpoint temperature to {} {}. haId={}", value, unit, getThingHaId());
                                 apiClient.setProgramOptions(getThingHaId(), OPTION_SETPOINT_TEMPERATURE, value, unit,
                                         true, false);
-
                             } catch (IncommensurableException | UnconvertibleException e) {
                                 logger.warn("Could not set setpoint! haId={}, error={}", getThingHaId(),
                                         e.getMessage());

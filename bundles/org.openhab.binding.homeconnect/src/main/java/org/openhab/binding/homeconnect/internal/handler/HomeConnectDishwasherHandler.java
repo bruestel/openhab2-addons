@@ -167,7 +167,6 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
                             client.setAmbientLightCustomColorState(getThingHaId(), command.toFullString());
                         }
                     }
-
                 } catch (ApplianceOfflineException e) {
                     logger.debug("Could not handle command {}. Appliance offline. thing={}, haId={}, error={}",
                             command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());

@@ -109,12 +109,12 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
 
-    private final static String START_VENTING_INTENSIVE_STAGE_PAYLOAD_TEMPLATE = "\n" + "{\n" + "    \"data\": {\n"
+    private static final String START_VENTING_INTENSIVE_STAGE_PAYLOAD_TEMPLATE = "\n" + "{\n" + "    \"data\": {\n"
             + "        \"key\": \"Cooking.Common.Program.Hood.Venting\",\n" + "        \"options\": [\n"
             + "            {\n" + "                \"key\": \"Cooking.Common.Option.Hood.IntensiveLevel\",\n"
             + "                \"value\": \"%s\"\n" + "            }\n" + "        ]\n" + "    }\n" + "}";
 
-    private final static String START_VENTING_STAGE_PAYLOAD_TEMPLATE = "\n" + "{\n" + "    \"data\": {\n"
+    private static final String START_VENTING_STAGE_PAYLOAD_TEMPLATE = "\n" + "{\n" + "    \"data\": {\n"
             + "        \"key\": \"Cooking.Common.Program.Hood.Venting\",\n" + "        \"options\": [\n"
             + "            {\n" + "                \"key\": \"Cooking.Common.Option.Hood.VentingLevel\",\n"
             + "                \"value\": \"%s\"\n" + "            }\n" + "        ]\n" + "    }\n" + "}";

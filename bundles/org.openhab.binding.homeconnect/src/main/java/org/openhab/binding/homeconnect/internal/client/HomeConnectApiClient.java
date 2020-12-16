@@ -904,7 +904,6 @@ public class HomeConnectApiClient {
     private void checkResponseCode(List<Integer> desiredCodes, Request request, Response response,
             @Nullable String haId, @Nullable String requestPayload)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-
         if (!desiredCodes.contains(HTTP_UNAUTHORIZED) && response.code() == HTTP_UNAUTHORIZED) {
             logger.debug("Current access token is invalid.");
             String responseBody = "";

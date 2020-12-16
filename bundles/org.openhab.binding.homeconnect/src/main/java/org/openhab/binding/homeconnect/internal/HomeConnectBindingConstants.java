@@ -207,8 +207,4 @@ public class HomeConnectBindingConstants {
     public static final String COMMAND_AUTOMATIC = "automatic";
     public static final String COMMAND_DELAYED_SHUT_OFF = "delayed";
 
-    // proxy settings
-    public static final boolean HTTP_PROXY_ENABLED = false;
-    public static final String HTTP_PROXY_HOST = "localhost";
-    public static final int HTTP_PROXY_PORT = 8888;
 }

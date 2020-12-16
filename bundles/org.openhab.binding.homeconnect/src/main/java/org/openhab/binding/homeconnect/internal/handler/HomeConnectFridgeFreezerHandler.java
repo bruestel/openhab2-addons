@@ -182,7 +182,6 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                     } else if (CHANNEL_FREEZER_SETPOINT_TEMPERATURE.equals(channelUID.getId())) {
                         apiClient.get().setFreezerSetpointTemperature(getThingHaId(), value, unit);
                     }
-
                 } else if (command instanceof OnOffType && apiClient.isPresent()) {
                     if (CHANNEL_FREEZER_SUPER_MODE.equals(channelUID.getId())) {
                         apiClient.get().setFreezerSuperMode(getThingHaId(), OnOffType.ON.equals(command));

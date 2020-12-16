@@ -1212,7 +1212,6 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected State cachePutIfAbsentAndGet(ChannelUID channelUID, Map<ChannelUID, State> cache,
             SupplierWithException<State> supplier)
             throws AuthorizationException, ApplianceOfflineException, CommunicationException {
-
         // noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized (cache) {
             State state = cache.get(channelUID);
