@@ -16,11 +16,13 @@
 			<parameter name="clientSecret" type="text" required="true">
 				<label>Client secret</label>
 				<description>Application client secret</description>
+				<context>password</context>
 			</parameter>
 			<parameter name="simulator" type="boolean" required="true">
 				<label>Use simulator environment</label>
 				<description>Use simulated environment at https://developer.home-connect.com/simulator/</description>
 				<default>false</default>
+				<advanced>true</advanced>
 			</parameter>
 		</config-description>
 	</bridge-type>
@@ -48,6 +50,7 @@
 			<channel id="ambient_light_color_state" typeId="ambient_light_color_state"/>
 			<channel id="ambient_light_custom_color_state" typeId="ambient_light_custom_color_state"/>
 		</channels>
+		<representation-property>haId</representation-property>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
 				<label>haId</label>
@@ -79,6 +82,7 @@
 			<channel id="oven_current_cavity_temperature" typeId="oven_current_cavity_temperature"/>
 			<channel id="elapsed_program_time" typeId="elapsed_program_time"/>
 		</channels>
+		<representation-property>haId</representation-property>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
 				<label>haId</label>
@@ -110,6 +114,7 @@
 			<channel id="remaining_program_time_state" typeId="remaining_program_time_state"/>
 			<channel id="program_progress_state" typeId="program_progress_state"/>
 		</channels>
+		<representation-property>haId</representation-property>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
 				<label>haId</label>
@@ -140,6 +145,7 @@
 			<channel id="remaining_program_time_state" typeId="remaining_program_time_state"/>
 			<channel id="program_progress_state" typeId="program_progress_state"/>
 		</channels>
+		<representation-property>haId</representation-property>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
 				<label>haId</label>
@@ -168,6 +174,7 @@
 			<channel id="remaining_program_time_state" typeId="remaining_program_time_state"/>
 			<channel id="program_progress_state" typeId="program_progress_state"/>
 		</channels>
+		<representation-property>haId</representation-property>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
 				<label>haId</label>
@@ -190,6 +197,7 @@
 			<channel id="setpoint_temperature_freezer" typeId="setpoint_temperature_freezer"/>
 			<channel id="super_mode_freezer" typeId="super_mode_freezer"/>
 		</channels>
+		<representation-property>haId</representation-property>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
 				<label>haId</label>
@@ -218,6 +226,7 @@
 			<channel id="coffeemaker_water_tank_empty_state" typeId="coffeemaker_water_tank_empty_state"/>
 			<channel id="coffeemaker_bean_container_empty_state" typeId="coffeemaker_bean_container_empty_state"/>
 		</channels>
+		<representation-property>haId</representation-property>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
 				<label>haId</label>
@@ -250,6 +259,7 @@
 			<channel id="functional_light_state" typeId="functional_light_state"/>
 			<channel id="functional_light_brightness_state" typeId="functional_light_brightness_state"/>
 		</channels>
+		<representation-property>haId</representation-property>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
 				<label>haId</label>
@@ -273,6 +283,7 @@
 			<channel id="active_program_state" typeId="active_program_state"/>
 			<channel id="selected_program_state" typeId="selected_program_state"/>
 		</channels>
+		<representation-property>haId</representation-property>
 		<config-description>
 			<parameter name="haId" type="text" required="true">
 				<label>haId</label>
@@ -486,15 +497,16 @@
 		<item-type>Switch</item-type>
 		<label>Refrigerator super mode</label>
 		<description>The setting has no impact on setpoint temperatures but will make the fridge compartment cool to the
-			lowest possible temperature until it is disabled by the manually by the customer or by the HA because of a timeout.</description>
+			lowest possible temperature until it is disabled manually by the customer or by the HA because of a timeout.</description>
 		<state readOnly="false"/>
 	</channel-type>
 	<channel-type id="super_mode_freezer">
 		<item-type>Switch</item-type>
 		<label>Freezer super mode</label>
 		<description>This setting has no impact on setpoint temperatures but will make the freezer compartment cool to the
-			lowest possible temperature until it is disabled by the manually by the customer or by the home appliance because of
-			a timeout.</description>
+			lowest possible temperature until it is disabled manually by the customer or by the home appliance because of
+			a
+			timeout.</description>
 		<state readOnly="false"/>
 	</channel-type>
 	<channel-type id="dryer_drying_target">

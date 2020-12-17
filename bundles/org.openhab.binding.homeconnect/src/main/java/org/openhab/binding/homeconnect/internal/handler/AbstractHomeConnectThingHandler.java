@@ -215,39 +215,31 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 if (command instanceof RefreshType) {
                     updateChannel(channelUID);
                 } else if (command instanceof StringType && CHANNEL_BASIC_ACTIONS_STATE.equals(channelUID.getId())
-                        && homeConnectApiClient.isPresent()) {
+                        && homeConnectApiClient.isPresent() && getBridgeHandler().isPresent()) {
                     HomeConnectApiClient apiClient = homeConnectApiClient.get();
                     updateState(channelUID, new StringType(""));
 
                     if (COMMAND_START.equalsIgnoreCase(command.toFullString())) {
-                        @Nullable
-                        Bridge bridge = getBridge();
-                        if (bridge != null) {
+                        HomeConnectBridgeHandler homeConnectBridgeHandler = getBridgeHandler().get();
+                        // workaround for api bug
+                        // if simulator, program options have to be passed along with the desired program
+                        // if non simulator, some options throw a "SDK.Error.UnsupportedOption" error
+                        if (homeConnectBridgeHandler.getConfiguration().isSimulator()) {
+                            apiClient.startSelectedProgram(getThingHaId());
+                        } else {
                             @Nullable
-                            BridgeHandler bridgeHandler = bridge.getHandler();
-                            if (bridgeHandler instanceof HomeConnectBridgeHandler) {
-                                HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
-                                // workaround for api bug
-                                // if simulator, program options have to be passed along with the desired program
-                                // if non simulator, some options throw a "SDK.Error.UnsupportedOption" error
-                                if (homeConnectBridgeHandler.getConfiguration().isSimulator()) {
-                                    apiClient.startSelectedProgram(getThingHaId());
-                                } else {
-                                    @Nullable
-                                    Program selectedProgram = apiClient.getSelectedProgram(getThingHaId());
-                                    if (selectedProgram != null) {
-                                        apiClient.startProgram(getThingHaId(), selectedProgram.getKey());
-                                    }
-                                }
+                            Program selectedProgram = apiClient.getSelectedProgram(getThingHaId());
+                            if (selectedProgram != null) {
+                                apiClient.startProgram(getThingHaId(), selectedProgram.getKey());
                             }
                         }
-
                     } else if (COMMAND_STOP.equalsIgnoreCase(command.toFullString())) {
                         apiClient.stopProgram(getThingHaId());
                     } else if (COMMAND_SELECTED.equalsIgnoreCase(command.toFullString())) {
                         apiClient.getSelectedProgram(getThingHaId());
                     } else {
-                        logger.info("Start custom program. command={} haId={}", command.toFullString(), getThingHaId());
+                        logger.debug("Start custom program. command={} haId={}", command.toFullString(),
+                                getThingHaId());
                         apiClient.startCustomProgram(getThingHaId(), command.toFullString());
                     }
                 } else if (command instanceof StringType && CHANNEL_SELECTED_PROGRAM_STATE.equals(channelUID.getId())
@@ -261,10 +253,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 resetChannelsOnOfflineEvent();
                 resetProgramStateChannels();
             } catch (CommunicationException e) {
-                logger.warn("Could not handle command {}. API communication problem! error={}, haId={}",
+                logger.info("Could not handle command {}. API communication problem! error={}, haId={}",
                         command.toFullString(), e.getMessage(), getThingHaId());
             } catch (AuthorizationException e) {
-                logger.warn("Could not handle command {}. Authorization problem! error={}, haId={}",
+                logger.debug("Could not handle command {}. Authorization problem! error={}, haId={}",
                         command.toFullString(), e.getMessage(), getThingHaId());
 
                 handleAuthenticationError(e);
@@ -334,7 +326,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 try {
                     client.registerEventListener(getThingHaId(), this);
                 } catch (CommunicationException | AuthorizationException e) {
-                    logger.error("Could not open event source connection. thing={}, haId={}, error={}", getThingLabel(),
+                    logger.warn("Could not open event source connection. thing={}, haId={}, error={}", getThingLabel(),
                             getThingHaId(), e.getMessage());
                 }
             });
@@ -578,7 +570,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         }
 
         if ((isLinked(channelUID) || CHANNEL_OPERATION_STATE.equals(channelUID.getId())) // always update operation
-                                                                                         // state channel
+                // state channel
                 && channelUpdateHandlers.containsKey(channelUID.getId())) {
             try {
                 @Nullable

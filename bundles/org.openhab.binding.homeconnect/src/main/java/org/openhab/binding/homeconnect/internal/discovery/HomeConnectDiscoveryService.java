@@ -25,7 +25,6 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER_DRYER;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +34,6 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
 import org.eclipse.smarthome.config.discovery.DiscoveryResult;
 import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
-import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
@@ -84,11 +82,8 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
                 @Nullable
                 ThingTypeUID thingTypeUID = getThingTypeUID(appliance);
 
-                if (alreadyExists(appliance.getHaId())) {
-                    logger.debug("Device {} ({}) already added as thing.", appliance.getHaId(),
-                            appliance.getType().toUpperCase());
-                } else if (thingTypeUID != null && DISCOVERABLE_DEVICE_THING_TYPES_UIDS.contains(thingTypeUID)) {
-                    logger.info("Found {} ({}).", appliance.getHaId(), appliance.getType().toUpperCase());
+                if (thingTypeUID != null && DISCOVERABLE_DEVICE_THING_TYPES_UIDS.contains(thingTypeUID)) {
+                    logger.debug("Found {} ({}).", appliance.getHaId(), appliance.getType().toUpperCase());
                     bridgeHandler.getThing().getThings().forEach(thing -> thing.getProperties().get(HA_ID));
 
                     Map<String, Object> properties = new HashMap<>();
@@ -99,6 +94,7 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
                             .create(new ThingUID(BINDING_ID, appliance.getType(),
                                     bridgeHandler.getThing().getUID().getId(), appliance.getHaId()))
                             .withThingType(thingTypeUID).withProperties(properties)
+                            .withRepresentationProperty(appliance.getHaId())
                             .withBridge(bridgeHandler.getThing().getUID()).withLabel(name).build();
                     thingDiscovered(discoveryResult);
                 } else {
@@ -107,7 +103,7 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
                 }
             }
         } catch (Exception e) {
-            logger.error("Exception during scan.", e);
+            logger.debug("Exception during scan.", e);
         }
         logger.debug("Finished device scan.");
     }
@@ -115,30 +111,13 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
     @Override
     public void deactivate() {
         super.deactivate();
-        removeOlderResults(new Date().getTime());
+        removeOlderResults(System.currentTimeMillis(), bridgeHandler.getThing().getUID());
     }
 
     @Override
     protected synchronized void stopScan() {
         super.stopScan();
-        removeOlderResults(getTimestampOfLastScan());
-    }
-
-    /**
-     * Check if device is already connected to the bridge.
-     *
-     * @param haId home appliance id
-     * @return true if appliance exists, otherwise false
-     */
-    private boolean alreadyExists(String haId) {
-        boolean exists = false;
-        List<Thing> children = bridgeHandler.getThing().getThings();
-        for (Thing child : children) {
-            if (haId.equals(child.getConfiguration().get(HA_ID))) {
-                exists = true;
-            }
-        }
-        return exists;
+        removeOlderResults(getTimestampOfLastScan(), bridgeHandler.getThing().getUID());
     }
 
     private @Nullable ThingTypeUID getThingTypeUID(HomeAppliance appliance) {

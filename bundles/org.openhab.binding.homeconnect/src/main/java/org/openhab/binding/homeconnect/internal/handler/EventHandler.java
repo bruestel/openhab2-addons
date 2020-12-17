@@ -16,7 +16,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
 
 /**
- * The {@link EventHandler} is responsible for handling events, which where send via Server-Sent event interface.
+ * The {@link EventHandler} is responsible for handling events, which were sent via Server-Sent event interface.
  *
  * @author Jonas Brüstel - Initial contribution
  */
