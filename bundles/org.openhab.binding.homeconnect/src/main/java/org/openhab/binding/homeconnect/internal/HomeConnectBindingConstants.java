@@ -44,19 +44,40 @@ public class HomeConnectBindingConstants {
     public static final ThingTypeUID THING_TYPE_HOOD = new ThingTypeUID(BINDING_ID, "hood");
     public static final ThingTypeUID THING_TYPE_COOKTOP = new ThingTypeUID(BINDING_ID, "hob");
 
+    // Setting
+    public static final String SETTING_POWER_STATE = "BSH.Common.Setting.PowerState";
+    public static final String SETTING_LIGHTING = "Cooking.Common.Setting.Lighting";
+    public static final String SETTING_AMBIENT_LIGHT_ENABLED = "BSH.Common.Setting.AmbientLightEnabled";
+    public static final String SETTING_LIGHTING_BRIGHTNESS = "Cooking.Common.Setting.LightingBrightness";
+    public static final String SETTING_AMBIENT_LIGHT_BRIGHTNESS = "BSH.Common.Setting.AmbientLightBrightness";
+    public static final String SETTING_AMBIENT_LIGHT_COLOR = "BSH.Common.Setting.AmbientLightColor";
+    public static final String SETTING_AMBIENT_LIGHT_CUSTOM_COLOR = "BSH.Common.Setting.AmbientLightCustomColor";
+    public static final String SETTING_FREEZER_SETPOINT_TEMPERATURE = "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer";
+    public static final String SETTING_REFRIGERATOR_SETPOINT_TEMPERATURE = "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator";
+    public static final String SETTING_REFRIGERATOR_SUPER_MODE = "Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator";
+    public static final String SETTING_FREEZER_SUPER_MODE = "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer";
+
+    // Status
+    public static final String STATUS_DOOR_STATE = "BSH.Common.Status.DoorState";
+    public static final String STATUS_OPERATION_STATE = "BSH.Common.Status.OperationState";
+    public static final String STATUS_OVEN_CURRENT_CAVITY_TEMPERATURE = "Cooking.Oven.Status.CurrentCavityTemperature";
+    public static final String STATUS_REMOTE_CONTROL_START_ALLOWED = "BSH.Common.Status.RemoteControlStartAllowed";
+    public static final String STATUS_REMOTE_CONTROL_ACTIVE = "BSH.Common.Status.RemoteControlActive";
+    public static final String STATUS_LOCAL_CONTROL_ACTIVE = "BSH.Common.Status.LocalControlActive";
+
     // SSE Event types
     public static final String EVENT_ELAPSED_PROGRAM_TIME = "BSH.Common.Option.ElapsedProgramTime";
-    public static final String EVENT_OVEN_CAVITY_TEMPERATURE = "Cooking.Oven.Status.CurrentCavityTemperature";
-    public static final String EVENT_POWER_STATE = "BSH.Common.Setting.PowerState";
+    public static final String EVENT_OVEN_CAVITY_TEMPERATURE = STATUS_OVEN_CURRENT_CAVITY_TEMPERATURE;
+    public static final String EVENT_POWER_STATE = SETTING_POWER_STATE;
     public static final String EVENT_CONNECTED = "CONNECTED";
     public static final String EVENT_DISCONNECTED = "DISCONNECTED";
-    public static final String EVENT_DOOR_STATE = "BSH.Common.Status.DoorState";
-    public static final String EVENT_OPERATION_STATE = "BSH.Common.Status.OperationState";
+    public static final String EVENT_DOOR_STATE = STATUS_DOOR_STATE;
+    public static final String EVENT_OPERATION_STATE = STATUS_OPERATION_STATE;
     public static final String EVENT_ACTIVE_PROGRAM = "BSH.Common.Root.ActiveProgram";
     public static final String EVENT_SELECTED_PROGRAM = "BSH.Common.Root.SelectedProgram";
-    public static final String EVENT_REMOTE_CONTROL_START_ALLOWED = "BSH.Common.Status.RemoteControlStartAllowed";
-    public static final String EVENT_REMOTE_CONTROL_ACTIVE = "BSH.Common.Status.RemoteControlActive";
-    public static final String EVENT_LOCAL_CONTROL_ACTIVE = "BSH.Common.Status.LocalControlActive";
+    public static final String EVENT_REMOTE_CONTROL_START_ALLOWED = STATUS_REMOTE_CONTROL_START_ALLOWED;
+    public static final String EVENT_REMOTE_CONTROL_ACTIVE = STATUS_REMOTE_CONTROL_ACTIVE;
+    public static final String EVENT_LOCAL_CONTROL_ACTIVE = STATUS_LOCAL_CONTROL_ACTIVE;
     public static final String EVENT_REMAINING_PROGRAM_TIME = "BSH.Common.Option.RemainingProgramTime";
     public static final String EVENT_PROGRAM_PROGRESS = "BSH.Common.Option.ProgramProgress";
     public static final String EVENT_SETPOINT_TEMPERATURE = "Cooking.Oven.Option.SetpointTemperature";
@@ -65,22 +86,22 @@ public class HomeConnectBindingConstants {
     public static final String EVENT_WASHER_SPIN_SPEED = "LaundryCare.Washer.Option.SpinSpeed";
     public static final String EVENT_WASHER_IDOS_1_DOSING_LEVEL = "LaundryCare.Washer.Option.IDos1DosingLevel";
     public static final String EVENT_WASHER_IDOS_2_DOSING_LEVEL = "LaundryCare.Washer.Option.IDos2DosingLevel";
-    public static final String EVENT_FREEZER_SETPOINT_TEMPERATURE = "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer";
-    public static final String EVENT_FRIDGE_SETPOINT_TEMPERATURE = "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator";
-    public static final String EVENT_FREEZER_SUPER_MODE = "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer";
-    public static final String EVENT_FRIDGE_SUPER_MODE = "Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator";
+    public static final String EVENT_FREEZER_SETPOINT_TEMPERATURE = SETTING_FREEZER_SETPOINT_TEMPERATURE;
+    public static final String EVENT_FRIDGE_SETPOINT_TEMPERATURE = SETTING_REFRIGERATOR_SETPOINT_TEMPERATURE;
+    public static final String EVENT_FREEZER_SUPER_MODE = SETTING_FREEZER_SUPER_MODE;
+    public static final String EVENT_FRIDGE_SUPER_MODE = SETTING_REFRIGERATOR_SUPER_MODE;
     public static final String EVENT_DRYER_DRYING_TARGET = "LaundryCare.Dryer.Option.DryingTarget";
     public static final String EVENT_COFFEEMAKER_BEAN_CONTAINER_EMPTY = "ConsumerProducts.CoffeeMaker.Event.BeanContainerEmpty";
     public static final String EVENT_COFFEEMAKER_WATER_TANK_EMPTY = "ConsumerProducts.CoffeeMaker.Event.WaterTankEmpty";
     public static final String EVENT_COFFEEMAKER_DRIP_TRAY_FULL = "ConsumerProducts.CoffeeMaker.Event.DripTrayFull";
     public static final String EVENT_HOOD_VENTING_LEVEL = "Cooking.Common.Option.Hood.VentingLevel";
     public static final String EVENT_HOOD_INTENSIVE_LEVEL = "Cooking.Common.Option.Hood.IntensiveLevel";
-    public static final String EVENT_FUNCTIONAL_LIGHT_STATE = "Cooking.Common.Setting.Lighting";
-    public static final String EVENT_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE = "Cooking.Common.Setting.LightingBrightness";
-    public static final String EVENT_AMBIENT_LIGHT_STATE = "BSH.Common.Setting.AmbientLightEnabled";
-    public static final String EVENT_AMBIENT_LIGHT_BRIGHTNESS_STATE = "BSH.Common.Setting.AmbientLightBrightness";
-    public static final String EVENT_AMBIENT_LIGHT_COLOR_STATE = "BSH.Common.Setting.AmbientLightColor";
-    public static final String EVENT_AMBIENT_LIGHT_CUSTOM_COLOR_STATE = "BSH.Common.Setting.AmbientLightCustomColor";
+    public static final String EVENT_FUNCTIONAL_LIGHT_STATE = SETTING_LIGHTING;
+    public static final String EVENT_FUNCTIONAL_LIGHT_BRIGHTNESS_STATE = SETTING_LIGHTING_BRIGHTNESS;
+    public static final String EVENT_AMBIENT_LIGHT_STATE = SETTING_AMBIENT_LIGHT_ENABLED;
+    public static final String EVENT_AMBIENT_LIGHT_BRIGHTNESS_STATE = SETTING_AMBIENT_LIGHT_BRIGHTNESS;
+    public static final String EVENT_AMBIENT_LIGHT_COLOR_STATE = SETTING_AMBIENT_LIGHT_COLOR;
+    public static final String EVENT_AMBIENT_LIGHT_CUSTOM_COLOR_STATE = SETTING_AMBIENT_LIGHT_CUSTOM_COLOR;
 
     // Channel IDs
     public static final String CHANNEL_DOOR_STATE = "door_state";

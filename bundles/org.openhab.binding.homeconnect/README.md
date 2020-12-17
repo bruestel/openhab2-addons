@@ -61,8 +61,8 @@ After the bridge has been added and authorized, devices are discovered automatic
 | dryer_drying_target | String | false | This status defines the desired dryness of a program of the home appliance. | dryer, washerdryer | 
 | setpoint_temperature_refrigerator | Number:Temperature | false | Target temperature of the refrigerator compartment (range depends on appliance - common range 2 to 8°C). | fridgefreezer | 
 | setpoint_temperature_freezer | Number:Temperature | false | Target temperature of the freezer compartment (range depends on appliance - common range -16 to -24°C). | fridgefreezer | 
-| super_mode_refrigerator | Switch | false | The setting has no impact on setpoint temperatures but will make the fridge compartment cool to the lowest possible temperature until it is disabled by the manually by the customer or by the HA because of a timeout. | fridgefreezer | 
-| super_mode_freezer | Switch | false | This setting has no impact on setpoint temperatures but will make the freezer compartment cool to the lowest possible temperature until it is disabled by the manually by the customer or by the home appliance because of a timeout. | fridgefreezer | 
+| super_mode_refrigerator | Switch | false | The setting has no impact on setpoint temperatures but will make the fridge compartment cool to the lowest possible temperature until it is disabled manually by the customer or by the HA because of a timeout. | fridgefreezer | 
+| super_mode_freezer | Switch | false | This setting has no impact on setpoint temperatures but will make the freezer compartment cool to the lowest possible temperature until it is disabled manually by the customer or by the home appliance because of a timeout. | fridgefreezer | 
 | coffeemaker_drip_tray_full_state | Switch | true | Is coffee maker drip tray full? | coffeemaker | 
 | coffeemaker_water_tank_empty_state | Switch | true | Is coffee maker water tank empty? | coffeemaker | 
 | coffeemaker_bean_container_empty_state | Switch | true | Is coffee maker bean container empty? | coffeemaker | 
@@ -118,7 +118,7 @@ The Home Connect bridge can be configured in the openHAB UI as follows:
 1. Go to the Inbox and press the add button
 2. Choose `Home Connect Binding`
 3. Select `Home Connect API`
-4. Enter
+4. Setup and save thing
     * __client id:__ your application client id
     * __client secret:__ your application client secret
     * __simulator:__ false
@@ -140,7 +140,7 @@ If you prefer to configure everything via file instead of openHAB UI, here are s
 ### things/homeconnect.things
 
 ```
-Bridge homeconnect:api_bridge:simulator_api_bridge "Home Connect API (Simulator)" [ clientId="1234", clientSecret="1234", simulator=false] {
+Bridge homeconnect:api_bridge:api_bridge1 "Home Connect API" [ clientId="1234", clientSecret="1234", simulator=false] {
     // Thing configurations
     Thing dishwasher dishwasher1 "Dishwasher"  [ haId="SIEMENS-HCS02DWH1-6F2FC400C1EA4A" ]
     Thing washer washer1 "Washer"  [ haId="SIEMENS-HCS03WCH1-1F35EC2BE34A0F" ]

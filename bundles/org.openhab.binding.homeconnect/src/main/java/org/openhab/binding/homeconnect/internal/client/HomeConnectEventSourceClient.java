@@ -77,7 +77,7 @@ public class HomeConnectEventSourceClient {
     }
 
     /**
-     * Register {@link HomeConnectEventListener} to receive events by Home Conncet API. This helps to reduce the
+     * Register {@link HomeConnectEventListener} to receive events by Home Connect API. This helps to reduce the
      * amount of request you would usually need to update all channels.
      *
      * Checkout rate limits of the API at. https://developer.home-connect.com/docs/general/ratelimiting

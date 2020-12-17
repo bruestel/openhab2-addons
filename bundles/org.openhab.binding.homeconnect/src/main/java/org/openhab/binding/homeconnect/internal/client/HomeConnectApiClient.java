@@ -23,6 +23,23 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.commons.lang.StringUtils.containsIgnoreCase;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_BASE_URL;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.API_SIMULATOR_BASE_URL;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_AMBIENT_LIGHT_BRIGHTNESS;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_AMBIENT_LIGHT_COLOR;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_AMBIENT_LIGHT_CUSTOM_COLOR;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_AMBIENT_LIGHT_ENABLED;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_FREEZER_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_FREEZER_SUPER_MODE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_LIGHTING;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_LIGHTING_BRIGHTNESS;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_POWER_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_REFRIGERATOR_SETPOINT_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.SETTING_REFRIGERATOR_SUPER_MODE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATUS_DOOR_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATUS_LOCAL_CONTROL_ACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATUS_OPERATION_STATE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATUS_OVEN_CURRENT_CAVITY_TEMPERATURE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATUS_REMOTE_CONTROL_ACTIVE;
+import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.STATUS_REMOTE_CONTROL_START_ALLOWED;
 import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.formatJsonBody;
 import static org.openhab.binding.homeconnect.internal.client.OkHttpHelper.requestBuilder;
 
@@ -78,6 +95,7 @@ public class HomeConnectApiClient {
     private static final String ACCEPT = "Accept";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String BSH_JSON_V1 = "application/vnd.bsh.sdk.v1+json";
+    private static final String BASE_PATH = "/api/homeappliances/";
     private static final MediaType BSH_JSON_V1_MEDIA_TYPE = requireNonNull(MediaType.parse(BSH_JSON_V1));
     private static final int REQUEST_READ_TIMEOUT = 30;
     private static final int VALUE_TYPE_STRING = 0;
@@ -116,7 +134,7 @@ public class HomeConnectApiClient {
      * @throws AuthorizationException oAuth authorization exception
      */
     public List<HomeAppliance> getHomeAppliances() throws CommunicationException, AuthorizationException {
-        Request request = createGetRequest("/api/homeappliances");
+        Request request = createGetRequest(BASE_PATH);
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, null, null);
 
@@ -140,7 +158,7 @@ public class HomeConnectApiClient {
      * @throws AuthorizationException oAuth authorization exception
      */
     public HomeAppliance getHomeAppliance(String haId) throws CommunicationException, AuthorizationException {
-        Request request = createGetRequest("/api/homeappliances/" + haId);
+        Request request = createGetRequest(BASE_PATH + haId);
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, haId, null);
 
@@ -166,7 +184,7 @@ public class HomeConnectApiClient {
      */
     public Data getAmbientLightState(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "BSH.Common.Setting.AmbientLightEnabled");
+        return getSetting(haId, SETTING_AMBIENT_LIGHT_ENABLED);
     }
 
     /**
@@ -180,8 +198,7 @@ public class HomeConnectApiClient {
      */
     public void setAmbientLightState(String haId, boolean enable)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId, new Data("BSH.Common.Setting.AmbientLightEnabled", String.valueOf(enable), null),
-                VALUE_TYPE_BOOLEAN);
+        putSettings(haId, new Data(SETTING_AMBIENT_LIGHT_ENABLED, String.valueOf(enable), null), VALUE_TYPE_BOOLEAN);
     }
 
     /**
@@ -195,7 +212,7 @@ public class HomeConnectApiClient {
      */
     public Data getFunctionalLightState(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "Cooking.Common.Setting.Lighting");
+        return getSetting(haId, SETTING_LIGHTING);
     }
 
     /**
@@ -209,8 +226,7 @@ public class HomeConnectApiClient {
      */
     public void setFunctionalLightState(String haId, boolean enable)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId, new Data("Cooking.Common.Setting.Lighting", String.valueOf(enable), null),
-                VALUE_TYPE_BOOLEAN);
+        putSettings(haId, new Data(SETTING_LIGHTING, String.valueOf(enable), null), VALUE_TYPE_BOOLEAN);
     }
 
     /**
@@ -224,7 +240,7 @@ public class HomeConnectApiClient {
      */
     public Data getFunctionalLightBrightnessState(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "Cooking.Common.Setting.LightingBrightness");
+        return getSetting(haId, SETTING_LIGHTING_BRIGHTNESS);
     }
 
     /**
@@ -238,8 +254,7 @@ public class HomeConnectApiClient {
      */
     public void setFunctionalLightBrightnessState(String haId, int value)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId, new Data("Cooking.Common.Setting.LightingBrightness", String.valueOf(value), "%"),
-                VALUE_TYPE_INT);
+        putSettings(haId, new Data(SETTING_LIGHTING_BRIGHTNESS, String.valueOf(value), "%"), VALUE_TYPE_INT);
     }
 
     /**
@@ -253,7 +268,7 @@ public class HomeConnectApiClient {
      */
     public Data getAmbientLightBrightnessState(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "BSH.Common.Setting.AmbientLightBrightness");
+        return getSetting(haId, SETTING_AMBIENT_LIGHT_BRIGHTNESS);
     }
 
     /**
@@ -267,8 +282,7 @@ public class HomeConnectApiClient {
      */
     public void setAmbientLightBrightnessState(String haId, int value)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId, new Data("BSH.Common.Setting.AmbientLightBrightness", String.valueOf(value), "%"),
-                VALUE_TYPE_INT);
+        putSettings(haId, new Data(SETTING_AMBIENT_LIGHT_BRIGHTNESS, String.valueOf(value), "%"), VALUE_TYPE_INT);
     }
 
     /**
@@ -282,7 +296,7 @@ public class HomeConnectApiClient {
      */
     public Data getAmbientLightColorState(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "BSH.Common.Setting.AmbientLightColor");
+        return getSetting(haId, SETTING_AMBIENT_LIGHT_COLOR);
     }
 
     /**
@@ -296,7 +310,7 @@ public class HomeConnectApiClient {
      */
     public void setAmbientLightColorState(String haId, String value)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId, new Data("BSH.Common.Setting.AmbientLightColor", value, null));
+        putSettings(haId, new Data(SETTING_AMBIENT_LIGHT_COLOR, value, null));
     }
 
     /**
@@ -310,7 +324,7 @@ public class HomeConnectApiClient {
      */
     public Data getAmbientLightCustomColorState(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "BSH.Common.Setting.AmbientLightCustomColor");
+        return getSetting(haId, SETTING_AMBIENT_LIGHT_CUSTOM_COLOR);
     }
 
     /**
@@ -324,7 +338,7 @@ public class HomeConnectApiClient {
      */
     public void setAmbientLightCustomColorState(String haId, String value)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId, new Data("BSH.Common.Setting.AmbientLightCustomColor", value, null));
+        putSettings(haId, new Data(SETTING_AMBIENT_LIGHT_CUSTOM_COLOR, value, null));
     }
 
     /**
@@ -338,7 +352,7 @@ public class HomeConnectApiClient {
      */
     public Data getPowerState(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "BSH.Common.Setting.PowerState");
+        return getSetting(haId, SETTING_POWER_STATE);
     }
 
     /**
@@ -352,7 +366,7 @@ public class HomeConnectApiClient {
      */
     public void setPowerState(String haId, String state)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId, new Data("BSH.Common.Setting.PowerState", state, null));
+        putSettings(haId, new Data(SETTING_POWER_STATE, state, null));
     }
 
     /**
@@ -366,7 +380,7 @@ public class HomeConnectApiClient {
      */
     public Data getFreezerSetpointTemperature(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer");
+        return getSetting(haId, SETTING_FREEZER_SETPOINT_TEMPERATURE);
     }
 
     /**
@@ -380,8 +394,7 @@ public class HomeConnectApiClient {
      */
     public void setFreezerSetpointTemperature(String haId, String state, String unit)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId, new Data("Refrigeration.FridgeFreezer.Setting.SetpointTemperatureFreezer", state, unit),
-                VALUE_TYPE_INT);
+        putSettings(haId, new Data(SETTING_FREEZER_SETPOINT_TEMPERATURE, state, unit), VALUE_TYPE_INT);
     }
 
     /**
@@ -395,7 +408,7 @@ public class HomeConnectApiClient {
      */
     public Data getFridgeSetpointTemperature(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator");
+        return getSetting(haId, SETTING_REFRIGERATOR_SETPOINT_TEMPERATURE);
     }
 
     /**
@@ -409,8 +422,7 @@ public class HomeConnectApiClient {
      */
     public void setFridgeSetpointTemperature(String haId, String state, String unit)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId, new Data("Refrigeration.FridgeFreezer.Setting.SetpointTemperatureRefrigerator", state, unit),
-                VALUE_TYPE_INT);
+        putSettings(haId, new Data(SETTING_REFRIGERATOR_SETPOINT_TEMPERATURE, state, unit), VALUE_TYPE_INT);
     }
 
     /**
@@ -424,7 +436,7 @@ public class HomeConnectApiClient {
      */
     public Data getFridgeSuperMode(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator");
+        return getSetting(haId, SETTING_REFRIGERATOR_SUPER_MODE);
     }
 
     /**
@@ -438,9 +450,7 @@ public class HomeConnectApiClient {
      */
     public void setFridgeSuperMode(String haId, boolean enable)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId,
-                new Data("Refrigeration.FridgeFreezer.Setting.SuperModeRefrigerator", String.valueOf(enable), null),
-                VALUE_TYPE_BOOLEAN);
+        putSettings(haId, new Data(SETTING_REFRIGERATOR_SUPER_MODE, String.valueOf(enable), null), VALUE_TYPE_BOOLEAN);
     }
 
     /**
@@ -454,7 +464,7 @@ public class HomeConnectApiClient {
      */
     public Data getFreezerSuperMode(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getSetting(haId, "Refrigeration.FridgeFreezer.Setting.SuperModeFreezer");
+        return getSetting(haId, SETTING_FREEZER_SUPER_MODE);
     }
 
     /**
@@ -468,9 +478,7 @@ public class HomeConnectApiClient {
      */
     public void setFreezerSuperMode(String haId, boolean enable)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putSettings(haId,
-                new Data("Refrigeration.FridgeFreezer.Setting.SuperModeFreezer", String.valueOf(enable), null),
-                VALUE_TYPE_BOOLEAN);
+        putSettings(haId, new Data(SETTING_FREEZER_SUPER_MODE, String.valueOf(enable), null), VALUE_TYPE_BOOLEAN);
     }
 
     /**
@@ -484,7 +492,7 @@ public class HomeConnectApiClient {
      */
     public Data getDoorState(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getStatus(haId, "BSH.Common.Status.DoorState");
+        return getStatus(haId, STATUS_DOOR_STATE);
     }
 
     /**
@@ -498,7 +506,7 @@ public class HomeConnectApiClient {
      */
     public Data getOperationState(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getStatus(haId, "BSH.Common.Status.OperationState");
+        return getStatus(haId, STATUS_OPERATION_STATE);
     }
 
     /**
@@ -512,7 +520,7 @@ public class HomeConnectApiClient {
      */
     public Data getCurrentCavityTemperature(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getStatus(haId, "Cooking.Oven.Status.CurrentCavityTemperature");
+        return getStatus(haId, STATUS_OVEN_CURRENT_CAVITY_TEMPERATURE);
     }
 
     /**
@@ -526,8 +534,8 @@ public class HomeConnectApiClient {
      */
     public boolean isRemoteControlStartAllowed(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        Data data = getStatus(haId, "BSH.Common.Status.RemoteControlStartAllowed");
-        return "true".equalsIgnoreCase(data.getValue());
+        Data data = getStatus(haId, STATUS_REMOTE_CONTROL_START_ALLOWED);
+        return Boolean.parseBoolean(data.getValue());
     }
 
     /**
@@ -541,8 +549,8 @@ public class HomeConnectApiClient {
      */
     public boolean isRemoteControlActive(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        Data data = getStatus(haId, "BSH.Common.Status.RemoteControlActive");
-        return "true".equalsIgnoreCase(data.getValue());
+        Data data = getStatus(haId, STATUS_REMOTE_CONTROL_ACTIVE);
+        return Boolean.parseBoolean(data.getValue());
     }
 
     /**
@@ -556,8 +564,8 @@ public class HomeConnectApiClient {
      */
     public boolean isLocalControlActive(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        Data data = getStatus(haId, "BSH.Common.Status.LocalControlActive");
-        return "true".equalsIgnoreCase(data.getValue());
+        Data data = getStatus(haId, STATUS_LOCAL_CONTROL_ACTIVE);
+        return Boolean.parseBoolean(data.getValue());
     }
 
     /**
@@ -571,7 +579,7 @@ public class HomeConnectApiClient {
      */
     public @Nullable Program getActiveProgram(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getProgram(haId, "/api/homeappliances/" + haId + "/programs/active");
+        return getProgram(haId, BASE_PATH + haId + "/programs/active");
     }
 
     /**
@@ -585,56 +593,54 @@ public class HomeConnectApiClient {
      */
     public @Nullable Program getSelectedProgram(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getProgram(haId, "/api/homeappliances/" + haId + "/programs/selected");
+        return getProgram(haId, BASE_PATH + haId + "/programs/selected");
     }
 
     public void setSelectedProgram(String haId, String program)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putData(haId, "/api/homeappliances/" + haId + "/programs/selected", new Data(program, null, null),
-                VALUE_TYPE_STRING);
+        putData(haId, BASE_PATH + haId + "/programs/selected", new Data(program, null, null), VALUE_TYPE_STRING);
     }
 
     public void startProgram(String haId, String program)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putData(haId, "/api/homeappliances/" + haId + "/programs/active", new Data(program, null, null),
-                VALUE_TYPE_STRING);
+        putData(haId, BASE_PATH + haId + "/programs/active", new Data(program, null, null), VALUE_TYPE_STRING);
     }
 
     public void startSelectedProgram(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         @Nullable
-        String selectedProgram = getRaw(haId, "/api/homeappliances/" + haId + "/programs/selected");
+        String selectedProgram = getRaw(haId, BASE_PATH + haId + "/programs/selected");
         if (selectedProgram != null) {
-            putRaw(haId, "/api/homeappliances/" + haId + "/programs/active", selectedProgram);
+            putRaw(haId, BASE_PATH + haId + "/programs/active", selectedProgram);
         }
     }
 
     public void startCustomProgram(String haId, String json)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putRaw(haId, "/api/homeappliances/" + haId + "/programs/active", json);
+        putRaw(haId, BASE_PATH + haId + "/programs/active", json);
     }
 
     public void setProgramOptions(String haId, String key, String value, @Nullable String unit, boolean valueAsInt,
             boolean isProgramActive) throws CommunicationException, AuthorizationException, ApplianceOfflineException {
         String programState = isProgramActive ? "active" : "selected";
 
-        putOption(haId, "/api/homeappliances/" + haId + "/programs/" + programState + "/options",
-                new Option(key, value, unit), valueAsInt);
+        putOption(haId, BASE_PATH + haId + "/programs/" + programState + "/options", new Option(key, value, unit),
+                valueAsInt);
     }
 
     public void stopProgram(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        sendDelete(haId, "/api/homeappliances/" + haId + "/programs/active");
+        sendDelete(haId, BASE_PATH + haId + "/programs/active");
     }
 
     public List<AvailableProgram> getPrograms(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getAvailablePrograms(haId, "/api/homeappliances/" + haId + "/programs");
+        return getAvailablePrograms(haId, BASE_PATH + haId + "/programs");
     }
 
     public List<AvailableProgram> getAvailablePrograms(String haId)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getAvailablePrograms(haId, "/api/homeappliances/" + haId + "/programs/available");
+        return getAvailablePrograms(haId, BASE_PATH + haId + "/programs/available");
     }
 
     public List<AvailableProgramOption> getProgramOptions(String haId, String programKey)
@@ -645,7 +651,7 @@ public class HomeConnectApiClient {
             return availableProgramOptions != null ? availableProgramOptions : Collections.emptyList();
         }
 
-        String path = "/api/homeappliances/" + haId + "/programs/available/" + programKey;
+        String path = BASE_PATH + haId + "/programs/available/" + programKey;
         Request request = createGetRequest(path);
         try (Response response = client.newCall(request).execute()) {
             checkResponseCode(HTTP_OK, request, response, haId, null);
@@ -675,7 +681,7 @@ public class HomeConnectApiClient {
 
     private Data getSetting(String haId, String setting)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getData(haId, "/api/homeappliances/" + haId + "/settings/" + setting);
+        return getData(haId, BASE_PATH + haId + "/settings/" + setting);
     }
 
     private void putSettings(String haId, Data data)
@@ -685,12 +691,12 @@ public class HomeConnectApiClient {
 
     private void putSettings(String haId, Data data, int valueType)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        putData(haId, "/api/homeappliances/" + haId + "/settings/" + data.getName(), data, valueType);
+        putData(haId, BASE_PATH + haId + "/settings/" + data.getName(), data, valueType);
     }
 
     private Data getStatus(String haId, String status)
             throws CommunicationException, AuthorizationException, ApplianceOfflineException {
-        return getData(haId, "/api/homeappliances/" + haId + "/status/" + status);
+        return getData(haId, BASE_PATH + haId + "/status/" + status);
     }
 
     public @Nullable String getRaw(String haId, String path)
