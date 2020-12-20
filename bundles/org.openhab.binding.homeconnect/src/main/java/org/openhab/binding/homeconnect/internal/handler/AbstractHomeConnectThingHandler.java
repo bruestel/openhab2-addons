@@ -95,7 +95,6 @@ import javax.measure.quantity.Temperature;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.core.auth.client.oauth2.OAuthException;
-import org.eclipse.smarthome.core.cache.ExpiringCacheMap;
 import org.eclipse.smarthome.core.library.types.HSBType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.OpenClosedType;
@@ -111,7 +110,6 @@ import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.thing.binding.BridgeHandler;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.RefreshType;
-import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
@@ -126,6 +124,7 @@ import org.openhab.binding.homeconnect.internal.client.model.Event;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.client.model.Option;
 import org.openhab.binding.homeconnect.internal.client.model.Program;
+import org.openhab.binding.homeconnect.internal.handler.cache.ExpiringStateMap;
 import org.openhab.binding.homeconnect.internal.type.HomeConnectDynamicStateDescriptionProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,7 +150,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     private final ConcurrentHashMap<String, EventHandler> eventHandlers;
     private final ConcurrentHashMap<String, ChannelUpdateHandler> channelUpdateHandlers;
     private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
-    private final ExpiringCacheMap<ChannelUID, State> expiringStateMap;
+    private final ExpiringStateMap expiringStateMap;
     private final AtomicBoolean accessible;
     private final Logger logger;
 
@@ -162,7 +161,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         channelUpdateHandlers = new ConcurrentHashMap<>();
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
         logger = LoggerFactory.getLogger(AbstractHomeConnectThingHandler.class);
-        expiringStateMap = new ExpiringCacheMap<>(Duration.ofSeconds(CACHE_TTL));
+        expiringStateMap = new ExpiringStateMap(Duration.ofSeconds(CACHE_TTL));
         accessible = new AtomicBoolean(false);
 
         configureEventHandlers(eventHandlers);
@@ -266,17 +265,17 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     @Override
     public void onEvent(Event event) {
         if (DISCONNECTED.equals(event.getType())) {
-            logger.info("Received DISCONNECTED event. Set {} to OFFLINE. haId={}", getThing().getLabel(),
+            logger.debug("Received DISCONNECTED event. Set {} to OFFLINE. haId={}", getThing().getLabel(),
                     getThingHaId());
             updateStatus(OFFLINE);
             resetChannelsOnOfflineEvent();
             resetProgramStateChannels();
         } else if (isThingOnline() && CONNECTED.equals(event.getType())) {
-            logger.info("Received CONNECTED event. Update power state channel. haId={}", getThingHaId());
+            logger.debug("Received CONNECTED event. Update power state channel. haId={}", getThingHaId());
             getThingChannel(CHANNEL_POWER_STATE).ifPresent(c -> updateChannel(c.getUID()));
         } else if (isThingOffline() && !KEEP_ALIVE.equals(event.getType())) {
             updateStatus(ONLINE);
-            logger.info("Set {} to ONLINE and update channels. haId={}", getThing().getLabel(), getThingHaId());
+            logger.debug("Set {} to ONLINE and update channels. haId={}", getThing().getLabel(), getThingHaId());
             updateChannels();
         }
 
@@ -400,7 +399,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         @Nullable
         Bridge bridge = getBridge();
         if (bridge == null) {
-            logger.warn("BridgeHandler not found. Cannot handle command without bridge. thing={}, haId={}",
+            logger.debug("BridgeHandler not found. Cannot handle command without bridge. thing={}, haId={}",
                     getThingLabel(), getThingHaId());
             return false;
         }
@@ -547,7 +546,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         }
 
         if (isBridgeOffline()) {
-            logger.warn("BridgeHandler not found or offline. Stopping update of channel {}. thing={}, haId={}",
+            logger.debug("BridgeHandler not found or offline. Stopping update of channel {}. thing={}, haId={}",
                     channelUID, getThingLabel(), getThingHaId());
             return;
         }
@@ -578,7 +577,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 logger.debug("API communication problem while trying to update! thing={}, haId={}, error={}",
                         getThingLabel(), getThingHaId(), e.getMessage());
             } catch (AuthorizationException e) {
-                logger.error("Authentication problem while trying to update! thing={}, haId={}", getThingLabel(),
+                logger.debug("Authentication problem while trying to update! thing={}, haId={}", getThingLabel(),
                         getThingHaId(), e);
                 handleAuthenticationError(e);
             }
@@ -599,16 +598,16 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         logger.debug("Resetting channel states due to OFFLINE event. thing={}, haId={}", getThingLabel(),
                 getThingHaId());
         getThingChannel(CHANNEL_POWER_STATE).ifPresent(channel -> updateState(channel.getUID(), OnOffType.OFF));
-        getThingChannel(CHANNEL_OPERATION_STATE).ifPresent(channel -> updateState(channel.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_DOOR_STATE).ifPresent(channel -> updateState(channel.getUID(), UnDefType.NULL));
+        getThingChannel(CHANNEL_OPERATION_STATE).ifPresent(channel -> updateState(channel.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_DOOR_STATE).ifPresent(channel -> updateState(channel.getUID(), UnDefType.UNDEF));
         getThingChannel(CHANNEL_LOCAL_CONTROL_ACTIVE_STATE)
-                .ifPresent(channel -> updateState(channel.getUID(), UnDefType.NULL));
+                .ifPresent(channel -> updateState(channel.getUID(), UnDefType.UNDEF));
         getThingChannel(CHANNEL_REMOTE_CONTROL_ACTIVE_STATE)
-                .ifPresent(channel -> updateState(channel.getUID(), UnDefType.NULL));
+                .ifPresent(channel -> updateState(channel.getUID(), UnDefType.UNDEF));
         getThingChannel(CHANNEL_REMOTE_START_ALLOWANCE_STATE)
-                .ifPresent(channel -> updateState(channel.getUID(), UnDefType.NULL));
+                .ifPresent(channel -> updateState(channel.getUID(), UnDefType.UNDEF));
         getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE)
-                .ifPresent(channel -> updateState(channel.getUID(), UnDefType.NULL));
+                .ifPresent(channel -> updateState(channel.getUID(), UnDefType.UNDEF));
     }
 
     /**
@@ -785,23 +784,16 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             logger.debug(
                     "Thing handler threw authentication exception --> clear credential storage thing={}, haId={} error={}",
                     getThingLabel(), getThingHaId(), exception.getMessage());
-            @Nullable
-            Bridge bridge = getBridge();
-            if (bridge != null) {
-                @Nullable
-                BridgeHandler bridgeHandler = bridge.getHandler();
-                if (bridgeHandler instanceof HomeConnectBridgeHandler) {
-                    HomeConnectBridgeHandler homeConnectBridgeHandler = (HomeConnectBridgeHandler) bridgeHandler;
 
-                    try {
-                        homeConnectBridgeHandler.getOAuthClientService().remove();
-                        homeConnectBridgeHandler.dispose();
-                        homeConnectBridgeHandler.initialize();
-                    } catch (OAuthException e) {
-                        // client is already closed --> we can ignore it
-                    }
+            getBridgeHandler().ifPresent(homeConnectBridgeHandler -> {
+                try {
+                    homeConnectBridgeHandler.getOAuthClientService().remove();
+                    homeConnectBridgeHandler.dispose();
+                    homeConnectBridgeHandler.initialize();
+                } catch (OAuthException e) {
+                    // client is already closed --> we can ignore it
                 }
-            }
+            });
         }
     }
 
@@ -828,7 +820,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(c -> updateChannel(c.getUID()));
             } else {
                 resetProgramStateChannels();
-                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
             }
         };
     }
@@ -843,7 +836,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             @Nullable
             String value = event.getValue();
             getThingChannel(CHANNEL_OPERATION_STATE).ifPresent(channel -> updateState(channel.getUID(),
-                    value == null ? UnDefType.NULL : new StringType(mapStringType(value))));
+                    value == null ? UnDefType.UNDEF : new StringType(mapStringType(value))));
 
             if (STATE_OPERATION_FINISHED.equals(event.getValue())) {
                 getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE)
@@ -865,7 +858,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             @Nullable
             String value = event.getValue();
             getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(channel -> updateState(channel.getUID(),
-                    value == null ? UnDefType.NULL : new StringType(mapStringType(value))));
+                    value == null ? UnDefType.UNDEF : new StringType(mapStringType(value))));
             if (event.getValue() == null) {
                 resetProgramStateChannels();
             }
@@ -890,13 +883,13 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     protected EventHandler defaultSelectedProgramStateEventHandler() {
         return event -> getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE)
                 .ifPresent(channel -> updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue())));
+                        event.getValue() == null ? UnDefType.UNDEF : new StringType(event.getValue())));
     }
 
     protected EventHandler defaultAmbientLightColorStateEventHandler() {
         return event -> getThingChannel(CHANNEL_AMBIENT_LIGHT_COLOR_STATE)
                 .ifPresent(channel -> updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue())));
+                        event.getValue() == null ? UnDefType.UNDEF : new StringType(event.getValue())));
     }
 
     protected EventHandler defaultAmbientLightCustomColorStateEventHandler() {
@@ -906,7 +899,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             if (value != null) {
                 updateState(channel.getUID(), mapColor(value));
             } else {
-                updateState(channel.getUID(), UnDefType.NULL);
+                updateState(channel.getUID(), UnDefType.UNDEF);
             }
         });
     }
@@ -923,7 +916,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     updateProgramOptionsStateDescriptions(programKey);
                 }
             } catch (CommunicationException | ApplianceOfflineException | AuthorizationException e) {
-                logger.warn("Could not update program options. {}", e.getMessage());
+                logger.debug("Could not update program options. {}", e.getMessage());
             }
         };
     }
@@ -934,39 +927,39 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler defaultDoorStateChannelUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 Data data = apiClient.get().getDoorState(getThingHaId());
                 if (data.getValue() != null) {
                     return STATE_DOOR_OPEN.equals(data.getValue()) ? OpenClosedType.OPEN : OpenClosedType.CLOSED;
                 } else {
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 }
             } else {
-                return UnDefType.NULL;
+                return UnDefType.UNDEF;
             }
         }));
     }
 
     protected ChannelUpdateHandler defaultPowerStateChannelUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 Data data = apiClient.get().getPowerState(getThingHaId());
                 if (data.getValue() != null) {
                     return STATE_POWER_ON.equals(data.getValue()) ? OnOffType.ON : OnOffType.OFF;
                 } else {
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 }
             } else {
-                return UnDefType.NULL;
+                return UnDefType.UNDEF;
             }
         }));
     }
 
     protected ChannelUpdateHandler defaultAmbientLightChannelUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 Data data = apiClient.get().getAmbientLightState(getThingHaId());
@@ -992,27 +985,27 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                             if (value != null) {
                                 updateState(channel.getUID(), mapColor(value));
                             } else {
-                                updateState(channel.getUID(), UnDefType.NULL);
+                                updateState(channel.getUID(), UnDefType.UNDEF);
                             }
                         });
 
                     }
                     return enabled ? OnOffType.ON : OnOffType.OFF;
                 } else {
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 }
             } else {
-                return UnDefType.NULL;
+                return UnDefType.UNDEF;
             }
         }));
     }
 
     protected ChannelUpdateHandler defaultNoOpUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, UnDefType.NULL);
+        return (channelUID, cache) -> updateState(channelUID, UnDefType.UNDEF);
     }
 
     protected ChannelUpdateHandler defaultOperationStateChannelUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 Data data = apiClient.get().getOperationState(getThingHaId());
@@ -1024,16 +1017,16 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     return new StringType(mapStringType(value));
                 } else {
                     operationState = null;
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 }
             } else {
-                return UnDefType.NULL;
+                return UnDefType.UNDEF;
             }
         }));
     }
 
     protected ChannelUpdateHandler defaultRemoteControlActiveStateChannelUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 return apiClient.get().isRemoteControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF;
@@ -1043,7 +1036,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler defaultLocalControlActiveStateChannelUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 return apiClient.get().isLocalControlActive(getThingHaId()) ? OnOffType.ON : OnOffType.OFF;
@@ -1053,7 +1046,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler defaultRemoteStartAllowanceChannelUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 return apiClient.get().isRemoteControlStartAllowed(getThingHaId()) ? OnOffType.ON : OnOffType.OFF;
@@ -1063,7 +1056,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     }
 
     protected ChannelUpdateHandler defaultSelectedProgramStateUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 @Nullable
@@ -1072,15 +1065,15 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     processProgramOptions(program.getOptions());
                     return new StringType(program.getKey());
                 } else {
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 }
             }
-            return UnDefType.NULL;
+            return UnDefType.UNDEF;
         }));
     }
 
     protected ChannelUpdateHandler updateProgramOptionsStateDescriptionsAndSelectedProgramStateUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 @Nullable
@@ -1092,15 +1085,15 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
 
                     return new StringType(program.getKey());
                 } else {
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 }
             }
-            return UnDefType.NULL;
+            return UnDefType.UNDEF;
         }));
     }
 
     protected ChannelUpdateHandler defaultActiveProgramStateUpdateHandler() {
-        return (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+        return (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
             Optional<HomeConnectApiClient> apiClient = getApiClient();
             if (apiClient.isPresent()) {
                 @Nullable
@@ -1111,10 +1104,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                     return new StringType(mapStringType(program.getKey()));
                 } else {
                     resetProgramStateChannels();
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 }
             }
-            return UnDefType.NULL;
+            return UnDefType.UNDEF;
         }));
     }
 
@@ -1187,22 +1180,6 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
                 }
             }
         });
-    }
-
-    protected State cachePutIfAbsentAndGet(ChannelUID channelUID, ExpiringCacheMap<ChannelUID, State> cache,
-            SupplierWithException<State> supplier)
-            throws AuthorizationException, ApplianceOfflineException, CommunicationException {
-        // noinspection SynchronizationOnLocalVariableOrMethodParameter
-        synchronized (cache) {
-            @Nullable
-            State state = cache.get(channelUID);
-            if (state == null) {
-                state = supplier.get();
-                cache.put(channelUID, () -> UnDefType.NULL);
-                cache.putValue(channelUID, state);
-            }
-            return state;
-        }
     }
 
     protected String convertWasherTemperature(String value) {
@@ -1308,6 +1285,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture1;
         if (reinitializationFuture != null) {
             reinitializationFuture.cancel(false);
+            this.reinitializationFuture1 = null;
         }
     }
 
@@ -1336,6 +1314,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture2;
         if (reinitializationFuture != null) {
             reinitializationFuture.cancel(false);
+            this.reinitializationFuture2 = null;
         }
     }
 }

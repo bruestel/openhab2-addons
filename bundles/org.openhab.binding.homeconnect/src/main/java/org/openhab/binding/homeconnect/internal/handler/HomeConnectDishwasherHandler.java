@@ -174,10 +174,10 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
                     resetChannelsOnOfflineEvent();
                     resetProgramStateChannels();
                 } catch (CommunicationException e) {
-                    logger.warn("Could not handle command {}. API communication problem! haId={}, error={}",
+                    logger.debug("Could not handle command {}. API communication problem! haId={}, error={}",
                             command.toFullString(), getThingHaId(), e.getMessage());
                 } catch (AuthorizationException e) {
-                    logger.warn("Could not handle command {}. Authorization problem! haId={}, error={}",
+                    logger.debug("Could not handle command {}. Authorization problem! haId={}, error={}",
                             command.toFullString(), getThingHaId(), e.getMessage());
 
                     handleAuthenticationError(e);
@@ -194,8 +194,8 @@ public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandle
     @Override
     protected void resetProgramStateChannels() {
         super.resetProgramStateChannels();
-        getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+        getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
     }
 }

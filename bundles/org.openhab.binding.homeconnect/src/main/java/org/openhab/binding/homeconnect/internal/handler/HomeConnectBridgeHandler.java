@@ -290,6 +290,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
         ScheduledFuture<?> reinitializationFuture = this.reinitializationFuture;
         if (reinitializationFuture != null) {
             reinitializationFuture.cancel(true);
+            this.reinitializationFuture = null;
         }
     }
 }

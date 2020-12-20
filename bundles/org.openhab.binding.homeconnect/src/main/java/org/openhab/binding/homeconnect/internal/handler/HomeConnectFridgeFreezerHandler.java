@@ -73,46 +73,46 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
 
         // register fridge/freezer specific handlers
         handlers.put(CHANNEL_FREEZER_SETPOINT_TEMPERATURE,
-                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
                     Optional<HomeConnectApiClient> apiClient = getApiClient();
                     if (apiClient.isPresent()) {
                         Data data = apiClient.get().getFreezerSetpointTemperature(getThingHaId());
                         if (data.getValue() != null) {
                             return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
                         } else {
-                            return UnDefType.NULL;
+                            return UnDefType.UNDEF;
                         }
                     }
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 })));
         handlers.put(CHANNEL_REFRIGERATOR_SETPOINT_TEMPERATURE,
-                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
                     Optional<HomeConnectApiClient> apiClient = getApiClient();
                     if (apiClient.isPresent()) {
                         Data data = apiClient.get().getFridgeSetpointTemperature(getThingHaId());
                         if (data.getValue() != null) {
                             return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
                         } else {
-                            return UnDefType.NULL;
+                            return UnDefType.UNDEF;
                         }
                     }
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 })));
         handlers.put(CHANNEL_REFRIGERATOR_SUPER_MODE,
-                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
                     Optional<HomeConnectApiClient> apiClient = getApiClient();
                     if (apiClient.isPresent()) {
                         Data data = apiClient.get().getFridgeSuperMode(getThingHaId());
                         if (data.getValue() != null) {
                             return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
                         } else {
-                            return UnDefType.NULL;
+                            return UnDefType.UNDEF;
                         }
                     }
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 })));
         handlers.put(CHANNEL_FREEZER_SUPER_MODE,
-                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
                     Optional<HomeConnectApiClient> apiClient = getApiClient();
 
                     if (apiClient.isPresent()) {
@@ -120,10 +120,10 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                         if (data.getValue() != null) {
                             return data.getValueAsBoolean() ? OnOffType.ON : OnOffType.OFF;
                         } else {
-                            return UnDefType.NULL;
+                            return UnDefType.UNDEF;
                         }
                     }
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 })));
     }
 
@@ -200,12 +200,12 @@ public class HomeConnectFridgeFreezerHandler extends AbstractHomeConnectThingHan
                 logger.warn("Could not handle command {}. API communication problem! haId={}, error={}",
                         command.toFullString(), getThingHaId(), e.getMessage());
             } catch (AuthorizationException e) {
-                logger.warn("Could not handle command {}. Authorization problem! haId={}, error={}",
+                logger.debug("Could not handle command {}. Authorization problem! haId={}, error={}",
                         command.toFullString(), getThingHaId(), e.getMessage());
 
                 handleAuthenticationError(e);
             } catch (IncommensurableException | UnconvertibleException e) {
-                logger.warn("Could not set setpoint! haId={}, error={}", getThingHaId(), e.getMessage());
+                logger.debug("Could not set setpoint! haId={}, error={}", getThingHaId(), e.getMessage());
             }
         }
     }

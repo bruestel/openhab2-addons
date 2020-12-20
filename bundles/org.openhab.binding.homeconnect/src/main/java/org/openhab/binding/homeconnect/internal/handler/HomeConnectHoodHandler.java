@@ -138,7 +138,7 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
         handlers.put(CHANNEL_ACTIVE_PROGRAM_STATE, defaultActiveProgramStateUpdateHandler());
         handlers.put(CHANNEL_AMBIENT_LIGHT_STATE, defaultAmbientLightChannelUpdateHandler());
         handlers.put(CHANNEL_FUNCTIONAL_LIGHT_STATE,
-                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
                     Optional<HomeConnectApiClient> apiClient = getApiClient();
                     if (apiClient.isPresent()) {
                         Data data = apiClient.get().getFunctionalLightState(getThingHaId());
@@ -152,10 +152,10 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                             }
                             return enabled ? OnOffType.ON : OnOffType.OFF;
                         } else {
-                            return UnDefType.NULL;
+                            return UnDefType.UNDEF;
                         }
                     } else {
-                        return UnDefType.NULL;
+                        return UnDefType.UNDEF;
                     }
                 })));
     }
@@ -187,7 +187,7 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                     if (hoodIntensiveLevel != null) {
                         updateState(channel.getUID(), new StringType(mapStageStringType(hoodIntensiveLevel)));
                     } else {
-                        updateState(channel.getUID(), UnDefType.NULL);
+                        updateState(channel.getUID(), UnDefType.UNDEF);
                     }
                 }));
         handlers.put(EVENT_HOOD_VENTING_LEVEL,
@@ -197,7 +197,7 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                     if (hoodVentingLevel != null) {
                         updateState(channel.getUID(), new StringType(mapStageStringType(hoodVentingLevel)));
                     } else {
-                        updateState(channel.getUID(), UnDefType.NULL);
+                        updateState(channel.getUID(), UnDefType.UNDEF);
                     }
                 }));
     }
@@ -334,10 +334,10 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                     resetChannelsOnOfflineEvent();
                     resetProgramStateChannels();
                 } catch (CommunicationException e) {
-                    logger.warn("Could not handle command {}. API communication problem! thing={}, haId={}, error={}",
+                    logger.debug("Could not handle command {}. API communication problem! thing={}, haId={}, error={}",
                             command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
                 } catch (AuthorizationException e) {
-                    logger.warn("Could not handle command {}. Authorization problem! thing={}, haId={}, error={}",
+                    logger.debug("Could not handle command {}. Authorization problem! thing={}, haId={}, error={}",
                             command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
 
                     handleAuthenticationError(e);
@@ -415,9 +415,9 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
     @Override
     protected void resetProgramStateChannels() {
         super.resetProgramStateChannels();
-        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_HOOD_VENTING_LEVEL).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_HOOD_INTENSIVE_LEVEL).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_HOOD_VENTING_LEVEL).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
     }
 
     private StateOption createVentingStateOption(String optionKey) {

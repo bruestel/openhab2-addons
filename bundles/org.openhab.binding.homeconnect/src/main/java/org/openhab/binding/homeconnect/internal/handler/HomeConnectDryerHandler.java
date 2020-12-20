@@ -104,7 +104,7 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
         // register dryer specific event handlers
         handlers.put(EVENT_DRYER_DRYING_TARGET,
                 event -> getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(channel -> updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
+                        event.getValue() == null ? UnDefType.UNDEF : new StringType(event.getValue()))));
     }
 
     @Override
@@ -129,10 +129,10 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
                             resetChannelsOnOfflineEvent();
                             resetProgramStateChannels();
                         } catch (CommunicationException e) {
-                            logger.warn("Could not handle command {}. API communication problem! haId={}, error={}",
+                            logger.debug("Could not handle command {}. API communication problem! haId={}, error={}",
                                     command.toFullString(), getThingHaId(), e.getMessage());
                         } catch (AuthorizationException e) {
-                            logger.warn("Could not handle command {}. Authorization problem! haId={}, error={}",
+                            logger.debug("Could not handle command {}. Authorization problem! haId={}, error={}",
                                     command.toFullString(), getThingHaId(), e.getMessage());
 
                             handleAuthenticationError(e);
@@ -154,8 +154,8 @@ public class HomeConnectDryerHandler extends AbstractHomeConnectThingHandler {
     @Override
     protected void resetProgramStateChannels() {
         super.resetProgramStateChannels();
-        getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+        getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
     }
 }

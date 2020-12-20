@@ -128,13 +128,13 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
         // register washer specific event handlers
         handlers.put(EVENT_WASHER_TEMPERATURE,
                 event -> getThingChannel(CHANNEL_WASHER_TEMPERATURE).ifPresent(channel -> updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
+                        event.getValue() == null ? UnDefType.UNDEF : new StringType(event.getValue()))));
         handlers.put(EVENT_WASHER_SPIN_SPEED,
                 event -> getThingChannel(CHANNEL_WASHER_SPIN_SPEED).ifPresent(channel -> updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
+                        event.getValue() == null ? UnDefType.UNDEF : new StringType(event.getValue()))));
         handlers.put(EVENT_DRYER_DRYING_TARGET,
                 event -> getThingChannel(CHANNEL_DRYER_DRYING_TARGET).ifPresent(channel -> updateState(channel.getUID(),
-                        event.getValue() == null ? UnDefType.NULL : new StringType(event.getValue()))));
+                        event.getValue() == null ? UnDefType.UNDEF : new StringType(event.getValue()))));
     }
 
     @Override
@@ -175,10 +175,10 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
                     resetChannelsOnOfflineEvent();
                     resetProgramStateChannels();
                 } catch (CommunicationException e) {
-                    logger.warn("Could not handle command {}. API communication problem! thing={}, haId={}, error={}",
+                    logger.debug("Could not handle command {}. API communication problem! thing={}, haId={}, error={}",
                             command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
                 } catch (AuthorizationException e) {
-                    logger.warn("Could not handle command {}. Authorization problem! thing={}, haId={}, error={}",
+                    logger.debug("Could not handle command {}. Authorization problem! thing={}, haId={}, error={}",
                             command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
                     handleAuthenticationError(e);
                 }
@@ -194,8 +194,8 @@ public class HomeConnectWasherDryerHandler extends AbstractHomeConnectThingHandl
     @Override
     protected void resetProgramStateChannels() {
         super.resetProgramStateChannels();
-        getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+        getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
     }
 }

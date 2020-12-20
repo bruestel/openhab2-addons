@@ -13,12 +13,11 @@
 package org.openhab.binding.homeconnect.internal.handler;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.smarthome.core.cache.ExpiringCacheMap;
 import org.eclipse.smarthome.core.thing.ChannelUID;
-import org.eclipse.smarthome.core.types.State;
 import org.openhab.binding.homeconnect.internal.client.exception.ApplianceOfflineException;
 import org.openhab.binding.homeconnect.internal.client.exception.AuthorizationException;
 import org.openhab.binding.homeconnect.internal.client.exception.CommunicationException;
+import org.openhab.binding.homeconnect.internal.handler.cache.ExpiringStateMap;
 
 /**
  * The {@link ChannelUpdateHandler} is responsible for updating channels.
@@ -27,6 +26,6 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
  */
 @NonNullByDefault
 public interface ChannelUpdateHandler {
-    void handle(ChannelUID channelUID, ExpiringCacheMap<ChannelUID, State> cache)
+    void handle(ChannelUID channelUID, ExpiringStateMap cache)
             throws CommunicationException, ApplianceOfflineException, AuthorizationException;
 }

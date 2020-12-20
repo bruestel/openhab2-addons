@@ -122,13 +122,13 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
 
         // register oven specific update handlers
         handlers.put(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE,
-                (channelUID, cache) -> updateState(channelUID, cachePutIfAbsentAndGet(channelUID, cache, () -> {
+                (channelUID, cache) -> updateState(channelUID, cache.putIfAbsentAndGet(channelUID, () -> {
                     Optional<HomeConnectApiClient> apiClient = getApiClient();
                     if (apiClient.isPresent()) {
                         Data data = apiClient.get().getCurrentCavityTemperature(getThingHaId());
                         return new QuantityType<>(data.getValueAsInt(), mapTemperature(data.getUnit()));
                     }
-                    return UnDefType.NULL;
+                    return UnDefType.UNDEF;
                 })));
         handlers.put(CHANNEL_SETPOINT_TEMPERATURE, (channelUID, cache) -> {
             Optional<Channel> channel = getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE);
@@ -172,10 +172,11 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                 updateChannels();
             } else {
                 resetProgramStateChannels();
-                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-                getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-                getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-                getThingChannel(CHANNEL_DURATION).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE)
+                        .ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+                getThingChannel(CHANNEL_ACTIVE_PROGRAM_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+                getThingChannel(CHANNEL_SETPOINT_TEMPERATURE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+                getThingChannel(CHANNEL_DURATION).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
             }
         });
 
@@ -270,10 +271,10 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
                     resetChannelsOnOfflineEvent();
                     resetProgramStateChannels();
                 } catch (CommunicationException e) {
-                    logger.warn("Could not handle command {}. API communication problem! thing={}, haId={}, error={}",
+                    logger.debug("Could not handle command {}. API communication problem! thing={}, haId={}, error={}",
                             command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
                 } catch (AuthorizationException e) {
-                    logger.warn("Could not handle command {}. Authorization problem! thing={}, haId={}, error={}",
+                    logger.debug("Could not handle command {}. Authorization problem! thing={}, haId={}, error={}",
                             command.toFullString(), getThingLabel(), getThingHaId(), e.getMessage());
                     handleAuthenticationError(e);
                 }
@@ -321,10 +322,10 @@ public class HomeConnectOvenHandler extends AbstractHomeConnectThingHandler {
     @Override
     protected void resetProgramStateChannels() {
         super.resetProgramStateChannels();
-        getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
-        getThingChannel(CHANNEL_ELAPSED_PROGRAM_TIME).ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+        getThingChannel(CHANNEL_REMAINING_PROGRAM_TIME_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_PROGRAM_PROGRESS_STATE).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
+        getThingChannel(CHANNEL_ELAPSED_PROGRAM_TIME).ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
         getThingChannel(CHANNEL_OVEN_CURRENT_CAVITY_TEMPERATURE)
-                .ifPresent(c -> updateState(c.getUID(), UnDefType.NULL));
+                .ifPresent(c -> updateState(c.getUID(), UnDefType.UNDEF));
     }
 }
