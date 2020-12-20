@@ -12,6 +12,7 @@
  */
 package org.openhab.binding.homeconnect.internal.handler;
 
+import static java.util.Collections.emptyList;
 import static org.eclipse.smarthome.core.library.unit.ImperialUnits.FAHRENHEIT;
 import static org.eclipse.smarthome.core.library.unit.SIUnits.CELSIUS;
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.PERCENT;
@@ -79,7 +80,6 @@ import static org.openhab.binding.homeconnect.internal.client.model.EventType.DI
 import static org.openhab.binding.homeconnect.internal.client.model.EventType.KEEP_ALIVE;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,6 +87,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import javax.measure.Unit;
 import javax.measure.quantity.Temperature;
@@ -111,8 +112,6 @@ import org.eclipse.smarthome.core.thing.binding.BridgeHandler;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.RefreshType;
 import org.eclipse.smarthome.core.types.State;
-import org.eclipse.smarthome.core.types.StateDescription;
-import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
 import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
@@ -369,21 +368,11 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         Optional<HomeConnectApiClient> apiClient = getApiClient();
         if (apiClient.isPresent()) {
             try {
-                ArrayList<StateOption> stateOptions = new ArrayList<>();
-                apiClient.get().getPrograms(getThingHaId())
-                        .forEach(p -> stateOptions.add(new StateOption(p.getKey(), mapStringType(p.getKey()))));
+                List<StateOption> stateOptions = apiClient.get().getPrograms(getThingHaId()).stream()
+                        .map(p -> new StateOption(p.getKey(), mapStringType(p.getKey()))).collect(Collectors.toList());
 
-                @Nullable
-                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
-
-                if (stateDescription != null && !stateOptions.isEmpty()) {
-                    getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(channel -> dynamicStateDescriptionProvider
-                            .putStateDescriptions(channel.getUID().getAsString(), stateDescription));
-                } else {
-                    logger.debug("No state description available. haId={}", getThingHaId());
-                    removeSelectedProgramStateDescription();
-                }
+                getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(
+                        channel -> dynamicStateDescriptionProvider.setStateOptions(channel.getUID(), stateOptions));
             } catch (CommunicationException | ApplianceOfflineException | AuthorizationException e) {
                 logger.debug("Could not fetch available programs. thing={}, haId={}, error={}", getThingLabel(),
                         getThingHaId(), e.getMessage());
@@ -398,8 +387,8 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
      * Remove state description of selected program.
      */
     protected void removeSelectedProgramStateDescription() {
-        getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE).ifPresent(
-                channel -> dynamicStateDescriptionProvider.removeStateDescriptions(channel.getUID().getAsString()));
+        getThingChannel(CHANNEL_SELECTED_PROGRAM_STATE)
+                .ifPresent(channel -> dynamicStateDescriptionProvider.setStateOptions(channel.getUID(), emptyList()));
     }
 
     /**
@@ -1252,35 +1241,31 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
             Optional<Channel> channelDryingTarget = getThingChannel(CHANNEL_DRYER_DRYING_TARGET);
 
             if (availableProgramOptions.isEmpty()) {
-                channelSpinSpeed.ifPresent(channel -> dynamicStateDescriptionProvider
-                        .removeStateDescriptions(channel.getUID().getAsString()));
-                channelTemperature.ifPresent(channel -> dynamicStateDescriptionProvider
-                        .removeStateDescriptions(channel.getUID().getAsString()));
-                channelDryingTarget.ifPresent(channel -> dynamicStateDescriptionProvider
-                        .removeStateDescriptions(channel.getUID().getAsString()));
+                channelSpinSpeed.ifPresent(
+                        channel -> dynamicStateDescriptionProvider.setStateOptions(channel.getUID(), emptyList()));
+                channelTemperature.ifPresent(
+                        channel -> dynamicStateDescriptionProvider.setStateOptions(channel.getUID(), emptyList()));
+                channelDryingTarget.ifPresent(
+                        channel -> dynamicStateDescriptionProvider.setStateOptions(channel.getUID(), emptyList()));
             }
 
             availableProgramOptions.forEach(option -> {
                 switch (option.getKey()) {
                     case OPTION_WASHER_SPIN_SPEED: {
-                        createStateDescription(option, this::convertWasherSpinSpeed)
-                                .ifPresent(stateDescription -> channelSpinSpeed
-                                        .ifPresent(channel -> dynamicStateDescriptionProvider.putStateDescriptions(
-                                                channel.getUID().getAsString(), stateDescription)));
+                        channelSpinSpeed
+                                .ifPresent(channel -> dynamicStateDescriptionProvider.setStateOptions(channel.getUID(),
+                                        createStateOptions(option, this::convertWasherSpinSpeed)));
                         break;
                     }
                     case OPTION_WASHER_TEMPERATURE: {
-                        createStateDescription(option, this::convertWasherTemperature)
-                                .ifPresent(stateDescription -> channelTemperature
-                                        .ifPresent(channel -> dynamicStateDescriptionProvider.putStateDescriptions(
-                                                channel.getUID().getAsString(), stateDescription)));
+                        channelTemperature
+                                .ifPresent(channel -> dynamicStateDescriptionProvider.setStateOptions(channel.getUID(),
+                                        createStateOptions(option, this::convertWasherTemperature)));
                         break;
                     }
                     case OPTION_DRYER_DRYING_TARGET: {
-                        createStateDescription(option, this::mapStringType)
-                                .ifPresent(stateDescription -> channelDryingTarget
-                                        .ifPresent(channel -> dynamicStateDescriptionProvider.putStateDescriptions(
-                                                channel.getUID().getAsString(), stateDescription)));
+                        channelDryingTarget.ifPresent(channel -> dynamicStateDescriptionProvider
+                                .setStateOptions(channel.getUID(), createStateOptions(option, this::mapStringType)));
                         break;
                     }
                 }
@@ -1292,16 +1277,10 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         return dynamicStateDescriptionProvider;
     }
 
-    private Optional<StateDescription> createStateDescription(AvailableProgramOption option,
+    private List<StateOption> createStateOptions(AvailableProgramOption option,
             Function<String, String> stateConverter) {
-        ArrayList<StateOption> stateOptions = new ArrayList<>();
-        option.getAllowedValues().forEach(av -> stateOptions.add(new StateOption(av, stateConverter.apply(av))));
-
-        @Nullable
-        StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
-
-        return stateDescription == null ? Optional.empty() : Optional.of(stateDescription);
+        return option.getAllowedValues().stream().map(av -> new StateOption(av, stateConverter.apply(av)))
+                .collect(Collectors.toList());
     }
 
     private synchronized void scheduleOfflineMonitor1() {

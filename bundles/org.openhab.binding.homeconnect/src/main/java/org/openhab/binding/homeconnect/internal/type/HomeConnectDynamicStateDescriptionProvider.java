@@ -12,55 +12,18 @@
  */
 package org.openhab.binding.homeconnect.internal.type;
 
-import java.util.Locale;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.smarthome.core.thing.Channel;
+import org.eclipse.smarthome.core.thing.binding.BaseDynamicStateDescriptionProvider;
 import org.eclipse.smarthome.core.thing.type.DynamicStateDescriptionProvider;
-import org.eclipse.smarthome.core.types.StateDescription;
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * The {@link HomeConnectDynamicStateDescriptionProvider} is responsible for handling dynamic thing values.
+ * The {@link HomeConnectDynamicStateDescriptionProvider} is responsible for handling dynamic values.
  *
  * @author Jonas Brüstel - Initial contribution
  */
 @Component(service = { DynamicStateDescriptionProvider.class, HomeConnectDynamicStateDescriptionProvider.class })
 @NonNullByDefault
-public class HomeConnectDynamicStateDescriptionProvider implements DynamicStateDescriptionProvider {
+public class HomeConnectDynamicStateDescriptionProvider extends BaseDynamicStateDescriptionProvider {
 
-    private final ConcurrentHashMap<String, StateDescription> stateDescriptions = new ConcurrentHashMap<>();
-    private final Logger logger;
-
-    @Activate
-    public HomeConnectDynamicStateDescriptionProvider() {
-        logger = LoggerFactory.getLogger(HomeConnectDynamicStateDescriptionProvider.class);
-    }
-
-    @Override
-    public @Nullable StateDescription getStateDescription(Channel channel,
-            @Nullable StateDescription originalStateDescription, @Nullable Locale locale) {
-        if (stateDescriptions.containsKey(channel.getUID().getAsString())) {
-            logger.debug("Return dynamic state description for channel-uid {}. stateDescription={}",
-                    channel.getUID().getAsString(), stateDescriptions.get(channel.getUID().getAsString()));
-            return stateDescriptions.get(channel.getUID().getAsString());
-        }
-
-        return null;
-    }
-
-    public void putStateDescriptions(String channelUid, StateDescription stateDescription) {
-        logger.debug("Adding state description for channel-uid: {}. stateDescription={}", channelUid, stateDescription);
-        stateDescriptions.put(channelUid, stateDescription);
-    }
-
-    public void removeStateDescriptions(String channelUid) {
-        logger.debug("Removing state description for channel-uid: {}.", channelUid);
-        stateDescriptions.remove(channelUid);
-    }
 }

@@ -13,6 +13,7 @@
 package org.openhab.binding.homeconnect.internal.handler;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static org.eclipse.smarthome.core.library.unit.SmartHomeUnits.PERCENT;
 import static org.eclipse.smarthome.core.thing.ThingStatus.OFFLINE;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.CHANNEL_ACTIVE_PROGRAM_STATE;
@@ -87,8 +88,6 @@ import org.eclipse.smarthome.core.library.types.StringType;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
-import org.eclipse.smarthome.core.types.StateDescription;
-import org.eclipse.smarthome.core.types.StateDescriptionFragmentBuilder;
 import org.eclipse.smarthome.core.types.StateOption;
 import org.eclipse.smarthome.core.types.UnDefType;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
@@ -390,18 +389,8 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
                 });
                 stateOptions.add(new StateOption(COMMAND_STOP, "Stop"));
 
-                @Nullable
-                StateDescription stateDescription = StateDescriptionFragmentBuilder.create().withPattern("%s")
-                        .withReadOnly(stateOptions.isEmpty()).withOptions(stateOptions).build().toStateDescription();
-
-                if (stateDescription != null && !stateOptions.isEmpty()) {
-                    getThingChannel(CHANNEL_HOOD_ACTIONS_STATE)
-                            .ifPresent(channel -> getDynamicStateDescriptionProvider()
-                                    .putStateDescriptions(channel.getUID().getAsString(), stateDescription));
-                } else {
-                    logger.debug("No state description available. haId={}", getThingHaId());
-                    removeSelectedProgramStateDescription();
-                }
+                getThingChannel(CHANNEL_HOOD_ACTIONS_STATE).ifPresent(channel -> getDynamicStateDescriptionProvider()
+                        .setStateOptions(channel.getUID(), stateOptions));
             } catch (CommunicationException | ApplianceOfflineException | AuthorizationException e) {
                 logger.debug("Could not fetch available programs. thing={}, haId={}, error={}", getThingLabel(),
                         getThingHaId(), e.getMessage());
@@ -414,8 +403,8 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
 
     @Override
     protected void removeSelectedProgramStateDescription() {
-        getThingChannel(CHANNEL_HOOD_ACTIONS_STATE).ifPresent(channel -> getDynamicStateDescriptionProvider()
-                .removeStateDescriptions(channel.getUID().getAsString()));
+        getThingChannel(CHANNEL_HOOD_ACTIONS_STATE).ifPresent(
+                channel -> getDynamicStateDescriptionProvider().setStateOptions(channel.getUID(), emptyList()));
     }
 
     @Override
