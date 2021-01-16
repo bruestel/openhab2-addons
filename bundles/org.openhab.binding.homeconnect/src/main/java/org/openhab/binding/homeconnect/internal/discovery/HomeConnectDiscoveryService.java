@@ -25,10 +25,6 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER_DRYER;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
@@ -36,11 +32,17 @@ import org.eclipse.smarthome.config.discovery.DiscoveryResult;
 import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
+import org.eclipse.smarthome.core.thing.binding.ThingHandler;
+import org.eclipse.smarthome.core.thing.binding.ThingHandlerService;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.model.HomeAppliance;
 import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The {@link HomeConnectDiscoveryService} is responsible for discovering new devices.
@@ -48,23 +50,33 @@ import org.slf4j.LoggerFactory;
  * @author Jonas Brüstel - Initial contribution
  */
 @NonNullByDefault
-public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
+public class HomeConnectDiscoveryService extends AbstractDiscoveryService implements ThingHandlerService {
 
     private static final int SEARCH_TIME = 20;
 
-    private final HomeConnectBridgeHandler bridgeHandler;
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(HomeConnectDiscoveryService.class);
+
+    private @NonNullByDefault({}) HomeConnectBridgeHandler bridgeHandler;
 
     /**
      * Construct an {@link HomeConnectDiscoveryService} with the given
      * {@link org.eclipse.smarthome.core.thing.binding.BridgeHandler}.
      *
-     * @param bridgeHandler bridge handler
      */
-    public HomeConnectDiscoveryService(HomeConnectBridgeHandler bridgeHandler) {
+    public HomeConnectDiscoveryService() {
         super(DISCOVERABLE_DEVICE_THING_TYPES_UIDS, SEARCH_TIME, true);
-        this.bridgeHandler = bridgeHandler;
-        logger = LoggerFactory.getLogger(HomeConnectDiscoveryService.class);
+    }
+
+    @Override
+    public void setThingHandler(ThingHandler handler) {
+        if (handler instanceof HomeConnectBridgeHandler) {
+            this.bridgeHandler = (HomeConnectBridgeHandler) handler;
+        }
+    }
+
+    @Override
+    public @Nullable ThingHandler getThingHandler() {
+        return bridgeHandler;
     }
 
     @Override
@@ -82,9 +94,8 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
                 @Nullable
                 ThingTypeUID thingTypeUID = getThingTypeUID(appliance);
 
-                if (thingTypeUID != null && DISCOVERABLE_DEVICE_THING_TYPES_UIDS.contains(thingTypeUID)) {
+                if (thingTypeUID != null) {
                     logger.debug("Found {} ({}).", appliance.getHaId(), appliance.getType().toUpperCase());
-                    bridgeHandler.getThing().getThings().forEach(thing -> thing.getProperties().get(HA_ID));
 
                     Map<String, Object> properties = new HashMap<>();
                     properties.put(HA_ID, appliance.getHaId());
@@ -93,8 +104,9 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService {
                     DiscoveryResult discoveryResult = DiscoveryResultBuilder
                             .create(new ThingUID(BINDING_ID, appliance.getType(),
                                     bridgeHandler.getThing().getUID().getId(), appliance.getHaId()))
-                            .withThingType(thingTypeUID).withProperties(properties)
-                            .withRepresentationProperty(appliance.getHaId())
+                            .withThingType(thingTypeUID)
+                            .withProperties(properties)
+                            .withRepresentationProperty(HA_ID)
                             .withBridge(bridgeHandler.getThing().getUID()).withLabel(name).build();
                     thingDiscovered(discoveryResult);
                 } else {

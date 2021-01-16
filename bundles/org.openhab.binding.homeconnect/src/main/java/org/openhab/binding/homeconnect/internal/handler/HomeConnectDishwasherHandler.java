@@ -71,12 +71,11 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectDishwasherHandler extends AbstractHomeConnectThingHandler {
 
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(HomeConnectDishwasherHandler.class);
 
     public HomeConnectDishwasherHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
         super(thing, dynamicStateDescriptionProvider);
-        logger = LoggerFactory.getLogger(HomeConnectDishwasherHandler.class);
         resetProgramStateChannels();
     }
 

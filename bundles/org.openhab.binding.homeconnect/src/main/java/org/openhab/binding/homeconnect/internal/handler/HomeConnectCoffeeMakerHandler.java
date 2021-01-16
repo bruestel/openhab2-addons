@@ -60,12 +60,11 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HomeConnectCoffeeMakerHandler extends AbstractHomeConnectThingHandler {
 
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(HomeConnectCoffeeMakerHandler.class);
 
     public HomeConnectCoffeeMakerHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
         super(thing, dynamicStateDescriptionProvider);
-        logger = LoggerFactory.getLogger(HomeConnectCoffeeMakerHandler.class);
         resetProgramStateChannels();
     }
 

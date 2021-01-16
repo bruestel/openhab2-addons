@@ -58,7 +58,7 @@ public class HomeConnectEventSourceClient {
     private final ScheduledExecutorService scheduler;
     private final CircularQueue<Event> eventQueue;
 
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(HomeConnectEventSourceClient.class);
 
     public HomeConnectEventSourceClient(OAuthClientService oAuthClientService, boolean simulated,
             ScheduledExecutorService scheduler, @Nullable List<Event> eventHistory) {
@@ -73,7 +73,6 @@ public class HomeConnectEventSourceClient {
         if (eventHistory != null) {
             eventQueue.addAll(eventHistory);
         }
-        logger = LoggerFactory.getLogger(HomeConnectEventSourceClient.class);
     }
 
     /**

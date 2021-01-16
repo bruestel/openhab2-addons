@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -43,6 +45,7 @@ import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.binding.BaseBridgeHandler;
 import org.eclipse.smarthome.core.thing.binding.ThingHandlerCallback;
+import org.eclipse.smarthome.core.thing.binding.ThingHandlerService;
 import org.eclipse.smarthome.core.types.Command;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectApiClient;
 import org.openhab.binding.homeconnect.internal.client.HomeConnectEventSourceClient;
@@ -51,6 +54,7 @@ import org.openhab.binding.homeconnect.internal.client.exception.CommunicationEx
 import org.openhab.binding.homeconnect.internal.client.model.ApiRequest;
 import org.openhab.binding.homeconnect.internal.client.model.Event;
 import org.openhab.binding.homeconnect.internal.configuration.ApiBridgeConfiguration;
+import org.openhab.binding.homeconnect.internal.discovery.HomeConnectDiscoveryService;
 import org.openhab.binding.homeconnect.internal.servlet.HomeConnectServlet;
 import org.openhab.core.OpenHAB;
 import org.osgi.framework.FrameworkUtil;
@@ -73,7 +77,7 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
     private final OAuthFactory oAuthFactory;
     private final HomeConnectServlet homeConnectServlet;
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(HomeConnectBridgeHandler.class);
 
     private @Nullable ScheduledFuture<?> reinitializationFuture;
     private @Nullable List<ApiRequest> apiRequestHistory;
@@ -89,7 +93,6 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
 
         this.oAuthFactory = oAuthFactory;
         this.homeConnectServlet = homeConnectServlet;
-        logger = LoggerFactory.getLogger(HomeConnectBridgeHandler.class);
     }
 
     @Override
@@ -206,6 +209,11 @@ public class HomeConnectBridgeHandler extends BaseBridgeHandler {
                 }
             }
         }
+    }
+
+    @Override
+    public Collection<Class<? extends ThingHandlerService>> getServices() {
+        return Collections.singleton(HomeConnectDiscoveryService.class);
     }
 
     /**

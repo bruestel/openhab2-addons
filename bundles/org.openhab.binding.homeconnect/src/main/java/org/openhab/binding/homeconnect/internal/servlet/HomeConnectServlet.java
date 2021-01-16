@@ -118,7 +118,7 @@ public class HomeConnectServlet extends HttpServlet {
     private static final DateTimeFormatter FILE_EXPORT_DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm");
     private static final long serialVersionUID = -2449763690208703307L;
 
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(HomeConnectServlet.class);
     private final HttpService httpService;
     private final TemplateEngine templateEngine;
     private final Set<HomeConnectBridgeHandler> bridgeHandlers;
@@ -126,7 +126,6 @@ public class HomeConnectServlet extends HttpServlet {
 
     @Activate
     public HomeConnectServlet(@Reference HttpService httpService) {
-        logger = LoggerFactory.getLogger(HomeConnectServlet.class);
         bridgeHandlers = new CopyOnWriteArraySet<>();
         gson = new GsonBuilder().registerTypeAdapter(ZonedDateTime.class, (JsonSerializer<ZonedDateTime>) (src,
                 typeOfSrc, context) -> new JsonPrimitive(src.format(DateTimeFormatter.ISO_DATE_TIME))).create();

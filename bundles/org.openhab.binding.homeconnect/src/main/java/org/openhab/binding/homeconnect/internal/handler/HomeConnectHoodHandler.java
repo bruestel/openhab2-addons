@@ -118,12 +118,11 @@ public class HomeConnectHoodHandler extends AbstractHomeConnectThingHandler {
             + "            {\n" + "                \"key\": \"Cooking.Common.Option.Hood.VentingLevel\",\n"
             + "                \"value\": \"%s\"\n" + "            }\n" + "        ]\n" + "    }\n" + "}";
 
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(HomeConnectHoodHandler.class);
 
     public HomeConnectHoodHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
         super(thing, dynamicStateDescriptionProvider);
-        logger = LoggerFactory.getLogger(HomeConnectHoodHandler.class);
         resetProgramStateChannels();
     }
 

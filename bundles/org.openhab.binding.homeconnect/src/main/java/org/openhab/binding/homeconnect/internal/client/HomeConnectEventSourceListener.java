@@ -66,7 +66,7 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
     private final String haId;
     private final HomeConnectEventListener eventListener;
     private final HomeConnectEventSourceClient client;
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(HomeConnectEventSourceListener.class);
     private final JsonParser jsonParser;
     private final ScheduledFuture<?> eventSourceMonitorFuture;
     private final CircularQueue<Event> eventQueue;
@@ -81,7 +81,6 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
         this.client = client;
         this.eventQueue = eventQueue;
         jsonParser = new JsonParser();
-        logger = LoggerFactory.getLogger(HomeConnectEventSourceListener.class);
 
         eventSourceMonitorFuture = createMonitor(scheduler);
     }

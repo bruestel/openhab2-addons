@@ -152,7 +152,7 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
     private final HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider;
     private final ExpiringStateMap expiringStateMap;
     private final AtomicBoolean accessible;
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(AbstractHomeConnectThingHandler.class);
 
     public AbstractHomeConnectThingHandler(Thing thing,
             HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider) {
@@ -160,7 +160,6 @@ public abstract class AbstractHomeConnectThingHandler extends BaseThingHandler i
         eventHandlers = new ConcurrentHashMap<>();
         channelUpdateHandlers = new ConcurrentHashMap<>();
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
-        logger = LoggerFactory.getLogger(AbstractHomeConnectThingHandler.class);
         expiringStateMap = new ExpiringStateMap(Duration.ofSeconds(CACHE_TTL));
         accessible = new AtomicBoolean(false);
 
