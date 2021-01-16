@@ -133,7 +133,7 @@ public class HomeConnectServlet extends HttpServlet {
 
         // register servlet
         try {
-            logger.info("Initialize log viewer servlet ({})", SERVLET_PATH);
+            logger.info("Initialize Home Connect configuration servlet ({})", SERVLET_PATH);
             httpService.registerServlet(SERVLET_PATH, this, null, httpService.createDefaultHttpContext());
             httpService.registerResources(ASSETS_PATH, "assets", null);
         } catch (NamespaceException e) {
@@ -163,7 +163,7 @@ public class HomeConnectServlet extends HttpServlet {
     @Deactivate
     protected void dispose() {
         try {
-            logger.info("Unregister Home Connect servlet ({}).", SERVLET_PATH);
+            logger.info("Unregister Home Connect configuration servlet ({}).", SERVLET_PATH);
             httpService.unregister(SERVLET_PATH);
             httpService.unregister(ASSETS_PATH);
         } catch (IllegalArgumentException e) {

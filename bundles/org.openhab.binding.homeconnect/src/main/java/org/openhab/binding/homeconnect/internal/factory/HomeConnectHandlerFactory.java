@@ -65,12 +65,11 @@ public class HomeConnectHandlerFactory extends BaseThingHandlerFactory {
 
     @Activate
     public HomeConnectHandlerFactory(@Reference OAuthFactory oAuthFactory,
-                                     @Reference HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
-                                     @Reference HomeConnectServlet homeConnectServlet) {
+            @Reference HomeConnectDynamicStateDescriptionProvider dynamicStateDescriptionProvider,
+            @Reference HomeConnectServlet homeConnectServlet) {
         this.oAuthFactory = oAuthFactory;
         this.dynamicStateDescriptionProvider = dynamicStateDescriptionProvider;
         this.homeConnectServlet = homeConnectServlet;
-
     }
 
     @Override

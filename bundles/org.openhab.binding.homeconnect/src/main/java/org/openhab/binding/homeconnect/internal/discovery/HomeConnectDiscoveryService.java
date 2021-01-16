@@ -25,11 +25,16 @@ import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstan
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER;
 import static org.openhab.binding.homeconnect.internal.HomeConnectBindingConstants.THING_TYPE_WASHER_DRYER;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
 import org.eclipse.smarthome.config.discovery.DiscoveryResult;
 import org.eclipse.smarthome.config.discovery.DiscoveryResultBuilder;
+import org.eclipse.smarthome.config.discovery.DiscoveryService;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
@@ -40,17 +45,14 @@ import org.openhab.binding.homeconnect.internal.handler.HomeConnectBridgeHandler
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * The {@link HomeConnectDiscoveryService} is responsible for discovering new devices.
  *
  * @author Jonas Brüstel - Initial contribution
  */
 @NonNullByDefault
-public class HomeConnectDiscoveryService extends AbstractDiscoveryService implements ThingHandlerService {
+public class HomeConnectDiscoveryService extends AbstractDiscoveryService
+        implements DiscoveryService, ThingHandlerService {
 
     private static final int SEARCH_TIME = 20;
 
@@ -68,7 +70,7 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService implem
     }
 
     @Override
-    public void setThingHandler(ThingHandler handler) {
+    public void setThingHandler(@NonNullByDefault({}) ThingHandler handler) {
         if (handler instanceof HomeConnectBridgeHandler) {
             this.bridgeHandler = (HomeConnectBridgeHandler) handler;
         }
@@ -104,9 +106,7 @@ public class HomeConnectDiscoveryService extends AbstractDiscoveryService implem
                     DiscoveryResult discoveryResult = DiscoveryResultBuilder
                             .create(new ThingUID(BINDING_ID, appliance.getType(),
                                     bridgeHandler.getThing().getUID().getId(), appliance.getHaId()))
-                            .withThingType(thingTypeUID)
-                            .withProperties(properties)
-                            .withRepresentationProperty(HA_ID)
+                            .withThingType(thingTypeUID).withProperties(properties).withRepresentationProperty(HA_ID)
                             .withBridge(bridgeHandler.getThing().getUID()).withLabel(name).build();
                     thingDiscovered(discoveryResult);
                 } else {
