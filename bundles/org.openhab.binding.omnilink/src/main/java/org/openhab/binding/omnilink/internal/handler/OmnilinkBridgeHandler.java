@@ -50,7 +50,6 @@ import org.slf4j.LoggerFactory;
 import com.digitaldan.jomnilinkII.Connection;
 import com.digitaldan.jomnilinkII.DisconnectListener;
 import com.digitaldan.jomnilinkII.Message;
-import com.digitaldan.jomnilinkII.MessageTypes.CommandMessage;
 import com.digitaldan.jomnilinkII.MessageTypes.EventLogData;
 import com.digitaldan.jomnilinkII.MessageTypes.ObjectStatus;
 import com.digitaldan.jomnilinkII.MessageTypes.SecurityCodeValidation;
@@ -195,7 +194,7 @@ public class OmnilinkBridgeHandler extends BaseBridgeHandler implements Notifica
             case CHANNEL_CONSOLE_ENABLE_DISABLE_BEEPER:
                 if (command instanceof StringType) {
                     try {
-                        sendOmnilinkCommand(CommandMessage.CMD_CONSOLE_ENABLE_DISABLE_BEEPER,
+                        sendOmnilinkCommand(OmniLinkCmd.CMD_CONSOLE_ENABLE_DISABLE_BEEPER.getNumber(),
                                 ((StringType) command).equals(StringType.valueOf("OFF")) ? 0 : 1, 0);
                         updateState(CHANNEL_CONSOLE_ENABLE_DISABLE_BEEPER, UnDefType.UNDEF);
                     } catch (NumberFormatException | OmniInvalidResponseException | OmniUnknownMessageTypeException
@@ -209,7 +208,8 @@ public class OmnilinkBridgeHandler extends BaseBridgeHandler implements Notifica
             case CHANNEL_CONSOLE_BEEP:
                 if (command instanceof DecimalType) {
                     try {
-                        sendOmnilinkCommand(CommandMessage.CMD_CONSOLE_BEEP, ((DecimalType) command).intValue(), 0);
+                        sendOmnilinkCommand(OmniLinkCmd.CMD_CONSOLE_BEEP.getNumber(),
+                                ((DecimalType) command).intValue(), 0);
                         updateState(CHANNEL_CONSOLE_BEEP, UnDefType.UNDEF);
                     } catch (NumberFormatException | OmniInvalidResponseException | OmniUnknownMessageTypeException
                             | BridgeOfflineException e) {

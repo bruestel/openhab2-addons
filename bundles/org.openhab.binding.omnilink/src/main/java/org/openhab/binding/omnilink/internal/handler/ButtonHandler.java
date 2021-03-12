@@ -31,7 +31,6 @@ import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.digitaldan.jomnilinkII.MessageTypes.CommandMessage;
 import com.digitaldan.jomnilinkII.MessageTypes.properties.AreaProperties;
 import com.digitaldan.jomnilinkII.MessageTypes.properties.ButtonProperties;
 
@@ -98,7 +97,7 @@ public class ButtonHandler extends AbstractOmnilinkHandler {
         switch (channelUID.getId()) {
             case CHANNEL_BUTTON_PRESS:
                 if (command instanceof OnOffType) {
-                    sendOmnilinkCommand(CommandMessage.CMD_BUTTON, 0, thingID);
+                    sendOmnilinkCommand(OmniLinkCmd.CMD_BUTTON.getNumber(), 0, thingID);
                     updateChannels();
                 } else {
                     logger.debug("Invalid command: {}, must be OnOffType", command);

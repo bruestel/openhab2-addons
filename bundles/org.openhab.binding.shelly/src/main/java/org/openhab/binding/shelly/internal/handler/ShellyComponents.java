@@ -64,9 +64,6 @@ public class ShellyComponents {
             thingHandler.updateChannel(CHANNEL_GROUP_DEV_STATUS, CHANNEL_DEVST_ITEMP,
                     toQuantityType(getDouble(status.temperature), DIGITS_NONE, SIUnits.CELSIUS));
         }
-        thingHandler.updateChannel(CHANNEL_GROUP_SENSOR, CHANNEL_SENSOR_SLEEPTIME,
-                toQuantityType(getInteger(status.sleepTime), Units.SECOND));
-
         thingHandler.updateChannel(CHANNEL_GROUP_DEV_STATUS, CHANNEL_DEVST_UPDATE, getOnOff(status.hasUpdate));
 
         return false; // device status never triggers update
@@ -215,7 +212,7 @@ public class ShellyComponents {
                 updated |= thingHandler.updateChannel(groupName, CHANNEL_METER_TOTALKWH,
                         toQuantityType(getDouble(totalWatts), DIGITS_KWH, Units.KILOWATT_HOUR));
 
-                if (updated && timestamp > 0) {
+                if (updated) {
                     thingHandler.updateChannel(groupName, CHANNEL_LAST_UPDATE,
                             getTimestamp(getString(profile.settings.timezone), timestamp));
                 }
@@ -250,6 +247,7 @@ public class ShellyComponents {
         boolean updated = false;
         if (profile.isSensor || profile.hasBattery) {
             ShellyStatusSensor sdata = thingHandler.api.getSensorStatus();
+
             if (!thingHandler.areChannelsCreated()) {
                 thingHandler.logger.trace("{}: Create missing sensor channel(s)", thingHandler.thingName);
                 thingHandler.updateChannelDefinitions(
@@ -357,8 +355,6 @@ public class ShellyComponents {
                         getOnOff(sdata.motion));
             }
             if (sdata.sensor != null) { // Shelly Motion
-                updated |= thingHandler.updateChannel(CHANNEL_GROUP_SENSOR, CHANNEL_SENSOR_MOTION_ACT,
-                        getOnOff(sdata.sensor.motionActive));
                 updated |= thingHandler.updateChannel(CHANNEL_GROUP_SENSOR, CHANNEL_SENSOR_MOTION,
                         getOnOff(sdata.sensor.motion));
                 long timestamp = getLong(sdata.sensor.motionTimestamp);

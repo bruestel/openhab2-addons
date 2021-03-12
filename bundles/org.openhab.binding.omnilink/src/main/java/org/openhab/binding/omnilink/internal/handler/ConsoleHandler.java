@@ -27,8 +27,6 @@ import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.digitaldan.jomnilinkII.MessageTypes.CommandMessage;
-
 /**
  * The {@link ConsoleHandler} defines some methods that are used to
  * interface with an OmniLink Console. This by extension also defines the
@@ -69,7 +67,7 @@ public class ConsoleHandler extends AbstractOmnilinkHandler {
         switch (channelUID.getId()) {
             case CHANNEL_CONSOLE_ENABLE_DISABLE_BEEPER:
                 if (command instanceof StringType) {
-                    sendOmnilinkCommand(CommandMessage.CMD_CONSOLE_ENABLE_DISABLE_BEEPER,
+                    sendOmnilinkCommand(OmniLinkCmd.CMD_CONSOLE_ENABLE_DISABLE_BEEPER.getNumber(),
                             ((StringType) command).equals(StringType.valueOf("OFF")) ? 0 : 1, thingID);
                 } else {
                     logger.debug("Invalid command: {}, must be StringType", command);
@@ -77,7 +75,8 @@ public class ConsoleHandler extends AbstractOmnilinkHandler {
                 break;
             case CHANNEL_CONSOLE_BEEP:
                 if (command instanceof DecimalType) {
-                    sendOmnilinkCommand(CommandMessage.CMD_CONSOLE_BEEP, ((DecimalType) command).intValue(), thingID);
+                    sendOmnilinkCommand(OmniLinkCmd.CMD_CONSOLE_BEEP.getNumber(), ((DecimalType) command).intValue(),
+                            thingID);
                 } else {
                     logger.debug("Invalid command: {}, must be DecimalType", command);
                 }

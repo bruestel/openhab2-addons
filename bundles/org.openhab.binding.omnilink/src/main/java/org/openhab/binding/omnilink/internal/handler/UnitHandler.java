@@ -35,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.digitaldan.jomnilinkII.Message;
-import com.digitaldan.jomnilinkII.MessageTypes.CommandMessage;
 import com.digitaldan.jomnilinkII.MessageTypes.ObjectStatus;
 import com.digitaldan.jomnilinkII.MessageTypes.properties.AreaProperties;
 import com.digitaldan.jomnilinkII.MessageTypes.properties.UnitProperties;
@@ -145,14 +144,15 @@ public class UnitHandler extends AbstractOmnilinkStatusHandler<ExtendedUnitStatu
             return;
         }
 
-        sendOmnilinkCommand(channelID.startsWith("on") ? CommandMessage.CMD_UNIT_ON : CommandMessage.CMD_UNIT_OFF,
+        sendOmnilinkCommand(
+                channelID.startsWith("on") ? OmniLinkCmd.CMD_UNIT_ON.getNumber() : OmniLinkCmd.CMD_UNIT_OFF.getNumber(),
                 duration, thingID);
     }
 
     protected void handleOnOff(ChannelUID channelUID, OnOffType command) {
         logger.debug("handleOnOff called for channel: {}, command: {}", channelUID, command);
-        sendOmnilinkCommand(OnOffType.ON.equals(command) ? CommandMessage.CMD_UNIT_ON : CommandMessage.CMD_UNIT_OFF, 0,
-                thingID);
+        sendOmnilinkCommand(OnOffType.ON.equals(command) ? OmniLinkCmd.CMD_UNIT_ON.getNumber()
+                : OmniLinkCmd.CMD_UNIT_OFF.getNumber(), 0, thingID);
     }
 
     @Override

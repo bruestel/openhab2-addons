@@ -23,8 +23,6 @@ import org.openhab.binding.omnilink.internal.AreaAlarm;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
 
-import com.digitaldan.jomnilinkII.MessageTypes.CommandMessage;
-
 /**
  * The {@link OmniAreaHandler} defines some methods that are used to
  * interface with an OmniLink OmniPro Area. This by extension also defines the
@@ -47,19 +45,19 @@ public class OmniAreaHandler extends AbstractAreaHandler {
     protected int getMode(ChannelUID channelUID) {
         switch (channelUID.getId()) {
             case CHANNEL_AREA_SECURITY_MODE_DISARM:
-                return CommandMessage.CMD_SECURITY_OMNI_DISARM;
+                return OmniLinkCmd.CMD_SECURITY_OMNI_DISARM.getNumber();
             case CHANNEL_AREA_SECURITY_MODE_DAY:
-                return CommandMessage.CMD_SECURITY_OMNI_DAY_MODE;
+                return OmniLinkCmd.CMD_SECURITY_OMNI_DAY_MODE.getNumber();
             case CHANNEL_AREA_SECURITY_MODE_NIGHT:
-                return CommandMessage.CMD_SECURITY_OMNI_NIGHT_MODE;
+                return OmniLinkCmd.CMD_SECURITY_OMNI_NIGHT_MODE.getNumber();
             case CHANNEL_AREA_SECURITY_MODE_AWAY:
-                return CommandMessage.CMD_SECURITY_OMNI_AWAY_MODE;
+                return OmniLinkCmd.CMD_SECURITY_OMNI_AWAY_MODE.getNumber();
             case CHANNEL_AREA_SECURITY_MODE_VACATION:
-                return CommandMessage.CMD_SECURITY_OMNI_VACATION_MODE;
+                return OmniLinkCmd.CMD_SECURITY_OMNI_VACATION_MODE.getNumber();
             case CHANNEL_AREA_SECURITY_MODE_DAY_INSTANT:
-                return CommandMessage.CMD_SECURITY_OMNI_DAY_INSTANT_MODE;
+                return OmniLinkCmd.CMD_SECURITY_OMNI_DAY_INSTANCE_MODE.getNumber();
             case CHANNEL_AREA_SECURITY_MODE_NIGHT_DELAYED:
-                return CommandMessage.CMD_SECURITY_OMNI_NIGHT_DELAYED_MODE;
+                return OmniLinkCmd.CMD_SECURITY_OMNI_NIGHT_DELAYED_MODE.getNumber();
             default:
                 throw new IllegalStateException("Unknown channel for area thing " + channelUID);
         }
