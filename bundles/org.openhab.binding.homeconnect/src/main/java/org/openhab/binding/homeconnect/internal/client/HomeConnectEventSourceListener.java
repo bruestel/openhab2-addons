@@ -231,12 +231,13 @@ public class HomeConnectEventSourceListener extends EventSourceListener {
                             ? EventHandling.valueOfHandling(obj.get("handling").getAsString())
                             : null;
                     @Nullable
-                    Long timestamp = obj.get("timestamp") != null ? obj.get("timestamp").getAsLong() : null;
+                    Long timestamp = obj.get("timestamp") == null || obj.get("timestamp").isJsonNull() ? null
+                            : obj.get("timestamp").getAsLong();
                     @Nullable
                     ZonedDateTime creation = timestamp != null
                             ? ZonedDateTime.ofInstant(Instant.ofEpochSecond(timestamp),
                                     TimeZone.getDefault().toZoneId())
-                            : null;
+                            : ZonedDateTime.now();
 
                     events.add(new Event(haId, type, key, name, uri, creation, level, handling, value, unit));
                 });
